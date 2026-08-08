@@ -1,15 +1,19 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 
-class Project(Base):
-    __tablename__ = "projects"
+class MindMap(Base):
+    """
+    Mind map model for storing a project's mind map.
+    """
+
+    __tablename__ = "mind_maps"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -17,9 +21,9 @@ class Project(Base):
         default=uuid.uuid4,
     )
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    project_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -27,16 +31,6 @@ class Project(Base):
     title: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-    )
-
-    description: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    thumbnail: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -52,13 +46,10 @@ class Project(Base):
         nullable=False,
     )
 
-    user = relationship(
-        "User",
-        back_populates="projects",
+    project = relationship(
+        "Project",
+        back_populates="mind_maps",
     )
-    
-    mind_maps = relationship(
-    "MindMap",
-    back_populates="project",
-    cascade="all, delete-orphan",
-    )
+
+    def __repr__(self):
+        return f"<MindMap(title='{self.title}')>"
