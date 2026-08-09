@@ -51,5 +51,17 @@ class MindMap(Base):
         back_populates="mind_maps",
     )
 
+    nodes = relationship(
+        "Node",
+        back_populates="mind_map",
+        cascade="all, delete-orphan",
+    )
+    
+    edges = relationship(
+        "Edge",
+        back_populates="mind_map",
+        cascade="all, delete-orphan",
+    )
+    
     def __repr__(self):
         return f"<MindMap(title='{self.title}')>"
