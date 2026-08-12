@@ -14,7 +14,12 @@ from app.schemas.mind_map import (
     MindMapUpdate,
 )
 from app.services.mind_map_service import MindMapService
-
+from app.schemas.ai_mind_map import (
+    AIMindMapGenerateRequest,
+    AIMindMapGenerateResponse,
+)
+from app.services.ai_mind_map_service import AIMindMapService
+from app.services.ai_service import AIService
 
 router = APIRouter(
     prefix="/mind-maps",
@@ -139,7 +144,47 @@ def get_mind_map(
             detail=str(e),
         )
         
-    
+
+@router.post(
+    "/{mind_map_id}/generate",
+    response_model=AIMindMapGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def generate_ai_mind_map(
+    mind_map_id: UUID,
+    request: AIMindMapGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate an AI-powered mind map and save it to the database.
+    """
+
+    service = AIMindMapService(
+        db=db,
+        mind_map_repository=MindMapRepository(db),
+        ai_service=AIService(),
+    )
+
+    try:
+        return service.generate_and_save_mind_map(
+            mind_map_id=mind_map_id,
+            current_user=current_user,
+            topic=request.topic,
+        )
+
+    except ValueError as e:
+        if str(e) == "Mind map not found.":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
 @router.put(
     "/{mind_map_id}",
     response_model=MindMapResponse,

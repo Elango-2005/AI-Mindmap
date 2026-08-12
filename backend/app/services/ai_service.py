@@ -219,4 +219,20 @@ Return only the structured mind map data.
 
         return mind_map
 
+    def create_mind_map(self, topic: str) -> dict:
+        """
+        Generate and validate a mind map for the given topic.
+        """
+
+        if not isinstance(topic, str) or not topic.strip():
+            raise ValueError("Topic must be a non-empty string.")
+
+        topic = topic.strip()
+
+        mind_map = self.generate_mind_map(topic)
+
+        validated_mind_map = self.validate_mind_map(mind_map)
+
+        return validated_mind_map
+    
 ai_service = AIService()
