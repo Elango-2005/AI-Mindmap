@@ -1,7 +1,11 @@
 from uuid import UUID
 
+from app.models import mind_map
 from sqlalchemy.orm import Session
-
+from app.core.exceptions import (
+    MindMapAccessDeniedError,
+    MindMapNotFoundError,
+)
 from app.models.edge import Edge
 from app.models.node import Node
 from app.models.user import User
@@ -63,10 +67,14 @@ class AIMindMapService:
         )
 
         if mind_map is None:
-            raise ValueError("Mind map not found.")
+            raise MindMapNotFoundError(
+                "Mind map not found."
+        )
 
         if mind_map.project.user_id != current_user.id:
-            raise ValueError("Access denied.")
+            raise MindMapAccessDeniedError(
+                "Access denied."
+        )
 
     def save_mind_map(
         self,

@@ -3,6 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import (
+    AIGenerationError,
+    InvalidAITopicError,
+    MindMapAccessDeniedError,
+    MindMapNotFoundError,
+)
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
@@ -173,15 +179,27 @@ def generate_ai_mind_map(
             topic=request.topic,
         )
 
-    except ValueError as e:
-        if str(e) == "Mind map not found.":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
+    except MindMapNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
+    except MindMapAccessDeniedError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+    except InvalidAITopicError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+
+    except AIGenerationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
 

@@ -1,7 +1,10 @@
 from google import genai
 
 from app.core.config import settings
-
+from app.core.exceptions import (
+    AIGenerationError,
+    InvalidAITopicError,
+)
 
 class AIService:
     """
@@ -224,15 +227,42 @@ Return only the structured mind map data.
         Generate and validate a mind map for the given topic.
         """
 
+        # --------------------------------------------------
+        # Validate user input
+        # --------------------------------------------------
+
         if not isinstance(topic, str) or not topic.strip():
-            raise ValueError("Topic must be a non-empty string.")
+            raise InvalidAITopicError(
+                "Topic must be a non-empty string."
+            )
 
         topic = topic.strip()
 
-        mind_map = self.generate_mind_map(topic)
+        # --------------------------------------------------
+        # Generate mind map using Gemini
+        # --------------------------------------------------
 
-        validated_mind_map = self.validate_mind_map(mind_map)
+        try:
+            mind_map = self.generate_mind_map(topic)
+        except Exception as e:
+            raise AIGenerationError(
+                "Failed to generate mind map using AI."
+        ) from e
+
+        # --------------------------------------------------
+        # Validate AI-generated structure
+        # --------------------------------------------------
+
+        try:
+            validated_mind_map = self.validate_mind_map(
+                mind_map
+            )
+        except ValueError as e:
+            raise AIGenerationError(
+            "AI generated an invalid mind map."
+        ) from e
 
         return validated_mind_map
+    
     
 ai_service = AIService()
