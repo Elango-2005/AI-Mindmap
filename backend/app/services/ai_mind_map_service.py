@@ -48,7 +48,7 @@ class AIMindMapService:
             topic
         )
 
-        return self.save_mind_map(
+        return self.replace_mind_map_graph(
             mind_map_id,
             mind_map_data,
         )
@@ -75,6 +75,120 @@ class AIMindMapService:
             raise MindMapAccessDeniedError(
                 "Access denied."
         )
+
+    def _delete_existing_graph(
+        self,
+        mind_map_id: UUID,
+        ) -> None:
+            """
+            Delete all existing nodes and edges belonging
+            to a mind map.
+            """
+
+            self.db.query(Edge).filter(
+                Edge.mind_map_id == mind_map_id
+            ).delete(
+                synchronize_session=False
+            )
+
+            self.db.query(Node).filter(
+                Node.mind_map_id == mind_map_id
+            ).delete(
+                synchronize_session=False
+            )
+            
+    def replace_mind_map_graph(
+        self,
+        mind_map_id: UUID,
+        mind_map_data: dict,
+    ) -> dict:
+        """
+        Replace the existing graph of a mind map with
+        a validated new graph in a single transaction.
+
+        If anything fails, the entire operation is rolled back.
+        """
+
+        nodes = mind_map_data["nodes"]
+        edges = mind_map_data["edges"]
+
+        node_id_mapping: dict[str, UUID] = {}
+        created_nodes: list[Node] = []
+        created_edges: list[Edge] = []
+
+        try:
+            # --------------------------------------------------
+            # Step 1: Delete existing graph
+            # --------------------------------------------------
+
+            self._delete_existing_graph(
+                mind_map_id
+            )
+
+            # --------------------------------------------------
+            # Step 2: Create new nodes
+            # --------------------------------------------------
+
+            for node_data in nodes:
+                node = Node(
+                    mind_map_id=mind_map_id,
+                    label=node_data["label"],
+                    type="default",
+                    position_x=0.0,
+                    position_y=0.0,
+                )
+
+                self.db.add(node)
+                self.db.flush()
+
+                node_id_mapping[node_data["id"]] = node.id
+                created_nodes.append(node)
+
+            # --------------------------------------------------
+            # Step 3: Create new edges
+            # --------------------------------------------------
+
+            for edge_data in edges:
+                source_uuid = node_id_mapping[
+                    edge_data["source"]
+                ]
+
+                target_uuid = node_id_mapping[
+                    edge_data["target"]
+                ]
+
+                edge = Edge(
+                    mind_map_id=mind_map_id,
+                    source=source_uuid,
+                    target=target_uuid,
+                    label=None,
+                    type="default",
+                    animated=False,
+                )
+
+                self.db.add(edge)
+                self.db.flush()
+
+                created_edges.append(edge)
+
+            # --------------------------------------------------
+            # Step 4: Commit replacement
+            # --------------------------------------------------
+
+            self.db.commit()
+
+            return {
+                "nodes": created_nodes,
+                "edges": created_edges,
+            }
+
+        except Exception:
+            # --------------------------------------------------
+            # Rollback deletion + insertion together
+            # --------------------------------------------------
+
+            self.db.rollback()
+            raise
 
     def save_mind_map(
         self,
