@@ -41,3 +41,5 @@ Thumbs.db
 # ==========================
 .cache/
 coverage/
+frontend/.output/
+frontend/.wrangler/
