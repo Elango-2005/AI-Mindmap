@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PresentRouteImport } from './routes/present'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 
@@ -36,6 +37,11 @@ const PresentRoute = PresentRouteImport.update({
   path: '/present',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/present': typeof PresentRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/workspace': typeof WorkspaceRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/present': typeof PresentRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/workspace': typeof WorkspaceRoute
 }
@@ -69,21 +77,36 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/present': typeof PresentRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/workspace': typeof WorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/login' | '/present' | '/settings' | '/workspace'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/present'
+    | '/register'
+    | '/settings'
+    | '/workspace'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/present' | '/settings' | '/workspace'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/present'
+    | '/register'
+    | '/settings'
+    | '/workspace'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
     | '/present'
+    | '/register'
     | '/settings'
     | '/workspace'
   fileRoutesById: FileRoutesById
@@ -93,6 +116,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   PresentRoute: typeof PresentRoute
+  RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   WorkspaceRoute: typeof WorkspaceRoute
 }
@@ -127,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PresentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -149,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   PresentRoute: PresentRoute,
+  RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   WorkspaceRoute: WorkspaceRoute,
 }

@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { generateAIMindMap } from "@/api/mindmaps";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { LOGO_URL } from "@/lib/assets";
@@ -9,7 +10,14 @@ const TITLE = "Neural Networking 101 — MindVault AI Workspace";
 const DESCRIPTION =
   "Explore and expand the Neural Networking 101 mind map with AI-assisted node generation.";
 
+
 export const Route = createFileRoute("/workspace")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    mindMapId:
+      typeof search.mindMapId === "string"
+        ? search.mindMapId
+        : undefined,
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -73,9 +81,40 @@ const AI_ACTIONS = [
 ];
 
 function Workspace() {
+  const { mindMapId } = useSearch({ from: "/workspace" });
+
   const [zoom, setZoom] = useState(100);
   const [selected, setSelected] = useState<string | null>("perceptron");
 
+  const [topic, setTopic] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
+
+  async function handleGenerateAI() {
+    if (!mindMapId || !topic.trim() || isGenerating) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+    setGenerationSuccess(false);
+
+    try {
+      await generateAIMindMap(mindMapId, {
+        topic: topic.trim(),
+      });
+
+      setGenerationSuccess(true);
+    } catch (error) {
+      console.error("AI mind map generation failed:", error);
+      setGenerationError(
+        "Failed to generate the mind map. Please try again.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }
   return (
     <div className="h-screen overflow-hidden flex flex-col">
       <nav className="bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm flex justify-between items-center w-full px-lg py-md sticky top-0 z-50">
@@ -121,7 +160,13 @@ function Workspace() {
           <button className="hidden md:block px-md py-sm rounded-lg text-primary bg-surface-container-high/50 text-label-md hover:bg-surface-container-high transition-all">
             Upgrade
           </button>
-          <button className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow">
+          <button
+            onClick={() => {
+              setGenerationError(null);
+              setGenerationSuccess(false);
+            }}
+            className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow"
+          >
             <Icon name="auto_awesome" className="text-[18px]" />
             Generate AI
           </button>
@@ -144,6 +189,65 @@ function Workspace() {
         <AppSidebar active="Projects" showBrand={false} ctaVariant="muted" />
 
         <main className="flex-1 relative dot-grid overflow-hidden bg-background">
+          {mindMapId && (
+            <div className="absolute top-4 left-4 z-40 bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-3 py-2 text-label-sm">
+              Mind Map: {mindMapId}
+            </div>
+          )}
+
+          <div className="absolute top-4 right-4 z-40 w-[360px] bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-level-2">
+            <div className="flex items-center gap-sm mb-sm">
+              <Icon
+                name="auto_awesome"
+                className="text-tertiary text-[20px]"
+              />
+              <h3 className="text-body-lg font-semibold text-on-surface">
+                Generate AI Mind Map
+              </h3>
+            </div>
+
+            <p className="text-label-sm text-on-surface-variant mb-md">
+              Enter a topic and let AI generate a new mind map.
+            </p>
+
+            <input
+              type="text"
+              value={topic}
+              onChange={(event) => {
+                setTopic(event.target.value);
+                setGenerationError(null);
+                setGenerationSuccess(false);
+              }}
+              placeholder="e.g. Machine Learning"
+              disabled={isGenerating}
+              className="w-full bg-surface border border-outline-variant rounded-lg px-md py-sm text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+            />
+
+            <button
+              onClick={handleGenerateAI}
+              disabled={!mindMapId || !topic.trim() || isGenerating}
+              className="mt-sm w-full bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-xs"
+            >
+              <Icon
+                name={isGenerating ? "progress_activity" : "auto_awesome"}
+                className="text-[18px]"
+              />
+              {isGenerating ? "Generating..." : "Generate Mind Map"}
+            </button>
+
+            {generationError && (
+              <p className="mt-sm text-label-sm text-error">
+                {generationError}
+              </p>
+            )}
+
+            {generationSuccess && (
+              <p className="mt-sm text-label-sm text-tertiary">
+                Mind map generated successfully.
+              </p>
+            )}
+          </div>
+
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
             <path
               d="M 400 220 C 520 240, 480 420, 600 440"
