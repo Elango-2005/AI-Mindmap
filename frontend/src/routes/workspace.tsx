@@ -19,10 +19,11 @@ import {
 
 import "@xyflow/react/dist/style.css";
 
-import { generateAIMindMap } from "@/api/mindmaps";
+import { generateAIMindMap, getMindMap } from "@/api/mindmaps";
 import {
   getMindMapNodes,
   updateNode,
+  summarizeNode,
 } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -57,16 +58,19 @@ export const Route = createFileRoute("/workspace")({
 
 const AI_ACTIONS = [
   {
+    id: "expand",
     icon: "expand_content",
     title: "Expand Concept",
-    body: "Generate sub-nodes exploring activation functions.",
+    body: "Generate sub-nodes exploring this concept.",
   },
   {
+    id: "summarize",
     icon: "summarize",
     title: "Summarize Node",
-    body: "Create a concise technical summary of 'Perceptron'.",
+    body: "Create a concise technical summary of this node.",
   },
   {
+    id: "connect",
     icon: "conversion_path",
     title: "Find Connections",
     body: "Discover hidden links to other map sectors.",
@@ -100,6 +104,18 @@ function Workspace() {
   const [generationSuccess, setGenerationSuccess] =
     useState(false);
 
+  const [mindMapTitle, setMindMapTitle] = useState("Loading...");
+
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [nodeSummary, setNodeSummary] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  // Clear summary when selected node changes
+  useEffect(() => {
+    setNodeSummary(null);
+    setSummaryError(null);
+  }, [selectedNodeId]);
+
   async function loadGraph() {
     if (!mindMapId) {
       return;
@@ -109,10 +125,13 @@ function Workspace() {
     setGraphError(null);
 
     try {
-      const [nodes, edges] = await Promise.all([
+      const [nodes, edges, mindMapData] = await Promise.all([
         getMindMapNodes(mindMapId),
         getMindMapEdges(mindMapId),
+        getMindMap(mindMapId),
       ]);
+
+      setMindMapTitle(mindMapData.title);
 
       const columns = 4;
       const spacingX = 300;
@@ -288,10 +307,16 @@ function Workspace() {
     loadGraph();
   }, [mindMapId]);
 
-  async function handleGenerateAI() {
+  async function handleGenerateAI(fallbackTopic?: string) {
+    // Determine root node to use as fallback topic if input is empty
+    const rootNode = flowNodes.find(node => !flowEdges.some(edge => edge.target === node.id)) || flowNodes[0];
+    const rootTopic = rootNode ? (rootNode.data.label as string) : "";
+    
+    const finalTopic = (topic.trim() || (typeof fallbackTopic === 'string' ? fallbackTopic : '') || rootTopic || mindMapTitle).trim();
+    
     if (
       !mindMapId ||
-      !topic.trim() ||
+      !finalTopic ||
       isGenerating
     ) {
       return;
@@ -303,7 +328,7 @@ function Workspace() {
 
     try {
       await generateAIMindMap(mindMapId, {
-        topic: topic.trim(),
+        topic: finalTopic,
       });
 
       await loadGraph();
@@ -320,6 +345,24 @@ function Workspace() {
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleSummarizeNode() {
+    if (!selectedNodeId) return;
+
+    setIsSummarizing(true);
+    setNodeSummary(null);
+    setSummaryError(null);
+
+    try {
+      const response = await summarizeNode(selectedNodeId);
+      setNodeSummary(response.summary);
+    } catch (error) {
+      console.error("Failed to summarize node:", error);
+      setSummaryError("Failed to summarize node. Please try again.");
+    } finally {
+      setIsSummarizing(false);
     }
   }
 
@@ -408,7 +451,7 @@ function Workspace() {
 
         <div className="flex items-center gap-sm">
           <span className="text-label-md text-on-surface-variant mr-md hidden md:inline">
-            Neural Networking 101
+            {mindMapTitle}
           </span>
 
           <button
@@ -430,17 +473,15 @@ function Workspace() {
           </button>
 
           <button
-            onClick={() => {
-              setGenerationError(null);
-              setGenerationSuccess(false);
-            }}
-            className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow"
+            onClick={() => handleGenerateAI()}
+            disabled={isGenerating || !mindMapId}
+            className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icon
-              name="auto_awesome"
-              className="text-[18px]"
+              name={isGenerating ? "progress_activity" : "autorenew"}
+              className={`text-[18px] ${isGenerating ? "animate-spin" : ""}`}
             />
-            Generate AI
+            Regenerate
           </button>
 
           <button
@@ -497,7 +538,7 @@ function Workspace() {
               />
 
               <button
-                onClick={handleGenerateAI}
+                onClick={() => handleGenerateAI()}
                 disabled={
                   !mindMapId ||
                   !topic.trim() ||
@@ -629,9 +670,15 @@ function Workspace() {
                   <p className="text-label-md text-on-surface-variant mb-sm">Node Actions</p>
                   {AI_ACTIONS.map((action) => (
                     <button
-                      key={action.title}
+                      key={action.id}
                       type="button"
-                      className="w-full text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group mb-sm"
+                      onClick={() => {
+                        if (action.id === "summarize") {
+                          handleSummarizeNode();
+                        }
+                      }}
+                      disabled={isSummarizing && action.id === "summarize"}
+                      className="w-full text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group mb-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-sm mb-xs">
                         <Icon
@@ -647,6 +694,30 @@ function Workspace() {
                       </p>
                     </button>
                   ))}
+
+                  {/* Display Summary for Selected Node */}
+                  {isSummarizing && (
+                    <div className="mt-md p-md rounded-xl bg-surface-container flex items-center justify-center text-label-sm text-on-surface-variant">
+                      <Icon name="progress_activity" className="animate-spin mr-sm" />
+                      Generating summary...
+                    </div>
+                  )}
+                  
+                  {summaryError && (
+                    <div className="mt-md p-md rounded-xl bg-error-container text-on-error-container text-label-sm">
+                      {summaryError}
+                    </div>
+                  )}
+                  
+                  {nodeSummary && (
+                    <div className="mt-md p-md rounded-xl bg-tertiary-container/30 border border-tertiary/20 text-body-sm text-on-surface">
+                      <div className="flex items-center gap-xs mb-xs text-tertiary">
+                        <Icon name="auto_awesome" className="text-[16px]" />
+                        <span className="font-semibold text-label-sm">AI Summary</span>
+                      </div>
+                      {nodeSummary}
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -674,9 +745,9 @@ function Workspace() {
                 <p className="text-label-md text-on-surface-variant mb-sm">Map Actions</p>
                 {AI_ACTIONS.map((action) => (
                   <button
-                    key={action.title}
+                    key={action.id}
                     type="button"
-                    className="text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group"
+                    className="text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed opacity-50"
                   >
                     <div className="flex items-center gap-sm mb-xs">
                       <Icon
@@ -688,7 +759,7 @@ function Workspace() {
                       </h4>
                     </div>
                     <p className="text-label-sm text-on-surface-variant">
-                      {action.body}
+                      Select a node first to use this action.
                     </p>
                   </button>
                 ))}

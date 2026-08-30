@@ -7,6 +7,8 @@ from app.repositories.node_repository import NodeRepository
 from app.schemas.node import NodeCreate, NodeUpdate
 
 
+from app.services.ai_service import AIService
+
 class NodeService:
     """
     Node business logic.
@@ -16,9 +18,11 @@ class NodeService:
         self,
         node_repository: NodeRepository,
         mind_map_repository: MindMapRepository,
+        ai_service: AIService = None,
     ):
         self.node_repository = node_repository
         self.mind_map_repository = mind_map_repository
+        self.ai_service = ai_service
 
     def create_node(
         self,
@@ -114,6 +118,27 @@ class NodeService:
         )
 
         self.node_repository.delete(node)
+
+    def summarize_node(
+        self,
+        node_id: UUID,
+        current_user: User,
+    ) -> str:
+        """
+        Summarize a node's content using AI.
+        """
+
+        node = self.get_node(node_id, current_user)
+
+        if not self.ai_service:
+            raise ValueError("AI Service is not configured.")
+
+        prompt = f"Provide a concise, 1-2 sentence technical summary of the concept: '{node.label}'."
+        
+        try:
+            return self.ai_service.generate_text(prompt)
+        except Exception as e:
+            raise ValueError("Failed to summarize node via AI.") from e
 
     def _verify_mind_map_access(
         self,

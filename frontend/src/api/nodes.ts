@@ -74,3 +74,12 @@ export async function deleteNode(
 ): Promise<void> {
     await api.delete(`/nodes/${nodeId}`);
 }
+
+export async function summarizeNode(
+    nodeId: string,
+): Promise<{ summary: string }> {
+    const response = await api.post<{ summary: string }>(
+        `/nodes/${nodeId}/summarize`
+    );
+    return response.data;
+}

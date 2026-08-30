@@ -22,6 +22,8 @@ router = APIRouter(
 )
 
 
+from app.services.ai_service import AIService
+
 def get_node_service(db: Session) -> NodeService:
     """
     Create and return NodeService.
@@ -30,6 +32,7 @@ def get_node_service(db: Session) -> NodeService:
     return NodeService(
         node_repository=NodeRepository(db),
         mind_map_repository=MindMapRepository(db),
+        ai_service=AIService(),
     )
 
 
@@ -220,6 +223,47 @@ def delete_node(
                 detail=str(e),
             )
 
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+@router.post(
+    "/{node_id}/summarize",
+    response_model=dict,
+)
+def summarize_node(
+    node_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Summarize a node using AI.
+    """
+    service = get_node_service(db)
+
+    try:
+        summary = service.summarize_node(
+            node_id,
+            current_user,
+        )
+        return {"summary": summary}
+    except ValueError as e:
+        if str(e) == "Node not found.":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        if str(e) == "Mind map not found.":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        if "AI Service" in str(e) or "Failed to summarize" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e),
