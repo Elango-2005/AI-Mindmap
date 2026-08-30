@@ -1,15 +1,39 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+} from "react";
+
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  applyNodeChanges,
+  type NodeChange,
+  type NodeDragHandler,
+  type Node as FlowNode,
+  type Edge as FlowEdge,
+} from "@xyflow/react";
+
+import "@xyflow/react/dist/style.css";
+
 import { generateAIMindMap } from "@/api/mindmaps";
+import {
+  getMindMapNodes,
+  updateNode,
+} from "@/api/nodes";
+import { getMindMapEdges } from "@/api/edges";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
+import { EditableNode } from "@/components/EditableNode";
 import { LOGO_URL } from "@/lib/assets";
-import { cn } from "@/lib/utils";
 
 const TITLE = "Neural Networking 101 — MindVault AI Workspace";
+
 const DESCRIPTION =
   "Explore and expand the Neural Networking 101 mind map with AI-assisted node generation.";
-
 
 export const Route = createFileRoute("/workspace")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -18,6 +42,7 @@ export const Route = createFileRoute("/workspace")({
         ? search.mindMapId
         : undefined,
   }),
+
   head: () => ({
     meta: [
       { title: TITLE },
@@ -26,41 +51,9 @@ export const Route = createFileRoute("/workspace")({
       { property: "og:description", content: DESCRIPTION },
     ],
   }),
+
   component: Workspace,
 });
-
-const NODES = [
-  {
-    id: "perceptron",
-    top: "18%",
-    left: "26%",
-    icon: "hub",
-    badge: "98% Importance",
-    title: "Perceptron",
-    body: "The fundamental building block of a neural network.",
-    accent: "border-l-tertiary",
-  },
-  {
-    id: "activation",
-    top: "52%",
-    left: "44%",
-    icon: "functions",
-    badge: "82% Importance",
-    title: "Activation Functions",
-    body: "ReLU, sigmoid and tanh shape how signals propagate.",
-    accent: "border-l-primary",
-  },
-  {
-    id: "backprop",
-    top: "70%",
-    left: "20%",
-    icon: "sync_alt",
-    badge: "74% Importance",
-    title: "Backpropagation",
-    body: "Gradient descent adjusts weights layer by layer.",
-    accent: "border-l-secondary",
-  },
-];
 
 const AI_ACTIONS = [
   {
@@ -80,19 +73,227 @@ const AI_ACTIONS = [
   },
 ];
 
-function Workspace() {
-  const { mindMapId } = useSearch({ from: "/workspace" });
+const nodeTypes = {
+  editable: EditableNode,
+};
 
-  const [zoom, setZoom] = useState(100);
-  const [selected, setSelected] = useState<string | null>("perceptron");
+function Workspace() {
+  const { mindMapId } = useSearch({
+    from: "/workspace",
+  });
+
+  const [flowNodes, setFlowNodes] = useState<FlowNode[]>([]);
+  const [flowEdges, setFlowEdges] = useState<FlowEdge[]>([]);
+
+  const [selectedNodeId, setSelectedNodeId] =
+    useState<string | null>(null);
+
+  const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+  const [graphError, setGraphError] = useState<string | null>(null);
 
   const [topic, setTopic] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [generationSuccess, setGenerationSuccess] = useState(false);
+
+  const [generationError, setGenerationError] =
+    useState<string | null>(null);
+
+  const [generationSuccess, setGenerationSuccess] =
+    useState(false);
+
+  async function loadGraph() {
+    if (!mindMapId) {
+      return;
+    }
+
+    setIsLoadingGraph(true);
+    setGraphError(null);
+
+    try {
+      const [nodes, edges] = await Promise.all([
+        getMindMapNodes(mindMapId),
+        getMindMapEdges(mindMapId),
+      ]);
+
+      const columns = 4;
+      const spacingX = 300;
+      const spacingY = 220;
+
+      /*
+       * Nodes with non-zero coordinates already have a saved
+       * position. We must preserve those positions.
+       */
+      const nodesWithStoredPositions = nodes.filter(
+        (node) =>
+          node.position_x !== 0 ||
+          node.position_y !== 0,
+      );
+
+      /*
+       * Nodes at (0, 0) are treated as newly generated/
+       * uninitialized nodes.
+       */
+      const nodesWithoutPositions = nodes.filter(
+        (node) =>
+          node.position_x === 0 &&
+          node.position_y === 0,
+      );
+
+      /*
+       * Find the lowest safe Y position below the existing
+       * graph. This prevents newly positioned nodes from
+       * overlapping nodes that already have saved positions.
+       */
+      let nextY = 0;
+
+      if (nodesWithStoredPositions.length > 0) {
+        const maxStoredY = Math.max(
+          ...nodesWithStoredPositions.map(
+            (node) => node.position_y,
+          ),
+        );
+
+        nextY = maxStoredY + spacingY;
+      }
+
+      /*
+       * Convert backend nodes into React Flow nodes.
+       */
+      const mappedNodes: FlowNode[] = nodes.map(
+        (node) => {
+          const hasStoredPosition =
+            node.position_x !== 0 ||
+            node.position_y !== 0;
+
+          if (hasStoredPosition) {
+            return {
+              id: node.id,
+              position: {
+                x: node.position_x,
+                y: node.position_y,
+              },
+              data: {
+                label: node.label,
+              },
+              type: "editable",
+            };
+          }
+
+          /*
+           * This position will be replaced for the
+           * uninitialized nodes below.
+           */
+          return {
+            id: node.id,
+            position: {
+              x: 0,
+              y: 0,
+            },
+            data: {
+              label: node.label,
+            },
+            type: "editable",
+          };
+        },
+      );
+
+      /*
+       * Assign deterministic positions to nodes that don't
+       * have saved coordinates yet.
+       */
+      const nodesToPersist: Array<{
+        id: string;
+        position_x: number;
+        position_y: number;
+      }> = [];
+
+      nodesWithoutPositions.forEach(
+        (node, index) => {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+
+          const positionX =
+            column * spacingX;
+
+          const positionY =
+            nextY + row * spacingY;
+
+          const flowNode = mappedNodes.find(
+            (item) => item.id === node.id,
+          );
+
+          if (flowNode) {
+            flowNode.position = {
+              x: positionX,
+              y: positionY,
+            };
+          }
+
+          nodesToPersist.push({
+            id: node.id,
+            position_x: positionX,
+            position_y: positionY,
+          });
+        },
+      );
+
+      /*
+       * Convert backend edges into React Flow edges.
+       */
+      const mappedEdges: FlowEdge[] = edges.map(
+        (edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label ?? undefined,
+          type: edge.type || "default",
+          animated: edge.animated,
+        }),
+      );
+
+      /*
+       * Update the UI immediately.
+       */
+      setFlowNodes(mappedNodes);
+      setFlowEdges(mappedEdges);
+
+      /*
+       * Persist the generated initial positions so that
+       * subsequent reloads use the database coordinates.
+       */
+      if (nodesToPersist.length > 0) {
+        await Promise.all(
+          nodesToPersist.map((node) =>
+            updateNode(node.id, {
+              position_x: node.position_x,
+              position_y: node.position_y,
+            }),
+          ),
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load mind map graph:",
+        error,
+      );
+
+      setGraphError(
+        "Failed to load the mind map graph.",
+      );
+    } finally {
+      setIsLoadingGraph(false);
+    }
+  }
+
+  useEffect(() => {
+    loadGraph();
+  }, [mindMapId]);
 
   async function handleGenerateAI() {
-    if (!mindMapId || !topic.trim() || isGenerating) {
+    if (
+      !mindMapId ||
+      !topic.trim() ||
+      isGenerating
+    ) {
       return;
     }
 
@@ -105,9 +306,15 @@ function Workspace() {
         topic: topic.trim(),
       });
 
+      await loadGraph();
+
       setGenerationSuccess(true);
     } catch (error) {
-      console.error("AI mind map generation failed:", error);
+      console.error(
+        "AI mind map generation failed:",
+        error,
+      );
+
       setGenerationError(
         "Failed to generate the mind map. Please try again.",
       );
@@ -115,15 +322,70 @@ function Workspace() {
       setIsGenerating(false);
     }
   }
+
+  /*
+   * React Flow calls this whenever a node changes.
+   *
+   * This keeps the local React state synchronized with
+   * React Flow while dragging, selecting, etc.
+   */
+  function handleNodesChange(
+    changes: NodeChange[],
+  ) {
+    setFlowNodes((currentNodes) =>
+      applyNodeChanges(
+        changes,
+        currentNodes,
+      ),
+    );
+  }
+
+  /*
+   * Save the final node position to the backend
+   * after the user finishes dragging the node.
+   */
+  const handleNodeDragStop: NodeDragHandler =
+    async (_event, node) => {
+      try {
+        await updateNode(node.id, {
+          position_x: node.position.x,
+          position_y: node.position.y,
+        });
+      } catch (error) {
+        console.error(
+          "Failed to save node position:",
+          error,
+        );
+      }
+    };
+
+  const handleNodeClick = (_event: React.MouseEvent, node: FlowNode) => {
+    setSelectedNodeId(node.id);
+  };
+
+  const handlePaneClick = () => {
+    setSelectedNodeId(null);
+  };
+
+  const selectedNode = selectedNodeId ? flowNodes.find(n => n.id === selectedNodeId) : null;
+  const incomingEdges = selectedNodeId ? flowEdges.filter(e => e.target === selectedNodeId) : [];
+  const outgoingEdges = selectedNodeId ? flowEdges.filter(e => e.source === selectedNodeId) : [];
+
   return (
     <div className="h-screen overflow-hidden flex flex-col">
       <nav className="bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm flex justify-between items-center w-full px-lg py-md sticky top-0 z-50">
         <div className="flex items-center gap-md">
-          <img src={LOGO_URL} alt="MindVault AI logo" className="w-8 h-8 rounded-lg object-cover" />
+          <img
+            src={LOGO_URL}
+            alt="MindVault AI logo"
+            className="w-8 h-8 rounded-lg object-cover"
+          />
+
           <span className="text-headline-md font-bold text-primary tracking-tight">
             MindVault AI
           </span>
         </div>
+
         <div className="hidden md:flex items-center gap-lg">
           <Link
             to="/dashboard"
@@ -131,9 +393,11 @@ function Workspace() {
           >
             Dashboard
           </Link>
+
           <span className="text-primary font-bold border-b-2 border-primary pb-1 text-label-md">
             Workspace
           </span>
+
           <Link
             to="/present"
             className="text-on-surface-variant hover:text-primary transition-colors text-label-md"
@@ -141,25 +405,30 @@ function Workspace() {
             Explore
           </Link>
         </div>
+
         <div className="flex items-center gap-sm">
           <span className="text-label-md text-on-surface-variant mr-md hidden md:inline">
             Neural Networking 101
           </span>
+
           <button
             aria-label="Share"
             className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
           >
             <Icon name="share" />
           </button>
+
           <button
             aria-label="Download"
             className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
           >
             <Icon name="download" />
           </button>
+
           <button className="hidden md:block px-md py-sm rounded-lg text-primary bg-surface-container-high/50 text-label-md hover:bg-surface-container-high transition-all">
             Upgrade
           </button>
+
           <button
             onClick={() => {
               setGenerationError(null);
@@ -167,15 +436,20 @@ function Workspace() {
             }}
             className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow"
           >
-            <Icon name="auto_awesome" className="text-[18px]" />
+            <Icon
+              name="auto_awesome"
+              className="text-[18px]"
+            />
             Generate AI
           </button>
+
           <button
             aria-label="Notifications"
             className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all ml-sm"
           >
             <Icon name="notifications" />
           </button>
+
           <button
             aria-label="Help"
             className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
@@ -186,7 +460,11 @@ function Workspace() {
       </nav>
 
       <div className="flex flex-1 overflow-hidden">
-        <AppSidebar active="Projects" showBrand={false} ctaVariant="muted" />
+        <AppSidebar
+          active="Projects"
+          showBrand={false}
+          ctaVariant="muted"
+        />
 
         <main className="flex-1 relative dot-grid overflow-hidden bg-background">
           {mindMapId && (
@@ -195,169 +473,227 @@ function Workspace() {
             </div>
           )}
 
-          <div className="absolute top-4 right-4 z-40 w-[360px] bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-level-2">
-            <div className="flex items-center gap-sm mb-sm">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-6">
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-2 shadow-level-2 flex items-center gap-2">
               <Icon
                 name="auto_awesome"
-                className="text-tertiary text-[20px]"
+                className="text-tertiary text-[24px] ml-4"
               />
-              <h3 className="text-body-lg font-semibold text-on-surface">
-                Generate AI Mind Map
-              </h3>
+              
+              <input
+                type="text"
+                value={topic}
+                onChange={(event) => {
+                  setTopic(event.target.value);
+                  setGenerationError(null);
+                  setGenerationSuccess(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleGenerateAI();
+                }}
+                placeholder="Message AI to generate a mind map..."
+                disabled={isGenerating}
+                className="flex-1 bg-transparent border-none px-2 py-3 text-body-lg text-on-surface focus:outline-none disabled:opacity-60"
+              />
+
+              <button
+                onClick={handleGenerateAI}
+                disabled={
+                  !mindMapId ||
+                  !topic.trim() ||
+                  isGenerating
+                }
+                className="bg-primary text-on-primary w-12 h-12 rounded-full hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mr-1"
+                title="Generate Mind Map"
+              >
+                <Icon
+                  name={
+                    isGenerating
+                      ? "progress_activity"
+                      : "arrow_upward"
+                  }
+                  className="text-[24px]"
+                />
+              </button>
             </div>
 
-            <p className="text-label-sm text-on-surface-variant mb-md">
-              Enter a topic and let AI generate a new mind map.
-            </p>
-
-            <input
-              type="text"
-              value={topic}
-              onChange={(event) => {
-                setTopic(event.target.value);
-                setGenerationError(null);
-                setGenerationSuccess(false);
-              }}
-              placeholder="e.g. Machine Learning"
-              disabled={isGenerating}
-              className="w-full bg-surface border border-outline-variant rounded-lg px-md py-sm text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-            />
-
-            <button
-              onClick={handleGenerateAI}
-              disabled={!mindMapId || !topic.trim() || isGenerating}
-              className="mt-sm w-full bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-xs"
-            >
-              <Icon
-                name={isGenerating ? "progress_activity" : "auto_awesome"}
-                className="text-[18px]"
-              />
-              {isGenerating ? "Generating..." : "Generate Mind Map"}
-            </button>
-
             {generationError && (
-              <p className="mt-sm text-label-sm text-error">
+              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-error/20">
                 {generationError}
-              </p>
+              </div>
             )}
 
             {generationSuccess && (
-              <p className="mt-sm text-label-sm text-tertiary">
+              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-surface-container-high text-tertiary px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-tertiary/20">
                 Mind map generated successfully.
-              </p>
+              </div>
             )}
           </div>
 
-          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-            <path
-              d="M 400 220 C 520 240, 480 420, 600 440"
-              fill="none"
-              stroke="var(--color-outline-variant)"
-              strokeWidth="2"
-              className="opacity-50"
-            />
-            <path
-              d="M 380 240 C 320 380, 340 520, 300 600"
-              fill="none"
-              stroke="var(--color-outline-variant)"
-              strokeWidth="2"
-              className="opacity-50"
-            />
-          </svg>
-
-          <div
-            className="absolute inset-0 origin-top-left transition-transform duration-200"
-            style={{ transform: `scale(${zoom / 100})` }}
-          >
-            {NODES.map((node) => (
-              <button
-                key={node.id}
-                onClick={() => setSelected(node.id)}
-                style={{ top: node.top, left: node.left }}
-                className={cn(
-                  "absolute text-left bg-surface-container-lowest p-lg rounded-xl border border-outline-variant/30 border-l-4 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] w-[260px] cursor-grab hover:shadow-md transition-all z-10",
-                  node.accent,
-                  selected === node.id && "ring-2 ring-primary/40",
-                )}
-              >
-                <div className="flex justify-between items-start mb-sm">
-                  <div className="bg-primary-container/10 p-xs rounded-lg text-primary">
-                    <Icon name={node.icon} className="text-[20px]" />
-                  </div>
-                  <span className="bg-tertiary-container/20 text-tertiary text-label-sm px-2 py-1 rounded-full">
-                    {node.badge}
-                  </span>
+          <div className="absolute inset-0 z-[1]">
+            {isLoadingGraph && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-md py-sm shadow-sm">
+                  Loading mind map...
                 </div>
-                <h3 className="text-body-lg font-bold text-on-surface mb-xs">{node.title}</h3>
-                <p className="text-label-md text-on-surface-variant leading-tight">{node.body}</p>
-              </button>
-            ))}
-          </div>
+              </div>
+            )}
 
-          <div className="absolute bottom-lg left-1/2 -translate-x-1/2 glass-panel border border-outline-variant/30 rounded-full px-md py-sm flex items-center gap-sm shadow-sm z-30">
-            <button
-              aria-label="Zoom out"
-              onClick={() => setZoom((z) => Math.max(50, z - 10))}
-              className="text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-            >
-              <Icon name="remove" className="text-[20px]" />
-            </button>
-            <span className="text-label-md text-on-surface-variant px-xs w-12 text-center">
-              {zoom}%
-            </span>
-            <button
-              aria-label="Zoom in"
-              onClick={() => setZoom((z) => Math.min(200, z + 10))}
-              className="text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-            >
-              <Icon name="add" className="text-[20px]" />
-            </button>
-            <div className="w-px h-6 bg-outline-variant/30 mx-xs" />
-            <button
-              aria-label="Pan tool"
-              className="text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-            >
-              <Icon name="pan_tool" className="text-[20px]" />
-            </button>
-            <button
-              aria-label="Add node"
-              className="text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-            >
-              <Icon name="add_circle" className="text-[20px]" />
-            </button>
-            <button
-              aria-label="AI assist"
-              className="text-tertiary hover:bg-tertiary-container/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors ai-glow ml-xs"
-            >
-              <Icon name="auto_awesome" className="text-[20px]" />
-            </button>
+            {graphError && (
+              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-error-container text-on-error-container border border-error/30 rounded-lg px-md py-sm">
+                {graphError}
+              </div>
+            )}
+
+            {!isLoadingGraph &&
+              flowNodes.length > 0 && (
+                <ReactFlow
+                  nodes={flowNodes}
+                  edges={flowEdges}
+                  nodeTypes={nodeTypes}
+                  fitView
+                  attributionPosition="bottom-left"
+                  nodesDraggable={true}
+                  nodesConnectable={false}
+                  elementsSelectable={true}
+                  onNodesChange={handleNodesChange}
+                  onNodeDragStop={handleNodeDragStop}
+                  onNodeClick={handleNodeClick}
+                  onPaneClick={handlePaneClick}
+                >
+                  <Background />
+                  <Controls />
+                  <MiniMap />
+                </ReactFlow>
+              )}
           </div>
         </main>
 
         <aside className="hidden lg:flex w-[320px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 overflow-y-auto">
           <div className="p-lg border-b border-outline-variant/20 flex items-center gap-sm sticky top-0 bg-surface-container-lowest">
-            <Icon name="psychology" className="text-tertiary text-[24px]" />
-            <h3 className="text-headline-md text-on-surface">AI Intelligence</h3>
+            <Icon
+              name="psychology"
+              className="text-tertiary text-[24px]"
+            />
+
+            <h3 className="text-headline-md text-on-surface">
+              AI Intelligence
+            </h3>
           </div>
+
           <div className="p-lg flex flex-col gap-md">
-            <p className="text-label-md text-on-surface-variant mb-sm">
-              Select a node to analyze or generate structural suggestions.
-            </p>
-            {AI_ACTIONS.map((action) => (
-              <button
-                key={action.title}
-                className="text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group"
-              >
-                <div className="flex items-center gap-sm mb-xs">
-                  <Icon
-                    name={action.icon}
-                    className="text-tertiary text-[18px] group-hover:scale-110 transition-transform"
-                  />
-                  <h4 className="text-label-md font-semibold text-on-surface">{action.title}</h4>
+            {selectedNode ? (
+              <>
+                <div>
+                  <p className="text-label-md text-on-surface-variant mb-xs">
+                    Selected Node
+                  </p>
+                  <p className="text-label-sm text-on-surface-variant">
+                    Node details and real-time intelligence.
+                  </p>
                 </div>
-                <p className="text-label-sm text-on-surface-variant">{action.body}</p>
-              </button>
-            ))}
+
+                <div className="flex flex-col gap-sm bg-surface p-md rounded-xl border border-outline-variant/20">
+                  <div>
+                    <span className="text-label-sm text-on-surface-variant">Label</span>
+                    <p className="text-body-md font-semibold text-on-surface">{selectedNode.data.label as string}</p>
+                  </div>
+                  <div>
+                    <span className="text-label-sm text-on-surface-variant">Type</span>
+                    <p className="text-body-md text-on-surface capitalize">{selectedNode.type}</p>
+                  </div>
+                  <div className="flex gap-md">
+                    <div>
+                      <span className="text-label-sm text-on-surface-variant">Position X</span>
+                      <p className="text-body-md text-on-surface">{Math.round(selectedNode.position.x)}</p>
+                    </div>
+                    <div>
+                      <span className="text-label-sm text-on-surface-variant">Position Y</span>
+                      <p className="text-body-md text-on-surface">{Math.round(selectedNode.position.y)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-label-sm text-on-surface-variant">Connections</span>
+                    <div className="flex gap-md mt-xs">
+                      <div className="bg-surface-container-high px-sm py-xs rounded-md">
+                        <span className="text-label-sm font-semibold">{incomingEdges.length} Incoming</span>
+                      </div>
+                      <div className="bg-surface-container-high px-sm py-xs rounded-md">
+                        <span className="text-label-sm font-semibold">{outgoingEdges.length} Outgoing</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-sm">
+                  <p className="text-label-md text-on-surface-variant mb-sm">Node Actions</p>
+                  {AI_ACTIONS.map((action) => (
+                    <button
+                      key={action.title}
+                      type="button"
+                      className="w-full text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group mb-sm"
+                    >
+                      <div className="flex items-center gap-sm mb-xs">
+                        <Icon
+                          name={action.icon}
+                          className="text-tertiary text-[18px] group-hover:scale-110 transition-transform"
+                        />
+                        <h4 className="text-label-md font-semibold text-on-surface">
+                          {action.title}
+                        </h4>
+                      </div>
+                      <p className="text-label-sm text-on-surface-variant">
+                        {action.body}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-label-md text-on-surface-variant mb-xs">
+                    Graph Overview
+                  </p>
+                  <p className="text-label-sm text-on-surface-variant mb-sm">
+                    Select a node to analyze or edit its content.
+                  </p>
+                </div>
+
+                <div className="flex gap-md mb-md">
+                  <div className="flex-1 bg-surface p-md rounded-xl border border-outline-variant/20 flex flex-col items-center justify-center">
+                    <span className="text-headline-md font-bold text-primary">{flowNodes.length}</span>
+                    <span className="text-label-sm text-on-surface-variant">Nodes</span>
+                  </div>
+                  <div className="flex-1 bg-surface p-md rounded-xl border border-outline-variant/20 flex flex-col items-center justify-center">
+                    <span className="text-headline-md font-bold text-tertiary">{flowEdges.length}</span>
+                    <span className="text-label-sm text-on-surface-variant">Connections</span>
+                  </div>
+                </div>
+
+                <p className="text-label-md text-on-surface-variant mb-sm">Map Actions</p>
+                {AI_ACTIONS.map((action) => (
+                  <button
+                    key={action.title}
+                    type="button"
+                    className="text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-sm mb-xs">
+                      <Icon
+                        name={action.icon}
+                        className="text-tertiary text-[18px] group-hover:scale-110 transition-transform"
+                      />
+                      <h4 className="text-label-md font-semibold text-on-surface">
+                        {action.title}
+                      </h4>
+                    </div>
+                    <p className="text-label-sm text-on-surface-variant">
+                      {action.body}
+                    </p>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </aside>
       </div>
