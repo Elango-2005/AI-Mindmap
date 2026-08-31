@@ -128,6 +128,133 @@ Return only the structured mind map data.
 
         return response.parsed
 
+    def generate_sub_concepts(self, concept: str, count: int = 4) -> list[str]:
+        """
+        Generate related sub-concepts for a given topic.
+        """
+        prompt = f"Identify {count} distinct and important sub-concepts directly related to the concept: '{concept}'. Keep each concept brief (1-4 words). Do not include the original concept in the list."
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+        )
+
+        return response.parsed
+
+    def find_connections(self, concept: str, other_nodes: list[dict]) -> list[str]:
+        """
+        Identify which nodes from the provided list are logically related to the concept.
+        Returns a list of node IDs.
+        """
+        nodes_context = "\n".join([f"- {n['id']}: {n['label']}" for n in other_nodes])
+        
+        prompt = f"""
+        Given the main concept: '{concept}'
+        
+        And the following list of other concepts in the mind map:
+        {nodes_context}
+        
+        Which of these other concepts have a direct and strong logical connection to '{concept}'?
+        Return ONLY the IDs of the related concepts. If none are related, return an empty array.
+        """
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+        )
+
+        return response.parsed
+
+    def chat_modify_mind_map(self, instruction: str, current_graph: dict, selected_node_id: str | None = None, selected_node_label: str | None = None) -> dict:
+        """
+        Process a user instruction to modify an existing mind map.
+        Returns the modified graph and a text response.
+        """
+        import json
+        graph_json = json.dumps(current_graph)
+        
+        selection_context = ""
+        if selected_node_id and selected_node_label:
+            selection_context = f"\nUser's Currently Selected Node:\nID: {selected_node_id}\nLabel: {selected_node_label}\n(If the user's instruction is relative like 'this node', 'summarize it', or 'add subtopics', they are referring to this selected node.)\n"
+        
+        prompt = f"""
+        You are an AI mind map editor. 
+        You are provided with the current state of a mind map (nodes and edges) and a user instruction.
+        Your task is to follow the user's instruction and return the ENTIRE updated mind map, along with a short response message explaining what you did.
+        {selection_context}
+        User Instruction:
+        {instruction}
+        
+        Current Mind Map JSON:
+        {graph_json}
+        
+        Rules:
+        1. You must return ALL nodes and edges that should exist in the final map. If you are only modifying a few nodes, you MUST still include the untouched nodes in your response.
+        2. If the user asks to summarize or explain something, you can leave the graph untouched (just return the same nodes/edges) and provide the explanation in the 'response_text' field.
+        3. If the user asks to add nodes, create them and link them appropriately.
+        4. Every node must have a unique string ID.
+        5. Every edge must reference existing node IDs.
+        """
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": {
+                    "type": "object",
+                    "properties": {
+                        "response_text": {
+                            "type": "string"
+                        },
+                        "nodes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "label": {"type": "string"}
+                                },
+                                "required": ["id", "label"]
+                            }
+                        },
+                        "edges": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "source": {"type": "string"},
+                                    "target": {"type": "string"}
+                                },
+                                "required": ["source", "target"]
+                            }
+                        }
+                    },
+                    "required": ["response_text", "nodes", "edges"]
+                }
+            },
+        )
+
+        return response.parsed
+
     def validate_mind_map(self, mind_map: dict) -> dict:
         """
         Validate the structure and relationships of an AI-generated

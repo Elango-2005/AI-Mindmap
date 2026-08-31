@@ -98,6 +98,18 @@ export async function deleteMindMap(
     await api.delete(`/mind-maps/${mindMapId}`);
 }
 
+export async function chatMindMap(
+    mindMapId: string,
+    instruction: string,
+    selectedNodeId?: string | null,
+): Promise<{ response_text: string, nodes: MindMapNode[], edges: MindMapEdge[] }> {
+    const response = await api.post(
+        `/mind-maps/${mindMapId}/chat`,
+        { instruction, selected_node_id: selectedNodeId }
+    );
+    return response.data;
+}
+
 export async function generateAIMindMap(
     mindMapId: string,
     data: GenerateAIMindMapRequest,

@@ -24,6 +24,7 @@ from app.schemas.ai_mind_map import (
     AIMindMapGenerateRequest,
     AIMindMapGenerateResponse,
 )
+from pydantic import BaseModel
 from app.services.ai_mind_map_service import AIMindMapService
 from app.services.ai_service import AIService
 
@@ -287,5 +288,52 @@ def delete_mind_map(
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+from typing import Optional
+
+class ChatRequest(BaseModel):
+    instruction: str
+    selected_node_id: Optional[str] = None
+
+@router.post(
+    "/{mind_map_id}/chat",
+    response_model=dict,
+)
+def chat_modify_mind_map(
+    mind_map_id: UUID,
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Process an AI chat instruction to modify the mind map.
+    """
+    ai_service = AIMindMapService(
+        db,
+        MindMapRepository(db),
+        AIService(),
+    )
+
+    try:
+        result = ai_service.chat_and_modify_mind_map(
+            mind_map_id,
+            current_user,
+            request.instruction,
+            request.selected_node_id,
+        )
+        # Serialize the models
+        from app.schemas.node import NodeResponse
+        from app.schemas.edge import EdgeResponse
+        
+        return {
+            "response_text": result["response_text"],
+            "nodes": [NodeResponse.model_validate(n).model_dump(mode='json') for n in result["nodes"]],
+            "edges": [EdgeResponse.model_validate(e).model_dump(mode='json') for e in result["edges"]]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )

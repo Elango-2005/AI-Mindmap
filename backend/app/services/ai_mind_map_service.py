@@ -53,6 +53,57 @@ class AIMindMapService:
             mind_map_data,
         )
 
+    def chat_and_modify_mind_map(
+        self,
+        mind_map_id: UUID,
+        current_user: User,
+        instruction: str,
+        selected_node_id: str | None = None,
+    ) -> dict:
+        """
+        Send current graph + instruction to AI, get new graph + text response, save new graph.
+        """
+        self._verify_mind_map_access(mind_map_id, current_user)
+
+        # Get current nodes and edges
+        nodes = self.db.query(Node).filter(Node.mind_map_id == mind_map_id).all()
+        edges = self.db.query(Edge).filter(Edge.mind_map_id == mind_map_id).all()
+
+        current_graph = {
+            "nodes": [{"id": str(n.id), "label": n.label} for n in nodes],
+            "edges": [{"source": str(e.source), "target": str(e.target)} for e in edges]
+        }
+        
+        existing_positions = {str(n.id): {"x": n.position_x, "y": n.position_y} for n in nodes}
+        
+        selected_node_label = None
+        if selected_node_id:
+            for n in nodes:
+                if str(n.id) == selected_node_id:
+                    selected_node_label = n.label
+                    break
+
+        # Send to AI
+        response = self.ai_service.chat_modify_mind_map(instruction, current_graph, selected_node_id, selected_node_label)
+
+        # Update the graph
+        mind_map_data = {
+            "nodes": response["nodes"],
+            "edges": response["edges"]
+        }
+
+        result = self.replace_mind_map_graph(
+            mind_map_id,
+            mind_map_data,
+            existing_positions=existing_positions,
+        )
+
+        return {
+            "response_text": response["response_text"],
+            "nodes": result["nodes"],
+            "edges": result["edges"]
+        }
+
     def _verify_mind_map_access(
         self,
         mind_map_id: UUID,
@@ -101,6 +152,7 @@ class AIMindMapService:
         self,
         mind_map_id: UUID,
         mind_map_data: dict,
+        existing_positions: dict = None,
     ) -> dict:
         """
         Replace the existing graph of a mind map with
@@ -130,12 +182,19 @@ class AIMindMapService:
             # --------------------------------------------------
 
             for node_data in nodes:
+                pos_x = 0.0
+                pos_y = 0.0
+                
+                if existing_positions and node_data["id"] in existing_positions:
+                    pos_x = existing_positions[node_data["id"]]["x"]
+                    pos_y = existing_positions[node_data["id"]]["y"]
+                
                 node = Node(
                     mind_map_id=mind_map_id,
                     label=node_data["label"],
                     type="default",
-                    position_x=0.0,
-                    position_y=0.0,
+                    position_x=pos_x,
+                    position_y=pos_y,
                 )
 
                 self.db.add(node)

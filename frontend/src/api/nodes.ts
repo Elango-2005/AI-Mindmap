@@ -83,3 +83,21 @@ export async function summarizeNode(
     );
     return response.data;
 }
+
+export async function expandNode(
+    nodeId: string,
+): Promise<{ nodes: Node[], edges: any[] }> {
+    const response = await api.post<{ nodes: Node[], edges: any[] }>(
+        `/nodes/${nodeId}/expand`
+    );
+    return response.data;
+}
+
+export async function findConnectionsNode(
+    nodeId: string,
+): Promise<any[]> {
+    const response = await api.post<any[]>(
+        `/nodes/${nodeId}/find-connections`
+    );
+    return response.data;
+}

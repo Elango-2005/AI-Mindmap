@@ -19,11 +19,17 @@ import {
 
 import "@xyflow/react/dist/style.css";
 
-import { generateAIMindMap, getMindMap } from "@/api/mindmaps";
+import {
+  generateAIMindMap,
+  getMindMap,
+  chatMindMap,
+} from "@/api/mindmaps";
 import {
   getMindMapNodes,
   updateNode,
   summarizeNode,
+  expandNode,
+  findConnectionsNode,
 } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -106,9 +112,16 @@ function Workspace() {
 
   const [mindMapTitle, setMindMapTitle] = useState("Loading...");
 
+  const [isExpanding, setIsExpanding] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [nodeSummary, setNodeSummary] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  // Chat Interface State
+  const [chatInput, setChatInput] = useState("");
+  const [isChatting, setIsChatting] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', content: string}[]>([]);
 
   // Clear summary when selected node changes
   useEffect(() => {
@@ -366,6 +379,60 @@ function Workspace() {
     }
   }
 
+  async function handleExpandNode() {
+    if (!selectedNodeId) return;
+
+    setIsExpanding(true);
+    setSummaryError(null);
+
+    try {
+      await expandNode(selectedNodeId);
+      await loadGraph(); // Reload to get new nodes and edges
+    } catch (error) {
+      console.error("Failed to expand node:", error);
+      setSummaryError("Failed to expand node. Please try again.");
+    } finally {
+      setIsExpanding(false);
+    }
+  }
+
+  async function handleFindConnections() {
+    if (!selectedNodeId) return;
+
+    setIsConnecting(true);
+    setSummaryError(null);
+
+    try {
+      await findConnectionsNode(selectedNodeId);
+      await loadGraph(); // Reload to get new edges
+    } catch (error) {
+      console.error("Failed to find connections:", error);
+      setSummaryError("Failed to find connections. Please try again.");
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  async function handleSendChat() {
+    if (!chatInput.trim() || !mindMapId) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    setChatMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setIsChatting(true);
+
+    try {
+      const response = await chatMindMap(mindMapId, userMessage, selectedNodeId);
+      setChatMessages((prev) => [...prev, { role: "ai", content: response.response_text }]);
+      await loadGraph(); // Reload to get updated graph
+    } catch (error) {
+      console.error("Chat failed:", error);
+      setChatMessages((prev) => [...prev, { role: "ai", content: "Sorry, I encountered an error modifying the map." }]);
+    } finally {
+      setIsChatting(false);
+    }
+  }
+
   /*
    * React Flow calls this whenever a node changes.
    *
@@ -507,87 +574,75 @@ function Workspace() {
           ctaVariant="muted"
         />
 
-        <main className="flex-1 relative dot-grid overflow-hidden bg-background">
-          {mindMapId && (
+        <main className={`flex-1 relative overflow-hidden bg-background ${flowNodes.length > 0 ? 'dot-grid' : ''}`}>
+          {mindMapId && flowNodes.length > 0 && (
             <div className="absolute top-4 left-4 z-40 bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-3 py-2 text-label-sm">
               Mind Map: {mindMapId}
             </div>
           )}
 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-6">
-            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-2 shadow-level-2 flex items-center gap-2">
-              <Icon
-                name="auto_awesome"
-                className="text-tertiary text-[24px] ml-4"
-              />
-              
-              <input
-                type="text"
-                value={topic}
-                onChange={(event) => {
-                  setTopic(event.target.value);
-                  setGenerationError(null);
-                  setGenerationSuccess(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleGenerateAI();
-                }}
-                placeholder="Message AI to generate a mind map..."
-                disabled={isGenerating}
-                className="flex-1 bg-transparent border-none px-2 py-3 text-body-lg text-on-surface focus:outline-none disabled:opacity-60"
-              />
+          {flowNodes.length === 0 && !isLoadingGraph ? (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">
+              <div className="w-full max-w-3xl relative">
+                <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-2 shadow-level-2 flex items-center gap-2">
+                  <Icon
+                    name="auto_awesome"
+                    className="text-tertiary text-[24px] ml-4"
+                  />
+                  
+                  <input
+                    type="text"
+                    value={topic}
+                    onChange={(event) => {
+                      setTopic(event.target.value);
+                      setGenerationError(null);
+                      setGenerationSuccess(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleGenerateAI();
+                    }}
+                    placeholder="Message AI to generate a mind map..."
+                    disabled={isGenerating}
+                    className="flex-1 bg-transparent border-none px-2 py-3 text-body-lg text-on-surface focus:outline-none disabled:opacity-60"
+                  />
 
-              <button
-                onClick={() => handleGenerateAI()}
-                disabled={
-                  !mindMapId ||
-                  !topic.trim() ||
-                  isGenerating
-                }
-                className="bg-primary text-on-primary w-12 h-12 rounded-full hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mr-1"
-                title="Generate Mind Map"
-              >
-                <Icon
-                  name={
-                    isGenerating
-                      ? "progress_activity"
-                      : "arrow_upward"
-                  }
-                  className="text-[24px]"
-                />
-              </button>
-            </div>
-
-            {generationError && (
-              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-error/20">
-                {generationError}
-              </div>
-            )}
-
-            {generationSuccess && (
-              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-surface-container-high text-tertiary px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-tertiary/20">
-                Mind map generated successfully.
-              </div>
-            )}
-          </div>
-
-          <div className="absolute inset-0 z-[1]">
-            {isLoadingGraph && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-md py-sm shadow-sm">
-                  Loading mind map...
+                  <button
+                    onClick={() => handleGenerateAI()}
+                    disabled={!mindMapId || !topic.trim() || isGenerating}
+                    className="bg-primary text-on-primary w-12 h-12 rounded-full hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mr-1"
+                    title="Generate Mind Map"
+                  >
+                    <Icon
+                      name={isGenerating ? "progress_activity" : "arrow_upward"}
+                      className="text-[24px]"
+                    />
+                  </button>
                 </div>
-              </div>
-            )}
 
-            {graphError && (
-              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-error-container text-on-error-container border border-error/30 rounded-lg px-md py-sm">
-                {graphError}
+                {generationError && (
+                  <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-error/20">
+                    {generationError}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="absolute inset-0 z-[1]">
+              {isLoadingGraph && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                  <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-md py-sm shadow-sm">
+                    Loading mind map...
+                  </div>
+                </div>
+              )}
 
-            {!isLoadingGraph &&
-              flowNodes.length > 0 && (
+              {graphError && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-error-container text-on-error-container border border-error/30 rounded-lg px-md py-sm">
+                  {graphError}
+                </div>
+              )}
+
+              {!isLoadingGraph && flowNodes.length > 0 && (
                 <ReactFlow
                   nodes={flowNodes}
                   edges={flowEdges}
@@ -607,166 +662,66 @@ function Workspace() {
                   <MiniMap />
                 </ReactFlow>
               )}
-          </div>
+            </div>
+          )}
         </main>
 
-        <aside className="hidden lg:flex w-[320px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 overflow-y-auto">
-          <div className="p-lg border-b border-outline-variant/20 flex items-center gap-sm sticky top-0 bg-surface-container-lowest">
-            <Icon
-              name="psychology"
-              className="text-tertiary text-[24px]"
-            />
-
-            <h3 className="text-headline-md text-on-surface">
-              AI Intelligence
-            </h3>
-          </div>
-
-          <div className="p-lg flex flex-col gap-md">
-            {selectedNode ? (
-              <>
-                <div>
-                  <p className="text-label-md text-on-surface-variant mb-xs">
-                    Selected Node
-                  </p>
-                  <p className="text-label-sm text-on-surface-variant">
-                    Node details and real-time intelligence.
-                  </p>
+        {flowNodes.length > 0 && (
+          <aside className="hidden lg:flex w-[400px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 h-full relative">
+            <div className="p-md border-b border-outline-variant/20 flex items-center gap-sm bg-surface-container-lowest">
+              <Icon name="psychology" className="text-tertiary text-[24px]" />
+              <h3 className="text-title-md text-on-surface">AI Assistant</h3>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-md flex flex-col gap-md">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`p-md rounded-xl ${msg.role === 'user' ? 'bg-primary-container text-on-primary-container self-end max-w-[80%]' : 'bg-surface text-on-surface border border-outline-variant/20 max-w-[90%]'}`}>
+                   {msg.content}
                 </div>
-
-                <div className="flex flex-col gap-sm bg-surface p-md rounded-xl border border-outline-variant/20">
-                  <div>
-                    <span className="text-label-sm text-on-surface-variant">Label</span>
-                    <p className="text-body-md font-semibold text-on-surface">{selectedNode.data.label as string}</p>
-                  </div>
-                  <div>
-                    <span className="text-label-sm text-on-surface-variant">Type</span>
-                    <p className="text-body-md text-on-surface capitalize">{selectedNode.type}</p>
-                  </div>
-                  <div className="flex gap-md">
-                    <div>
-                      <span className="text-label-sm text-on-surface-variant">Position X</span>
-                      <p className="text-body-md text-on-surface">{Math.round(selectedNode.position.x)}</p>
-                    </div>
-                    <div>
-                      <span className="text-label-sm text-on-surface-variant">Position Y</span>
-                      <p className="text-body-md text-on-surface">{Math.round(selectedNode.position.y)}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-label-sm text-on-surface-variant">Connections</span>
-                    <div className="flex gap-md mt-xs">
-                      <div className="bg-surface-container-high px-sm py-xs rounded-md">
-                        <span className="text-label-sm font-semibold">{incomingEdges.length} Incoming</span>
-                      </div>
-                      <div className="bg-surface-container-high px-sm py-xs rounded-md">
-                        <span className="text-label-sm font-semibold">{outgoingEdges.length} Outgoing</span>
-                      </div>
-                    </div>
-                  </div>
+              ))}
+              {isChatting && (
+                <div className="p-md rounded-xl bg-surface text-on-surface border border-outline-variant/20 max-w-[90%] flex items-center gap-sm text-label-sm">
+                   <Icon name="progress_activity" className="animate-spin" />
+                   AI is modifying the map...
                 </div>
-
-                <div className="mt-sm">
-                  <p className="text-label-md text-on-surface-variant mb-sm">Node Actions</p>
-                  {AI_ACTIONS.map((action) => (
-                    <button
-                      key={action.id}
-                      type="button"
-                      onClick={() => {
-                        if (action.id === "summarize") {
-                          handleSummarizeNode();
-                        }
-                      }}
-                      disabled={isSummarizing && action.id === "summarize"}
-                      className="w-full text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group mb-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="flex items-center gap-sm mb-xs">
-                        <Icon
-                          name={action.icon}
-                          className="text-tertiary text-[18px] group-hover:scale-110 transition-transform"
-                        />
-                        <h4 className="text-label-md font-semibold text-on-surface">
-                          {action.title}
-                        </h4>
-                      </div>
-                      <p className="text-label-sm text-on-surface-variant">
-                        {action.body}
-                      </p>
-                    </button>
-                  ))}
-
-                  {/* Display Summary for Selected Node */}
-                  {isSummarizing && (
-                    <div className="mt-md p-md rounded-xl bg-surface-container flex items-center justify-center text-label-sm text-on-surface-variant">
-                      <Icon name="progress_activity" className="animate-spin mr-sm" />
-                      Generating summary...
-                    </div>
-                  )}
-                  
-                  {summaryError && (
-                    <div className="mt-md p-md rounded-xl bg-error-container text-on-error-container text-label-sm">
-                      {summaryError}
-                    </div>
-                  )}
-                  
-                  {nodeSummary && (
-                    <div className="mt-md p-md rounded-xl bg-tertiary-container/30 border border-tertiary/20 text-body-sm text-on-surface">
-                      <div className="flex items-center gap-xs mb-xs text-tertiary">
-                        <Icon name="auto_awesome" className="text-[16px]" />
-                        <span className="font-semibold text-label-sm">AI Summary</span>
-                      </div>
-                      {nodeSummary}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-label-md text-on-surface-variant mb-xs">
-                    Graph Overview
-                  </p>
-                  <p className="text-label-sm text-on-surface-variant mb-sm">
-                    Select a node to analyze or edit its content.
-                  </p>
-                </div>
-
-                <div className="flex gap-md mb-md">
-                  <div className="flex-1 bg-surface p-md rounded-xl border border-outline-variant/20 flex flex-col items-center justify-center">
-                    <span className="text-headline-md font-bold text-primary">{flowNodes.length}</span>
-                    <span className="text-label-sm text-on-surface-variant">Nodes</span>
+              )}
+            </div>
+            
+            <div className="p-md border-t border-outline-variant/20 bg-surface-container-lowest">
+              <div className="bg-surface border border-outline-variant/30 rounded-2xl flex flex-col p-2 focus-within:border-primary">
+                {selectedNode && (
+                  <div className="flex items-center gap-xs px-2 pt-1 pb-2 mb-1 border-b border-outline-variant/10 text-label-sm text-tertiary">
+                    <Icon name="adjust" className="text-[14px]" />
+                    <span>Targeting: <strong className="text-on-surface">{selectedNode.data.label as string}</strong></span>
                   </div>
-                  <div className="flex-1 bg-surface p-md rounded-xl border border-outline-variant/20 flex flex-col items-center justify-center">
-                    <span className="text-headline-md font-bold text-tertiary">{flowEdges.length}</span>
-                    <span className="text-label-sm text-on-surface-variant">Connections</span>
-                  </div>
-                </div>
-
-                <p className="text-label-md text-on-surface-variant mb-sm">Map Actions</p>
-                {AI_ACTIONS.map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className="text-left bg-surface p-md rounded-xl border border-outline-variant/20 hover:border-tertiary/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed opacity-50"
+                )}
+                <textarea 
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                     if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendChat();
+                     }
+                  }}
+                  disabled={isChatting}
+                  placeholder="Ask AI to modify the map..."
+                  className="bg-transparent border-none text-body-md p-2 focus:outline-none resize-none min-h-[60px]"
+                />
+                <div className="flex justify-between items-center px-2 pb-1 mt-1">
+                  <span className="text-label-sm text-on-surface-variant">Press Enter to send</span>
+                  <button 
+                     onClick={handleSendChat}
+                     disabled={isChatting || !chatInput.trim()}
+                     className="bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center hover:bg-on-primary-fixed-variant disabled:opacity-50 transition-all"
                   >
-                    <div className="flex items-center gap-sm mb-xs">
-                      <Icon
-                        name={action.icon}
-                        className="text-tertiary text-[18px] group-hover:scale-110 transition-transform"
-                      />
-                      <h4 className="text-label-md font-semibold text-on-surface">
-                        {action.title}
-                      </h4>
-                    </div>
-                    <p className="text-label-sm text-on-surface-variant">
-                      Select a node first to use this action.
-                    </p>
+                     <Icon name="arrow_upward" className="text-[18px]" />
                   </button>
-                ))}
-              </>
-            )}
-          </div>
-        </aside>
+                </div>
+              </div>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );
