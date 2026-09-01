@@ -48,6 +48,10 @@ export const Route = createFileRoute("/workspace")({
       typeof search.mindMapId === "string"
         ? search.mindMapId
         : undefined,
+    topic: 
+      typeof search.topic === "string" 
+        ? search.topic 
+        : undefined,
   }),
 
   head: () => ({
@@ -88,7 +92,7 @@ const nodeTypes = {
 };
 
 function Workspace() {
-  const { mindMapId } = useSearch({
+  const { mindMapId, topic: initialTopic } = useSearch({
     from: "/workspace",
   });
 
@@ -101,7 +105,7 @@ function Workspace() {
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   const [graphError, setGraphError] = useState<string | null>(null);
 
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(initialTopic || "");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [generationError, setGenerationError] =

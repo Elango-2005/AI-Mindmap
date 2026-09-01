@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -22,9 +22,16 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [prompt, setPrompt] = useState("");
 
   useEffect(() => {
+    // Check if token exists in localStorage
+    const token = localStorage.getItem("access_token");
+    setIsAuthenticated(!!token);
+
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll);
@@ -74,17 +81,19 @@ function Landing() {
           </nav>
 
           <div className="flex items-center gap-md">
-            <Link
-              to="/login"
-              className="hidden md:block text-label-md text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Sign In
-            </Link>
+            {!isAuthenticated && (
+              <Link
+                to="/login"
+                className="hidden md:block text-label-md text-on-surface-variant hover:text-primary transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
             <Link
               to="/dashboard"
               className="bg-primary text-on-primary text-label-md px-md py-sm rounded-lg hover:bg-on-primary-fixed-variant transition-all duration-150 active:scale-95 shadow-sm flex items-center gap-xs ai-glow"
             >
-              Start Mapping for Free
+              {isAuthenticated ? "Go to Dashboard" : "Start Mapping for Free"}
             </Link>
           </div>
         </div>
@@ -235,21 +244,32 @@ function Landing() {
               ))}
 
               <div className="absolute bottom-lg left-1/2 -translate-x-1/2 w-full max-w-[28rem] px-md z-30">
-                <div className="glass-panel rounded-full p-xs flex items-center shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] ai-glow">
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!prompt.trim()) return;
+                    localStorage.setItem("pending_ai_prompt", prompt);
+                    navigate({ to: "/dashboard" });
+                  }}
+                  className="glass-panel rounded-full p-xs flex items-center shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] ai-glow"
+                >
                   <Icon name="auto_awesome" className="text-tertiary-container px-sm" />
                   <input
                     className="bg-transparent border-none outline-none w-full text-[14px] text-on-surface placeholder:text-on-surface-variant/60"
-                    placeholder="Expand 'Target Audience' with 3 specific personas..."
+                    placeholder="Type an idea like 'Market Expansion Plan'..."
                     type="text"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
                     aria-label="AI prompt"
                   />
                   <button
+                    type="submit"
                     aria-label="Send prompt"
-                    className="bg-primary text-on-primary rounded-full p-xs hover:bg-on-primary-fixed-variant transition-colors ml-sm"
+                    className="bg-primary text-on-primary rounded-full p-xs hover:bg-on-primary-fixed-variant transition-colors ml-sm flex items-center justify-center shrink-0"
                   >
                     <Icon name="arrow_upward" className="text-[20px]" />
                   </button>
-                </div>
+                </form>
               </div>
             </div>
           </div>
