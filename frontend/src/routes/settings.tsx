@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { getCurrentUser } from "@/api/auth";
 
-const TITLE = "Appearance Settings — MindVault AI";
-const DESCRIPTION = "Customize the theme, accent color, interface scaling, and motion of your workspace.";
+const TITLE = "Settings — MindVault AI";
+const DESCRIPTION = "Customize the theme, accent color, interface scaling, and your profile.";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -26,14 +27,7 @@ const SECTIONS = [
   { label: "API Keys", icon: "key" },
 ];
 
-const ACCENTS = [
-  { name: "Indigo", className: "bg-primary" },
-  { name: "Emerald", className: "bg-accent-emerald" },
-  { name: "Rose", className: "bg-accent-rose" },
-  { name: "Amber", className: "bg-accent-amber" },
-  { name: "Violet", className: "bg-accent-violet" },
-  { name: "Slate", className: "bg-accent-slate" },
-];
+
 
 function Toggle({ defaultChecked }: { defaultChecked?: boolean }) {
   const [on, setOn] = useState(Boolean(defaultChecked));
@@ -59,9 +53,36 @@ function Toggle({ defaultChecked }: { defaultChecked?: boolean }) {
 
 function Settings() {
   const [section, setSection] = useState("Appearance");
-  const [theme, setTheme] = useState("Light");
-  const [accent, setAccent] = useState("Indigo");
-  const [scale, setScale] = useState(2);
+  
+  // Theme state
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
+
+  // Profile state
+  const [user, setUser] = useState<{ full_name: string; email: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(setUser)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Theme effect
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+    if (theme === "Dark") {
+      document.documentElement.classList.add("dark");
+    } else if (theme === "Light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  }, [theme]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -108,142 +129,119 @@ function Settings() {
 
       <main className="flex-grow overflow-y-auto bg-background p-lg md:p-xxl">
         <div className="max-w-3xl mx-auto">
-          <header className="mb-lg border-b border-outline-variant/30 pb-sm">
-            <h2 className="text-headline-md text-on-surface">Appearance</h2>
-            <p className="text-body-md text-on-surface-variant mt-xs">
-              Customize the look and feel of your workspace.
-            </p>
-          </header>
-
-          <div className="flex flex-col gap-xl">
-            {/* Theme */}
-            <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm ai-glow">
-              <div className="mb-md">
-                <h3 className="text-label-md text-on-surface font-semibold">Theme Preference</h3>
-                <p className="text-label-md text-on-surface-variant mt-1">
-                  Select your preferred color scheme.
+          {section === "Profile" && (
+            <>
+              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
+                <h2 className="text-headline-md text-on-surface">Profile</h2>
+                <p className="text-body-md text-on-surface-variant mt-xs">
+                  Manage your public profile and personal details.
                 </p>
+              </header>
+              <div className="flex flex-col gap-xl">
+                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                  <div className="mb-md">
+                    <h3 className="text-label-md text-on-surface font-semibold">Personal Info</h3>
+                  </div>
+                  {isLoading ? (
+                    <div className="text-label-md text-on-surface-variant">Loading profile...</div>
+                  ) : user ? (
+                    <div className="flex flex-col gap-md">
+                      <div>
+                        <label className="text-label-sm text-on-surface-variant">Full Name</label>
+                        <div className="text-body-lg text-on-surface font-medium">{user.full_name}</div>
+                      </div>
+                      <div>
+                        <label className="text-label-sm text-on-surface-variant">Email</label>
+                        <div className="text-body-lg text-on-surface font-medium">{user.email}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-label-md text-error">Failed to load profile.</div>
+                  )}
+                </section>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-md">
-                {[
-                  { name: "Light", icon: "light_mode" },
-                  { name: "Dark", icon: "dark_mode" },
-                  { name: "System", icon: "contrast" },
-                ].map((option) => (
-                  <button
-                    key={option.name}
-                    onClick={() => setTheme(option.name)}
-                    className={cn(
-                      "relative rounded-lg overflow-hidden p-1 bg-surface transition-colors",
-                      theme === option.name
-                        ? "border-2 border-primary shadow-sm"
-                        : "border border-outline-variant/30 opacity-70 hover:opacity-100",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "h-24 rounded flex items-center justify-center relative overflow-hidden border",
-                        option.name === "Dark"
-                          ? "bg-inverse-surface border-outline/20"
-                          : option.name === "System"
-                            ? "bg-surface-container-highest border-outline-variant/20"
-                            : "bg-surface-container-lowest border-outline-variant/20",
-                      )}
-                    >
-                      {option.name === "System" ? (
-                        <>
-                          <div className="w-1/2 h-full bg-surface-container-lowest" />
-                          <div className="w-1/2 h-full bg-inverse-surface" />
-                        </>
-                      ) : null}
-                      <Icon
-                        name={option.icon}
-                        filled={theme === option.name}
+            </>
+          )}
+
+          {section === "Appearance" && (
+            <>
+              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
+                <h2 className="text-headline-md text-on-surface">Appearance</h2>
+                <p className="text-body-md text-on-surface-variant mt-xs">
+                  Customize the look and feel of your workspace.
+                </p>
+              </header>
+
+              <div className="flex flex-col gap-xl">
+                {/* Theme */}
+                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm ai-glow">
+                  <div className="mb-md">
+                    <h3 className="text-label-md text-on-surface font-semibold">Theme Preference</h3>
+                    <p className="text-label-md text-on-surface-variant mt-1">
+                      Select your preferred color scheme.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-md">
+                    {[
+                      { name: "Light", icon: "light_mode" },
+                      { name: "Dark", icon: "dark_mode" },
+                      { name: "System", icon: "contrast" },
+                    ].map((option) => (
+                      <button
+                        key={option.name}
+                        onClick={() => setTheme(option.name)}
                         className={cn(
-                          "absolute text-3xl",
-                          option.name === "Dark"
-                            ? "text-inverse-on-surface"
-                            : theme === option.name
-                              ? "text-primary"
-                              : "text-on-surface",
+                          "relative rounded-lg overflow-hidden p-1 bg-surface transition-colors",
+                          theme === option.name
+                            ? "border-2 border-primary shadow-sm"
+                            : "border border-outline-variant/30 opacity-70 hover:opacity-100",
                         )}
-                      />
-                    </div>
-                    <div
-                      className={cn(
-                        "text-center mt-2 pb-1 text-label-md",
-                        theme === option.name
-                          ? "font-bold text-primary"
-                          : "text-on-surface-variant",
-                      )}
-                    >
-                      {option.name}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
+                      >
+                        <div
+                          className={cn(
+                            "h-24 rounded flex items-center justify-center relative overflow-hidden border",
+                            option.name === "Dark"
+                              ? "bg-inverse-surface border-outline/20"
+                              : option.name === "System"
+                                ? "bg-surface-container-highest border-outline-variant/20"
+                                : "bg-surface-container-lowest border-outline-variant/20",
+                          )}
+                        >
+                          {option.name === "System" ? (
+                            <>
+                              <div className="w-1/2 h-full bg-surface-container-lowest" />
+                              <div className="w-1/2 h-full bg-inverse-surface" />
+                            </>
+                          ) : null}
+                          <Icon
+                            name={option.icon}
+                            filled={theme === option.name}
+                            className={cn(
+                              "absolute text-3xl",
+                              option.name === "Dark"
+                                ? "text-inverse-on-surface"
+                                : theme === option.name
+                                  ? "text-primary"
+                                  : "text-on-surface",
+                            )}
+                          />
+                        </div>
+                        <div
+                          className={cn(
+                            "text-center mt-2 pb-1 text-label-md",
+                            theme === option.name
+                              ? "font-bold text-primary"
+                              : "text-on-surface-variant",
+                          )}
+                        >
+                          {option.name}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
-            {/* Accent */}
-            <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-              <div className="mb-md">
-                <h3 className="text-label-md text-on-surface font-semibold">Accent Color</h3>
-                <p className="text-label-md text-on-surface-variant mt-1">
-                  Choose the primary color for buttons and active states.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-md">
-                {ACCENTS.map((option) => (
-                  <button
-                    key={option.name}
-                    aria-label={option.name}
-                    onClick={() => setAccent(option.name)}
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 border border-black/10",
-                      option.className,
-                      accent === option.name && "ring-2 ring-primary ring-offset-2",
-                    )}
-                  >
-                    {accent === option.name ? (
-                      <Icon name="check" filled className="text-on-primary text-sm" />
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* Scaling */}
-            <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-              <div className="mb-md">
-                <h3 className="text-label-md text-on-surface font-semibold">Interface Scaling</h3>
-                <p className="text-label-md text-on-surface-variant mt-1">
-                  Adjust the overall size of text and UI elements.
-                </p>
-              </div>
-              <div className="flex items-center gap-lg mt-6">
-                <span className="text-sm text-on-surface-variant">A</span>
-                <div className="flex-grow">
-                  <input
-                    type="range"
-                    min={0}
-                    max={4}
-                    step={1}
-                    value={scale}
-                    onChange={(e) => setScale(Number(e.target.value))}
-                    aria-label="Interface scaling"
-                    className="w-full accent-primary"
-                  />
-                </div>
-                <span className="text-headline-sm text-on-surface">A</span>
-              </div>
-              <div className="flex justify-between mt-2 px-1 text-label-sm text-on-surface-variant">
-                <span>Compact</span>
-                <span>Standard</span>
-                <span>Comfortable</span>
-              </div>
-            </section>
-
-            {/* Motion */}
+                {/* Motion */}
             <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
               <div className="flex justify-between items-center gap-md">
                 <div>
@@ -266,7 +264,19 @@ function Settings() {
                 <Toggle defaultChecked />
               </div>
             </section>
-          </div>
+              </div>
+            </>
+          )}
+
+          {section !== "Profile" && section !== "Appearance" && (
+            <div className="flex flex-col items-center justify-center h-[50vh] text-center">
+              <Icon name="construction" className="text-[48px] text-on-surface-variant/50 mb-md" />
+              <h2 className="text-headline-md text-on-surface mb-2">{section} Settings</h2>
+              <p className="text-body-md text-on-surface-variant max-w-md">
+                This section is currently under construction. Check back soon for more customization options!
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -202,3 +202,35 @@
     stroke-dashoffset: -1000;
   }
 }
+
+@layer base {
+  .dark {
+    --color-background: #0f1016;
+    --color-on-background: #e2e2ec;
+    --color-surface: #0f1016;
+    --color-surface-bright: #35363e;
+    --color-surface-dim: #10131a;
+    --color-surface-tint: #bcc2ff;
+    --color-surface-variant: #454652;
+    --color-surface-container-lowest: #0a0b0f;
+    --color-surface-container-low: #181921;
+    --color-surface-container: #1e1f27;
+    --color-surface-container-high: #292a32;
+    --color-surface-container-highest: #34353c;
+    --color-on-surface: #e2e2ec;
+    --color-on-surface-variant: #c5c6d3;
+    --color-primary: #bcc2ff;
+    --color-on-primary: #190066;
+    --color-primary-container: #3323cc;
+    --color-on-primary-container: #e2dfff;
+    --color-secondary: #c0c1ff;
+    --color-on-secondary: #10006a;
+    --color-secondary-container: #2f2ebe;
+    --color-on-secondary-container: #e1e0ff;
+    --color-outline: #8f909c;
+    --color-outline-variant: #454652;
+    --color-inverse-surface: #e2e2ec;
+    --color-inverse-on-surface: #293040;
+  }
+}
+

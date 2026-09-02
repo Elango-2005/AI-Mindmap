@@ -1,7 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Icon } from "@/components/Icon";
 import { LOGO_URL } from "@/lib/assets";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { createProject } from "@/api/projects";
+import { createMindMap } from "@/api/mindmaps";
 
 type NavItem = { label: string; icon: string; to: string };
 
@@ -21,6 +24,23 @@ export function AppSidebar({
   showBrand?: boolean;
   ctaVariant?: "primary" | "muted";
 }) {
+  const navigate = useNavigate();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreate = async () => {
+    try {
+      setIsCreating(true);
+      const project = await createProject("Untitled Project", "Auto-generated project");
+      const mindMap = await createMindMap(project.id, "Untitled Project", "{}");
+      navigate({ to: "/workspace", search: { mindMapId: mindMap.id } });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to create project");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <aside className="hidden md:flex w-[280px] shrink-0 flex-col h-full bg-surface border-r border-outline-variant/20 p-md gap-sm">
       {showBrand ? (
@@ -39,9 +59,13 @@ export function AppSidebar({
       )}
 
       {ctaVariant === "muted" ? (
-        <button className="w-full bg-surface-container text-on-surface py-sm px-md rounded-lg mb-md flex items-center justify-center gap-sm text-label-md hover:bg-surface-container-highest transition-all">
+        <button 
+          onClick={handleCreate}
+          disabled={isCreating}
+          className="w-full bg-surface-container text-on-surface py-sm px-md rounded-lg mb-md flex items-center justify-center gap-sm text-label-md hover:bg-surface-container-highest transition-all disabled:opacity-50"
+        >
           <Icon name="add" className="text-[18px]" />
-          New MindMap
+          {isCreating ? "Creating..." : "New MindMap"}
         </button>
       ) : null}
 
@@ -65,9 +89,13 @@ export function AppSidebar({
 
       <div className="mt-auto flex flex-col gap-sm">
         {ctaVariant === "primary" ? (
-          <button className="bg-primary-container text-on-primary text-label-md rounded-xl py-sm px-md flex items-center justify-center gap-sm ai-glow transition-all mb-md">
+          <button 
+            onClick={handleCreate}
+            disabled={isCreating}
+            className="bg-primary-container text-white text-label-md rounded-xl py-sm px-md flex items-center justify-center gap-sm ai-glow transition-all mb-md disabled:opacity-50"
+          >
             <Icon name="add" />
-            New MindMap
+            {isCreating ? "Creating..." : "New MindMap"}
           </button>
         ) : null}
         <a

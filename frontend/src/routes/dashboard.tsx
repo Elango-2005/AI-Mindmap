@@ -1,8 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
-import { SiteFooter } from "@/components/SiteFooter";
 import { LOGO_URL, PROJECT_THUMBS } from "@/lib/assets";
+import { getProjects, createProject } from "@/api/projects";
+import { createMindMap } from "@/api/mindmaps";
+import { getCurrentUser } from "@/api/auth";
 
 const TITLE = "Dashboard — MindVault AI";
 const DESCRIPTION = "Your recent mind maps, AI generation stats, and workspace shortcuts.";
@@ -19,37 +22,59 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-const STATS = [
+const DEFAULT_STATS = [
   { label: "Total Maps", icon: "account_tree", value: "24", tone: "text-secondary" },
   { label: "Nodes Generated", icon: "auto_awesome", value: "1.2k", tone: "text-tertiary" },
   { label: "Hours Saved", icon: "timer", value: "15", suffix: "h", tone: "text-secondary" },
 ];
 
-const PROJECTS = [
-  {
-    title: "Q4 Product Strategy Architecture",
-    when: "2 hrs ago",
-    nodes: "142 Nodes",
-    thumb: PROJECT_THUMBS[0],
-    ai: true,
-  },
-  {
-    title: "User Research Synthesis",
-    when: "Yesterday",
-    nodes: "68 Nodes",
-    thumb: PROJECT_THUMBS[1],
-    ai: false,
-  },
-  {
-    title: "Marketing Campaign Brainstorm",
-    when: "Oct 12",
-    nodes: "34 Nodes",
-    thumb: PROJECT_THUMBS[2],
-    ai: false,
-  },
-];
-
 function Dashboard() {
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState<any[]>([]);
+  const [user, setUser] = useState<{ full_name: string } | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [stats, setStats] = useState(DEFAULT_STATS);
+
+  useEffect(() => {
+    // Check auth
+    if (!localStorage.getItem("access_token")) {
+      navigate({ to: "/login" });
+      return;
+    }
+
+    // Load Data
+    getCurrentUser().then(setUser).catch(console.error);
+    getProjects().then(data => {
+      setProjects(data);
+      setStats([
+        { label: "Total Maps", icon: "account_tree", value: String(data.length), tone: "text-secondary" },
+        { label: "Nodes Generated", icon: "auto_awesome", value: "1.2k", tone: "text-tertiary" },
+        { label: "Hours Saved", icon: "timer", value: "15", suffix: "h", tone: "text-secondary" },
+      ]);
+    }).catch(console.error);
+
+    // AI Funnel Interceptor
+    const pendingPrompt = localStorage.getItem("pending_ai_prompt");
+    if (pendingPrompt) {
+      localStorage.removeItem("pending_ai_prompt");
+      handleCreateProject("AI Generated Project", pendingPrompt);
+    }
+  }, [navigate]);
+
+  const handleCreateProject = async (title = "Untitled Project", prompt?: string) => {
+    try {
+      setIsCreating(true);
+      const project = await createProject(title, "Auto-generated project");
+      const mindMap = await createMindMap(project.id, title, "{}", prompt ? prompt : undefined);
+      navigate({ to: "/workspace", search: { mindMapId: mindMap.id, topic: prompt } });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to create project");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col md:flex-row overflow-hidden dot-matrix">
       {/* Mobile top bar */}
@@ -71,7 +96,7 @@ function Dashboard() {
       <AppSidebar active="Projects" />
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="sticky top-0 z-30 px-lg py-md glass-panel flex flex-col md:flex-row justify-between items-center gap-md border-b border-outline-variant/30">
+        <div className="sticky top-0 z-30 px-lg py-md bg-background flex flex-col md:flex-row justify-between items-center gap-md border-b border-outline-variant/30">
           <div className="relative w-full md:w-96">
             <Icon
               name="search"
@@ -109,22 +134,23 @@ function Dashboard() {
         <div className="p-lg md:p-xxl max-w-[1400px] mx-auto w-full flex flex-col gap-xl">
           <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
             <div>
-              <p className="text-body-lg text-on-surface-variant mb-1">Welcome back, Alex.</p>
+              <p className="text-body-lg text-on-surface-variant mb-1">Welcome back, {user?.full_name?.split(" ")[0] || "there"}.</p>
               <h1 className="text-headline-lg-mobile md:text-headline-lg text-on-surface">
                 Ready to map something new?
               </h1>
             </div>
-            <Link
-              to="/workspace"
-              className="bg-primary-container text-on-primary text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5"
+            <button
+              onClick={() => handleCreateProject()}
+              disabled={isCreating}
+              className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 disabled:opacity-50"
             >
               <Icon name="add" />
-              New Project
-            </Link>
+              {isCreating ? "Creating..." : "New Project"}
+            </button>
           </header>
 
           <section className="grid grid-cols-1 md:grid-cols-3 gap-lg">
-            {STATS.map((stat) => (
+            {stats.map((stat) => (
               <div
                 key={stat.label}
                 className="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-lg flex flex-col justify-between h-32 hover:shadow-level-2 transition-shadow relative overflow-hidden group"
@@ -156,52 +182,71 @@ function Dashboard() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-              {PROJECTS.map((project) => (
-                <Link
-                  key={project.title}
-                  to="/workspace"
-                  className="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden hover:shadow-level-2 transition-all group relative block"
+            {projects.length === 0 ? (
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-xl flex flex-col items-center justify-center text-center gap-md">
+                <Icon name="account_tree" className="text-[48px] text-outline" />
+                <div>
+                  <h3 className="text-headline-sm text-on-surface">No projects yet</h3>
+                  <p className="text-body-md text-on-surface-variant mt-1 max-w-sm">
+                    Create your first mind map manually or let AI generate one for you.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCreateProject()}
+                  disabled={isCreating}
+                  className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 mt-sm disabled:opacity-50"
                 >
-                  {project.ai ? (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-violet z-10" />
-                  ) : null}
-                  <div className="h-40 bg-surface-container-low border-b border-outline-variant/30 relative overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:scale-105 transition-transform duration-500"
-                      style={{ backgroundImage: `url('${project.thumb}')` }}
-                      role="img"
-                      aria-label={`${project.title} mind map preview`}
-                    />
-                    {project.ai ? (
-                      <div className="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 border border-outline-variant/50">
-                        <Icon name="auto_awesome" className="text-[14px] text-accent-violet" />
-                        <span className="text-[10px] font-semibold text-on-surface uppercase">
-                          AI Gen
+                  <Icon name="add" />
+                  {isCreating ? "Creating..." : "New Project"}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+                {projects.map((project, i) => (
+                  <Link
+                    key={project.id}
+                    to="/workspace"
+                    search={{ mindMapId: project.mind_maps?.[0]?.id }}
+                    className="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden hover:shadow-level-2 transition-all group relative block"
+                  >
+                    {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-violet z-10" />
+                    ) : null}
+                    <div className="h-40 bg-surface-container-low border-b border-outline-variant/30 relative overflow-hidden">
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:scale-105 transition-transform duration-500"
+                        style={{ backgroundImage: `url('${PROJECT_THUMBS[i % PROJECT_THUMBS.length]}')` }}
+                        role="img"
+                        aria-label={`${project.title} mind map preview`}
+                      />
+                      {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
+                        <div className="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 border border-outline-variant/50">
+                          <Icon name="auto_awesome" className="text-[14px] text-accent-violet" />
+                          <span className="text-[10px] font-semibold text-on-surface uppercase">
+                            AI Gen
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="p-md">
+                      <h3 className="text-body-lg text-on-surface font-semibold mb-1 truncate">
+                        {project.title}
+                      </h3>
+                      <div className="flex items-center gap-4 text-label-sm text-on-surface-variant">
+                        <span className="flex items-center gap-1">
+                          <Icon name="calendar_today" className="text-[14px]" /> {new Date(project.created_at).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Icon name="account_tree" className="text-[14px]" /> {project.mind_maps?.[0]?.node_count || 1} Nodes
                         </span>
                       </div>
-                    ) : null}
-                  </div>
-                  <div className="p-md">
-                    <h3 className="text-body-lg text-on-surface font-semibold mb-1 truncate">
-                      {project.title}
-                    </h3>
-                    <div className="flex items-center gap-4 text-label-sm text-on-surface-variant">
-                      <span className="flex items-center gap-1">
-                        <Icon name="calendar_today" className="text-[14px]" /> {project.when}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Icon name="account_tree" className="text-[14px]" /> {project.nodes}
-                      </span>
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         </div>
-
-        <SiteFooter compact />
       </main>
     </div>
   );
