@@ -1,0 +1,91 @@
+- generic [ref=f4e35]:
+  - complementary [ref=f4e36]:
+    - generic [ref=f4e37]:
+      - img "MindVault AI logo" [ref=f4e38]
+      - generic [ref=f4e39]:
+        - heading "Knowledge Hub" [level=2] [ref=f4e40]
+        - paragraph [ref=f4e41]: Premium AI Workspace
+    - navigation [ref=f4e42]:
+      - link "Projects" [ref=f4e43] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f4e44]: folder_open
+      - link "Templates" [ref=f4e46] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f4e47]: auto_awesome_motion
+      - link "History" [ref=f4e49] [cursor=pointer]:
+        - /url: /history
+        - generic [aria-hidden] [ref=f4e50]: history
+      - link "Settings" [ref=f4e52] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f4e53]: settings
+    - generic [ref=f4e55]:
+      - button "New MindMap" [ref=f4e56]:
+        - generic [aria-hidden] [ref=f4e57]: add
+        - text: New MindMap
+      - link "Help Center" [ref=f4e58] [cursor=pointer]:
+        - /url: "#help"
+        - generic [aria-hidden] [ref=f4e59]: help_outline
+      - link "Account" [ref=f4e61] [cursor=pointer]:
+        - /url: "#account"
+        - generic [aria-hidden] [ref=f4e62]: person
+  - main [ref=f4e64]:
+    - generic [ref=f4e65]:
+      - generic [ref=f4e66]:
+        - generic [aria-hidden] [ref=f4e67]: search
+        - textbox "Search mind maps" [ref=f4e68]:
+          - /placeholder: Search mind maps, nodes, or tags...
+      - generic [ref=f4e69]:
+        - button "Filters" [ref=f4e70]:
+          - generic [aria-hidden] [ref=f4e71]: filter_list
+          - text: Filters
+        - generic [ref=f4e72]:
+          - button "Grid view" [ref=f4e73]:
+            - generic [aria-hidden] [ref=f4e74]: grid_view
+          - button "List view" [ref=f4e75]:
+            - generic [aria-hidden] [ref=f4e76]: view_list
+    - generic [ref=f4e77]:
+      - generic [ref=f4e78]:
+        - generic [ref=f4e79]:
+          - paragraph [ref=f4e80]: Welcome back, Test.
+          - heading "Ready to map something new?" [level=1] [ref=f4e81]
+        - button "New Project" [ref=f4e82]:
+          - generic [aria-hidden] [ref=f4e83]: add
+          - text: New Project
+      - generic [ref=f4e84]:
+        - generic [ref=f4e85]:
+          - generic [ref=f4e87]:
+            - generic [ref=f4e88]: Total Maps
+            - generic [aria-hidden] [ref=f4e89]: account_tree
+          - generic [ref=f4e90]: "1"
+        - generic [ref=f4e91]:
+          - generic [ref=f4e93]:
+            - generic [ref=f4e94]: Nodes Generated
+            - generic [aria-hidden] [ref=f4e95]: auto_awesome
+          - generic [ref=f4e96]: 1.2k
+        - generic [ref=f4e97]:
+          - generic [ref=f4e99]:
+            - generic [ref=f4e100]: Hours Saved
+            - generic [aria-hidden] [ref=f4e101]: timer
+          - generic [ref=f4e102]: 15h
+      - generic [ref=f4e103]:
+        - generic [ref=f4e104]:
+          - heading "Recent Projects" [level=2] [ref=f4e105]
+          - button "View All" [ref=f4e106]:
+            - text: View All
+            - generic [aria-hidden] [ref=f4e107]: arrow_forward
+        - link "Untitled Project mind map preview AI Gen Untitled Project 9/5/2026 1 Nodes" [ref=f4e109] [cursor=pointer]:
+          - /url: /workspace?mindMapId=ff1da561-ff97-4c62-96f1-3d1e1338c3af
+          - generic [ref=f4e111]:
+            - img "Untitled Project mind map preview" [ref=f4e112]
+            - generic [ref=f4e113]:
+              - generic [aria-hidden] [ref=f4e114]: auto_awesome
+              - generic [ref=f4e115]: AI Gen
+          - generic [ref=f4e116]:
+            - heading "Untitled Project" [level=3] [ref=f4e117]
+            - generic [ref=f4e118]:
+              - generic [ref=f4e119]:
+                - generic [aria-hidden] [ref=f4e120]: calendar_today
+                - text: 9/5/2026
+              - generic [ref=f4e121]:
+                - generic [aria-hidden] [ref=f4e122]: account_tree
+                - text: 1 Nodes

@@ -1,0 +1,46 @@
+- generic [ref=f7e9]:
+  - complementary [ref=f7e10]:
+    - generic [ref=f7e11]:
+      - link "Back to Workspace" [ref=f7e12] [cursor=pointer]:
+        - /url: /workspace
+        - generic [aria-hidden] [ref=f7e13]: arrow_back
+      - heading "Settings" [level=1] [ref=f7e15]
+    - navigation [ref=f7e16]:
+      - button "Profile" [ref=f7e17]:
+        - generic [aria-hidden] [ref=f7e18]: person
+      - button "Account" [ref=f7e20]:
+        - generic [aria-hidden] [ref=f7e21]: badge
+      - button "Appearance" [ref=f7e23]:
+        - generic [aria-hidden] [ref=f7e24]: palette
+      - button "Notifications" [ref=f7e26]:
+        - generic [aria-hidden] [ref=f7e27]: notifications
+      - button "API Keys" [ref=f7e29]:
+        - generic [aria-hidden] [ref=f7e30]: key
+    - link "Help Center" [ref=f7e33] [cursor=pointer]:
+      - /url: "#help"
+      - generic [aria-hidden] [ref=f7e34]: help_outline
+  - main [ref=f7e36]:
+    - generic [ref=f7e37]:
+      - generic [ref=f7e38]:
+        - heading "Profile" [level=2] [ref=f7e39]
+        - paragraph [ref=f7e40]: Manage your public profile and personal details.
+      - generic [ref=f7e42]:
+        - generic [ref=f7e43]:
+          - heading "Personal Info" [level=3] [ref=f7e44]
+          - button "Save" [active] [ref=f7e60]
+        - generic [ref=f7e46]:
+          - generic [ref=f7e47]:
+            - generic [ref=f7e48]:
+              - img "Avatar" [ref=f7e49]
+              - generic [ref=f7e50] [cursor=pointer]:
+                - generic [aria-hidden] [ref=f7e51]: upload
+                - generic [ref=f7e52]: Upload
+            - generic [ref=f7e53]:
+              - generic [ref=f7e54]: Avatar
+              - generic [ref=f7e55]: Click the image to upload a new avatar. JPG, PNG.
+          - generic [ref=f7e56]:
+            - text: Full Name
+            - textbox [ref=f7e61]: Test User
+          - generic [ref=f7e58]:
+            - text: Email
+            - generic [ref=f7e59]: test@example.com Read Only

@@ -11,7 +11,7 @@ type NavItem = { label: string; icon: string; to: string };
 const NAV: NavItem[] = [
   { label: "Projects", icon: "folder_open", to: "/dashboard" },
   { label: "Templates", icon: "auto_awesome_motion", to: "/dashboard" },
-  { label: "History", icon: "history", to: "/dashboard" },
+  { label: "History", icon: "history", to: "/history" },
   { label: "Settings", icon: "settings", to: "/settings" },
 ];
 
@@ -30,8 +30,8 @@ export function AppSidebar({
   const handleCreate = async () => {
     try {
       setIsCreating(true);
-      const project = await createProject("Untitled Project", "Auto-generated project");
-      const mindMap = await createMindMap(project.id, "Untitled Project", "{}");
+      const project = await createProject({ title: "Untitled Project", description: "Auto-generated project" });
+      const mindMap = await createMindMap(project.id, { title: "Untitled Project", graph_data: "{}" });
       navigate({ to: "/workspace", search: { mindMapId: mindMap.id } });
     } catch (e) {
       console.error(e);

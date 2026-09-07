@@ -1,0 +1,150 @@
+- generic [ref=e123]:
+  - navigation [ref=e124]:
+    - generic [ref=e125]:
+      - img "MindVault AI logo" [ref=e126]
+      - generic [ref=e127]: MindVault AI
+    - generic [ref=e128]:
+      - link "Dashboard" [ref=e129] [cursor=pointer]:
+        - /url: /dashboard
+      - generic [ref=e130]: Workspace
+      - link "Explore" [ref=e131] [cursor=pointer]:
+        - /url: /present
+    - generic [ref=e132]:
+      - generic [ref=e133]: Untitled Project
+      - button "Share" [ref=e134]:
+        - generic [aria-hidden] [ref=e135]: share
+      - generic "Import" [ref=e136] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e137]: upload
+      - button "Export Markdown" [ref=e138]:
+        - generic [aria-hidden] [ref=e139]: download
+        - text: MD
+      - button "Export OPML" [ref=e140]:
+        - generic [aria-hidden] [ref=e141]: download
+        - text: OPML
+      - button "Upgrade" [ref=e142]
+      - button "Regenerate" [disabled] [ref=e143]:
+        - generic [aria-hidden] [ref=e144]: progress_activity
+        - text: Regenerate
+      - button "Notifications" [ref=e145]:
+        - generic [aria-hidden] [ref=e146]: notifications
+      - button "Help" [ref=e147]:
+        - generic [aria-hidden] [ref=e148]: help
+  - generic [ref=e149]:
+    - complementary [ref=e150]:
+      - generic [ref=e151]:
+        - heading "Knowledge Hub" [level=2] [ref=e152]
+        - paragraph [ref=e153]: Premium AI Workspace
+      - button "New MindMap" [ref=e154]:
+        - generic [aria-hidden] [ref=e155]: add
+        - text: New MindMap
+      - navigation [ref=e156]:
+        - link "Projects" [ref=e157] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e158]: folder_open
+        - link "Templates" [ref=e160] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e161]: auto_awesome_motion
+        - link "History" [ref=e163] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e164]: history
+        - link "Settings" [ref=e166] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=e167]: settings
+      - generic [ref=e169]:
+        - link "Help Center" [ref=e170] [cursor=pointer]:
+          - /url: "#help"
+          - generic [aria-hidden] [ref=e171]: help_outline
+        - link "Account" [ref=e173] [cursor=pointer]:
+          - /url: "#account"
+          - generic [aria-hidden] [ref=e174]: person
+    - main [ref=e176]:
+      - generic [ref=e177]: "Mind Map: ff1da561-ff97-4c62-96f1-3d1e1338c3af"
+      - application [ref=e365]:
+        - generic [ref=e367]:
+          - generic:
+            - generic:
+              - img:
+                - group "Edge from 6add5d13-2f60-41fc-af88-971198cfc731 to 9e9bca93-0556-4b14-80b4-2f306b7bb293" [ref=e368] [cursor=pointer]
+              - img:
+                - group "Edge from 9e9bca93-0556-4b14-80b4-2f306b7bb293 to 29cae5f2-e8ef-4de1-bd29-a5f4b23cdd4d" [ref=e371] [cursor=pointer]
+              - img:
+                - group "Edge from 9e9bca93-0556-4b14-80b4-2f306b7bb293 to e3dc3e02-a29a-49f5-b66f-be88f0e98d69" [ref=e374] [cursor=pointer]
+              - img:
+                - group "Edge from 9e9bca93-0556-4b14-80b4-2f306b7bb293 to 55efdc28-d2cb-4f00-abb5-9e1681f0e4fe" [ref=e377] [cursor=pointer]
+              - img:
+                - group "Edge from 9e9bca93-0556-4b14-80b4-2f306b7bb293 to 6647249c-cba3-4f95-a542-2341068f31bb" [ref=e380] [cursor=pointer]
+              - img:
+                - group "Edge from 6add5d13-2f60-41fc-af88-971198cfc731 to 690b6e26-c159-4f69-b0ba-9e9f71c571b0" [ref=e383] [cursor=pointer]
+              - img:
+                - group "Edge from 690b6e26-c159-4f69-b0ba-9e9f71c571b0 to 6e453c25-ee60-437e-b670-55cfacc350a2" [ref=e386] [cursor=pointer]
+              - img:
+                - group "Edge from 690b6e26-c159-4f69-b0ba-9e9f71c571b0 to d2e7c0c7-ad71-4e15-b0e2-305c06db0a47" [ref=e389] [cursor=pointer]
+              - img:
+                - group "Edge from 690b6e26-c159-4f69-b0ba-9e9f71c571b0 to a65a6abf-ab32-46f0-9dda-4ebf0194774a" [ref=e392] [cursor=pointer]
+              - img:
+                - group "Edge from 690b6e26-c159-4f69-b0ba-9e9f71c571b0 to abf5c38c-e046-49c6-a935-e3e0957beb4a" [ref=e395] [cursor=pointer]
+              - img:
+                - group "Edge from 6add5d13-2f60-41fc-af88-971198cfc731 to cee3434b-f7d6-402d-8f79-2c9b446fa647" [ref=e398] [cursor=pointer]
+              - img:
+                - group "Edge from cee3434b-f7d6-402d-8f79-2c9b446fa647 to 0140b567-88a7-473c-8a58-fb6be80cdf6a" [ref=e401] [cursor=pointer]
+              - img:
+                - group "Edge from cee3434b-f7d6-402d-8f79-2c9b446fa647 to 0a8d1d3f-dee0-455f-84fc-f76d73def23c" [ref=e404] [cursor=pointer]
+              - img:
+                - group "Edge from cee3434b-f7d6-402d-8f79-2c9b446fa647 to e1012e3b-69c6-4c96-a924-2c6fb6f914dd" [ref=e407] [cursor=pointer]
+              - img:
+                - group "Edge from cee3434b-f7d6-402d-8f79-2c9b446fa647 to 785ec189-3947-438a-b92a-67c25c1b0a1f" [ref=e410] [cursor=pointer]
+            - generic:
+              - group [ref=e413]:
+                - generic [ref=e414]: Python Data Structures
+              - group [ref=e418]:
+                - generic [ref=e419]: Built-in Data Structures
+              - group [ref=e423]:
+                - generic [ref=e424]: Lists (Mutable, Ordered)
+              - group [ref=e428]:
+                - generic [ref=e429]: Tuples (Immutable, Ordered)
+              - group [ref=e433]:
+                - generic [ref=e434]: Dictionaries (Key-Value Pairs)
+              - group [ref=e438]:
+                - generic [ref=e439]: Sets (Unique Elements, Unordered)
+              - group [ref=e443]:
+                - generic [ref=e444]: Collections Module
+              - group [ref=e448]:
+                - generic [ref=e449]: Counter
+              - group [ref=e453]:
+                - generic [ref=e454]: defaultdict
+              - group [ref=e458]:
+                - generic [ref=e459]: namedtuple
+              - group [ref=e463]:
+                - generic [ref=e464]: deque (Double-ended Queue)
+              - group [ref=e468]:
+                - generic [ref=e469]: Abstract & Advanced Structures
+              - group [ref=e473]:
+                - generic [ref=e474]: Stacks & Queues
+              - group [ref=e478]:
+                - generic [ref=e479]: Linked Lists
+              - group [ref=e483]:
+                - generic [ref=e484]: Heaps (heapq module)
+              - group [ref=e488]:
+                - generic [ref=e489]: Trees & Graphs
+        - generic "Control Panel" [ref=e493]:
+          - button "Zoom In" [ref=e494] [cursor=pointer]
+          - button "Zoom Out" [ref=e497] [cursor=pointer]
+          - button "Fit View" [ref=e500] [cursor=pointer]
+          - button "Toggle Interactivity" [ref=e503] [cursor=pointer]
+        - img "Mini Map" [ref=e507]
+        - link "React Flow attribution" [ref=e525] [cursor=pointer]:
+          - /url: https://reactflow.dev/attribution
+          - text: React Flow
+    - complementary [ref=e350]:
+      - generic [ref=e351]:
+        - generic [aria-hidden] [ref=e352]: psychology
+        - heading "AI Assistant" [level=3] [ref=e353]
+      - generic [ref=e354]:
+        - generic [ref=e362]: Python Data Structures
+        - generic [ref=e527]: Created a comprehensive mind map for Python Data Structures, categorized into Built-in Structures, the Collections Module, and Advanced/Abstract Data Structures.
+      - generic [ref=e356]:
+        - textbox "Ask AI to modify the map..." [ref=e357]
+        - generic [ref=e358]:
+          - generic [ref=e359]: Press Enter to send
+          - button [disabled] [ref=e360]:
+            - generic [aria-hidden] [ref=e361]: arrow_upward

@@ -22,9 +22,13 @@ def get_db():
     """
     Dependency that provides a database session.
     Automatically closes the session after the request.
+    Rolls back transaction on error.
     """
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

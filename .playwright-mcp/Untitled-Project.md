@@ -1,0 +1,18 @@
+# Untitled Project
+- React Hooks HTTP Testing
+  - Testing Tools & Frameworks
+    - React Testing Library
+    - React Hooks Testing Library
+    - Jest / Vitest Test Runners
+  - HTTP Mocking Strategies
+    - Mock Service Worker (MSW)
+    - Fetch / Axios Mocking Libraries
+    - Jest Spies & Direct API Mocks
+  - Hook Testing Patterns
+    - renderHook Utility
+    - Async Handling with waitFor
+    - Testing Loading, Success & Error States
+  - Best Practices
+    - Reset Handlers & Mocks
+    - Avoid Act Warnings
+    - Isolate Component Logic from Network

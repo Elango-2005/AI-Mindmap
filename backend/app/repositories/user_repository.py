@@ -51,3 +51,14 @@ class UserRepository:
         self.db.refresh(user)
 
         return user
+
+    def update(self, user: User, update_data: dict) -> User:
+        """
+        Update user profile information.
+        """
+        for key, value in update_data.items():
+            setattr(user, key, value)
+            
+        self.db.commit()
+        self.db.refresh(user)
+        return user

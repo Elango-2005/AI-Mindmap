@@ -1,0 +1,54 @@
+- generic [ref=f4e123]:
+  - complementary [ref=f4e124]:
+    - generic [ref=f4e125]:
+      - img "MindVault AI logo" [ref=f4e126]
+      - generic [ref=f4e127]:
+        - heading "Knowledge Hub" [level=2] [ref=f4e128]
+        - paragraph [ref=f4e129]: Premium AI Workspace
+    - button "New MindMap" [ref=f4e130]:
+      - generic [aria-hidden] [ref=f4e131]: add
+      - text: New MindMap
+    - navigation [ref=f4e132]:
+      - link "Projects" [ref=f4e133] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f4e134]: folder_open
+      - link "Templates" [ref=f4e136] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f4e137]: auto_awesome_motion
+      - link "History" [ref=f4e139] [cursor=pointer]:
+        - /url: /history
+        - generic [aria-hidden] [ref=f4e140]: history
+      - link "Settings" [ref=f4e142] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f4e143]: settings
+    - generic [ref=f4e145]:
+      - link "Help Center" [ref=f4e146] [cursor=pointer]:
+        - /url: "#help"
+        - generic [aria-hidden] [ref=f4e147]: help_outline
+      - link "Account" [ref=f4e149] [cursor=pointer]:
+        - /url: "#account"
+        - generic [aria-hidden] [ref=f4e150]: person
+  - main [ref=f4e152]:
+    - generic [ref=f4e154]:
+      - generic [ref=f4e155]:
+        - heading "History" [level=1] [ref=f4e156]
+        - paragraph [ref=f4e157]: All your mind maps, sorted by recent activity
+      - generic [ref=f4e158]:
+        - generic [aria-hidden] [ref=f4e159]: search
+        - textbox "Search maps or projects..." [ref=f4e160]
+    - generic [ref=f4e162]:
+      - generic [ref=f4e163]:
+        - heading "This Week" [level=2] [ref=f4e164]
+        - link [ref=f4e166] [cursor=pointer]:
+          - /url: /workspace?mindMapId=ff1da561-ff97-4c62-96f1-3d1e1338c3af
+          - generic [aria-hidden] [ref=f4e168]: account_tree
+          - generic [ref=f4e169]:
+            - paragraph [ref=f4e170]: Untitled Project
+            - paragraph [ref=f4e171]:
+              - generic [aria-hidden] [ref=f4e172]: folder_open
+              - text: Untitled Project
+          - generic [ref=f4e173]:
+            - paragraph [ref=f4e174]: 2d ago
+            - paragraph [ref=f4e175]: Sep 5
+          - generic [aria-hidden] [ref=f4e176]: chevron_right
+      - paragraph [ref=f4e177]: Showing 1 mind map

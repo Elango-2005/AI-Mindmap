@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Untitled Project</title>
+  </head>
+  <body>
+    <outline text="React Hooks HTTP Testing">
+      <outline text="Testing Tools &amp; Frameworks">
+        <outline text="React Testing Library"/>
+        <outline text="React Hooks Testing Library"/>
+        <outline text="Jest / Vitest Test Runners"/>
+      </outline>
+      <outline text="HTTP Mocking Strategies">
+        <outline text="Mock Service Worker (MSW)"/>
+        <outline text="Fetch / Axios Mocking Libraries"/>
+        <outline text="Jest Spies &amp; Direct API Mocks"/>
+      </outline>
+      <outline text="Hook Testing Patterns">
+        <outline text="renderHook Utility"/>
+        <outline text="Async Handling with waitFor"/>
+        <outline text="Testing Loading, Success &amp; Error States"/>
+      </outline>
+      <outline text="Best Practices">
+        <outline text="Reset Handlers &amp; Mocks"/>
+        <outline text="Avoid Act Warnings"/>
+        <outline text="Isolate Component Logic from Network"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

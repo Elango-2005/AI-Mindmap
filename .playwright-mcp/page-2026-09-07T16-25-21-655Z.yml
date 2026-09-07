@@ -1,0 +1,156 @@
+- generic [ref=e123]:
+  - navigation [ref=e124]:
+    - generic [ref=e125]:
+      - img "MindVault AI logo" [ref=e126]
+      - generic [ref=e127]: MindVault AI
+    - generic [ref=e128]:
+      - link "Dashboard" [ref=e129] [cursor=pointer]:
+        - /url: /dashboard
+      - generic [ref=e130]: Workspace
+      - link "Explore" [ref=e131] [cursor=pointer]:
+        - /url: /present
+    - generic [ref=e132]:
+      - generic [ref=e133]: Untitled Project
+      - button "Share" [ref=e134]:
+        - generic [aria-hidden] [ref=e135]: share
+      - generic "Import" [ref=e136] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e137]: upload
+      - button "Export Markdown" [ref=e138]:
+        - generic [aria-hidden] [ref=e139]: download
+        - text: MD
+      - button "Export OPML" [ref=e140]:
+        - generic [aria-hidden] [ref=e141]: download
+        - text: OPML
+      - button "Upgrade" [ref=e142]
+      - button "Regenerate" [ref=e143]:
+        - generic [aria-hidden] [ref=e144]: autorenew
+        - text: Regenerate
+      - button "Notifications" [ref=e145]:
+        - generic [aria-hidden] [ref=e146]: notifications
+      - button "Help" [ref=e147]:
+        - generic [aria-hidden] [ref=e148]: help
+  - generic [ref=e149]:
+    - complementary [ref=e150]:
+      - generic [ref=e151]:
+        - heading "Knowledge Hub" [level=2] [ref=e152]
+        - paragraph [ref=e153]: Premium AI Workspace
+      - button "New MindMap" [ref=e154]:
+        - generic [aria-hidden] [ref=e155]: add
+        - text: New MindMap
+      - navigation [ref=e156]:
+        - link "Projects" [ref=e157] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e158]: folder_open
+        - link "Templates" [ref=e160] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e161]: auto_awesome_motion
+        - link "History" [ref=e163] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=e164]: history
+        - link "Settings" [ref=e166] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=e167]: settings
+      - generic [ref=e169]:
+        - link "Help Center" [ref=e170] [cursor=pointer]:
+          - /url: "#help"
+          - generic [aria-hidden] [ref=e171]: help_outline
+        - link "Account" [ref=e173] [cursor=pointer]:
+          - /url: "#account"
+          - generic [aria-hidden] [ref=e174]: person
+    - main [ref=e176]:
+      - generic [ref=e177]: "Mind Map: ff1da561-ff97-4c62-96f1-3d1e1338c3af"
+      - application [ref=e179]:
+        - generic [ref=e181]:
+          - generic:
+            - generic:
+              - img:
+                - group "Edge from 8b06bdc3-68cf-4558-a413-d7e96b551d95 to 51ad65d1-1433-483d-970a-d2a180c4a291" [ref=e182] [cursor=pointer]
+              - img:
+                - group "Edge from 8b06bdc3-68cf-4558-a413-d7e96b551d95 to c6162181-7076-4218-9a95-faeedec67cb0" [ref=e185] [cursor=pointer]
+              - img:
+                - group "Edge from 8b06bdc3-68cf-4558-a413-d7e96b551d95 to 0e286756-db6b-4280-a470-5748fa0f1ce0" [ref=e188] [cursor=pointer]
+              - img:
+                - group "Edge from 8b06bdc3-68cf-4558-a413-d7e96b551d95 to 8a01b238-f787-42cd-bb19-ab482e8d83b2" [ref=e191] [cursor=pointer]
+              - img:
+                - group "Edge from 51ad65d1-1433-483d-970a-d2a180c4a291 to e3a38e52-b9f5-48f3-a8fa-341a8d8c4a0b" [ref=e194] [cursor=pointer]
+              - img:
+                - group "Edge from 51ad65d1-1433-483d-970a-d2a180c4a291 to 1b5f3d77-64a0-41a9-b4d4-7fff93455f66" [ref=e197] [cursor=pointer]
+              - img:
+                - group "Edge from 51ad65d1-1433-483d-970a-d2a180c4a291 to 3f4e6bee-0b34-4a4d-a3d9-f514e0757df5" [ref=e200] [cursor=pointer]
+              - img:
+                - group "Edge from c6162181-7076-4218-9a95-faeedec67cb0 to 98806e95-128b-4b38-8da9-dfe6481037f5" [ref=e203] [cursor=pointer]
+              - img:
+                - group "Edge from c6162181-7076-4218-9a95-faeedec67cb0 to 49f577e7-4df7-4731-b8f5-52266e68817f" [ref=e206] [cursor=pointer]
+              - img:
+                - group "Edge from c6162181-7076-4218-9a95-faeedec67cb0 to f8b21db8-09ce-4a7a-9040-a6d0a7e1ee4d" [ref=e209] [cursor=pointer]
+              - img:
+                - group "Edge from 0e286756-db6b-4280-a470-5748fa0f1ce0 to 9b74ac06-3ad1-49e3-915e-297e81b043a6" [ref=e212] [cursor=pointer]
+              - img:
+                - group "Edge from 0e286756-db6b-4280-a470-5748fa0f1ce0 to b3225b98-bc40-4c3b-9170-a1222b7593a0" [ref=e215] [cursor=pointer]
+              - img:
+                - group "Edge from 0e286756-db6b-4280-a470-5748fa0f1ce0 to b5e400b5-53f6-4b00-96a1-8115bf103939" [ref=e218] [cursor=pointer]
+              - img:
+                - group "Edge from 8a01b238-f787-42cd-bb19-ab482e8d83b2 to 1bf174fa-8535-40fd-8ab7-fc47c5738dd2" [ref=e221] [cursor=pointer]
+              - img:
+                - group "Edge from 8a01b238-f787-42cd-bb19-ab482e8d83b2 to 6599cb4d-9ec2-42e6-b48c-f0fc67370eff" [ref=e224] [cursor=pointer]
+              - img:
+                - group "Edge from 8a01b238-f787-42cd-bb19-ab482e8d83b2 to 371796c0-1854-4581-bf60-48f22fd8016d" [ref=e227] [cursor=pointer]
+            - generic:
+              - group [ref=e230]:
+                - generic [ref=e231]: Testing Tools & Frameworks
+              - group [ref=e235]:
+                - generic [ref=e236]: HTTP Mocking Strategies
+              - group [ref=e240]:
+                - generic [ref=e241]: React Testing Library
+              - group [ref=e245]:
+                - generic [ref=e246]: Jest / Vitest Test Runners
+              - group [ref=e250]:
+                - generic [ref=e251]: React Hooks Testing Library
+              - group [ref=e255]:
+                - generic [ref=e256]: React Hooks HTTP Testing
+              - group [ref=e260]:
+                - generic [ref=e261]: Mock Service Worker (MSW)
+              - group [ref=e265]:
+                - generic [ref=e266]: Fetch / Axios Mocking Libraries
+              - group [ref=e270]:
+                - generic [ref=e271]: Jest Spies & Direct API Mocks
+              - group [ref=e275]:
+                - generic [ref=e276]: Hook Testing Patterns
+              - group [ref=e280]:
+                - generic [ref=e281]: renderHook Utility
+              - group [ref=e285]:
+                - generic [ref=e286]: Async Handling with waitFor
+              - group [ref=e290]:
+                - generic [ref=e291]: Testing Loading, Success & Error States
+              - group [ref=e295]:
+                - generic [ref=e296]: Best Practices
+              - group [ref=e300]:
+                - generic [ref=e301]: Reset Handlers & Mocks
+              - group [ref=e305]:
+                - generic [ref=e306]: Avoid Act Warnings
+              - group [ref=e310]:
+                - generic [ref=e311]: Isolate Component Logic from Network
+        - generic "Control Panel" [ref=e315]:
+          - button "Zoom In" [ref=e316] [cursor=pointer]
+          - button "Zoom Out" [ref=e319] [cursor=pointer]
+          - button "Fit View" [ref=e322] [cursor=pointer]
+          - button "Toggle Interactivity" [ref=e325] [cursor=pointer]
+        - img "Mini Map" [ref=e329]
+        - link "React Flow attribution" [ref=e348] [cursor=pointer]:
+          - /url: https://reactflow.dev/attribution
+          - text: React Flow
+    - complementary [ref=e350]:
+      - generic [ref=e351]:
+        - generic [aria-hidden] [ref=e352]: psychology
+        - heading "AI Assistant" [level=3] [ref=e353]
+      - generic [ref=e354]:
+        - generic [ref=e362]: Python Data Structures
+        - generic [ref=e363]:
+          - generic [aria-hidden] [ref=e364]: progress_activity
+          - text: AI is modifying the map...
+      - generic [ref=e356]:
+        - textbox "Ask AI to modify the map..." [disabled] [ref=e357]
+        - generic [ref=e358]:
+          - generic [ref=e359]: Press Enter to send
+          - button [disabled] [ref=e360]:
+            - generic [aria-hidden] [ref=e361]: arrow_upward

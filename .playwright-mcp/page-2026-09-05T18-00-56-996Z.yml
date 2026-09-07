@@ -1,0 +1,65 @@
+- generic [ref=f8e2]:
+  - navigation [ref=f8e3]:
+    - generic [ref=f8e4]:
+      - img "MindVault AI logo" [ref=f8e5]
+      - generic [ref=f8e6]: MindVault AI
+    - generic [ref=f8e7]:
+      - link "Dashboard" [ref=f8e8] [cursor=pointer]:
+        - /url: /dashboard
+      - generic [ref=f8e9]: Workspace
+      - link "Explore" [ref=f8e10] [cursor=pointer]:
+        - /url: /present
+    - generic [ref=f8e11]:
+      - generic [ref=f8e12]: Loading...
+      - button "Share" [ref=f8e13]:
+        - generic [aria-hidden] [ref=f8e14]: share
+      - generic "Import" [ref=f8e15] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f8e16]: upload
+      - button "Export Markdown" [ref=f8e17]:
+        - generic [aria-hidden] [ref=f8e18]: download
+        - text: MD
+      - button "Export OPML" [ref=f8e19]:
+        - generic [aria-hidden] [ref=f8e20]: download
+        - text: OPML
+      - button "Upgrade" [ref=f8e21]
+      - button "Regenerate" [ref=f8e22]:
+        - generic [aria-hidden] [ref=f8e23]: autorenew
+        - text: Regenerate
+      - button "Notifications" [ref=f8e24]:
+        - generic [aria-hidden] [ref=f8e25]: notifications
+      - button "Help" [ref=f8e26]:
+        - generic [aria-hidden] [ref=f8e27]: help
+  - generic [ref=f8e28]:
+    - complementary [ref=f8e29]:
+      - generic [ref=f8e30]:
+        - heading "Knowledge Hub" [level=2] [ref=f8e31]
+        - paragraph [ref=f8e32]: Premium AI Workspace
+      - button "New MindMap" [ref=f8e33]:
+        - generic [aria-hidden] [ref=f8e34]: add
+        - text: New MindMap
+      - navigation [ref=f8e35]:
+        - link "Projects" [ref=f8e36] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f8e37]: folder_open
+        - link "Templates" [ref=f8e39] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f8e40]: auto_awesome_motion
+        - link "History" [ref=f8e42] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f8e43]: history
+        - link "Settings" [ref=f8e45] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f8e46]: settings
+      - generic [ref=f8e48]:
+        - link "Help Center" [ref=f8e49] [cursor=pointer]:
+          - /url: "#help"
+          - generic [aria-hidden] [ref=f8e50]: help_outline
+        - link "Account" [ref=f8e52] [cursor=pointer]:
+          - /url: "#account"
+          - generic [aria-hidden] [ref=f8e53]: person
+    - main [ref=f8e55]:
+      - generic [ref=f8e58]:
+        - generic [aria-hidden] [ref=f8e59]: auto_awesome
+        - textbox "Message AI to generate a mind map..." [ref=f8e60]
+        - button "Generate Mind Map" [disabled] [ref=f8e61]:
+          - generic [aria-hidden] [ref=f8e62]: arrow_upward

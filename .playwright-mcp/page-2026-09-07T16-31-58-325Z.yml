@@ -1,0 +1,35 @@
+- generic [ref=e781]:
+  - complementary [ref=e782]:
+    - generic [ref=e783]:
+      - link "Back to Workspace" [ref=e784] [cursor=pointer]:
+        - /url: /workspace
+        - generic [aria-hidden] [ref=e785]: arrow_back
+      - heading "Settings" [level=1] [ref=e787]
+    - navigation [ref=e788]:
+      - button "Profile" [active] [ref=e789]:
+        - generic [aria-hidden] [ref=e790]: person
+      - button "Account" [ref=e792]:
+        - generic [aria-hidden] [ref=e793]: badge
+      - button "Appearance" [ref=e795]:
+        - generic [aria-hidden] [ref=e796]: palette
+      - button "Notifications" [ref=e798]:
+        - generic [aria-hidden] [ref=e799]: notifications
+      - button "API Keys" [ref=e801]:
+        - generic [aria-hidden] [ref=e802]: key
+    - link "Help Center" [ref=e805] [cursor=pointer]:
+      - /url: "#help"
+      - generic [aria-hidden] [ref=e806]: help_outline
+  - main [ref=e808]:
+    - generic [ref=e809]:
+      - generic [ref=e846]:
+        - heading "Profile" [level=2] [ref=e847]
+        - paragraph [ref=e848]: Manage your public profile and personal details.
+      - generic [ref=e850]:
+        - heading "Personal Info" [level=3] [ref=e852]
+        - generic [ref=e853]:
+          - generic [ref=e854]:
+            - text: Full Name
+            - generic [ref=e855]: Test User
+          - generic [ref=e856]:
+            - text: Email
+            - generic [ref=e857]: test@example.com

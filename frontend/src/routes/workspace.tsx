@@ -32,10 +32,12 @@ import {
   findConnectionsNode,
 } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
+import { exportMindMap, importMindMap } from "@/api/integrations";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
 import { LOGO_URL } from "@/lib/assets";
+import { useMindMapSync } from "@/hooks/useMindMapSync";
 
 const TITLE = "Neural Networking 101 — MindVault AI Workspace";
 
@@ -98,6 +100,18 @@ function Workspace() {
 
   const [flowNodes, setFlowNodes] = useState<FlowNode[]>([]);
   const [flowEdges, setFlowEdges] = useState<FlowEdge[]>([]);
+
+  const {
+    isConnected,
+    remoteUsers,
+    broadcastNodesChange,
+    broadcastEdgesChange,
+    broadcastCursorMove,
+  } = useMindMapSync({
+    mindMapId: mindMapId || null,
+    setNodes: setFlowNodes,
+    setEdges: setFlowEdges
+  });
 
   const [selectedNodeId, setSelectedNodeId] =
     useState<string | null>(null);
@@ -452,6 +466,7 @@ function Workspace() {
         currentNodes,
       ),
     );
+    broadcastNodesChange(changes);
   }
 
   /*
@@ -479,6 +494,40 @@ function Workspace() {
 
   const handlePaneClick = () => {
     setSelectedNodeId(null);
+  };
+
+  const handleExport = async (format: "markdown" | "opml") => {
+    if (!mindMapId) return;
+    try {
+      const blob = await exportMindMap(mindMapId, format);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${mindMapTitle.replace(/\s+/g, '_')}.${format === 'markdown' ? 'md' : 'opml'}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (e) {
+      console.error(e);
+      alert("Export failed");
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!mindMapId || !e.target.files?.length) return;
+    const file = e.target.files[0];
+    const format = file.name.endsWith(".opml") ? "opml" : "markdown";
+    try {
+      setIsLoadingGraph(true);
+      await importMindMap(mindMapId, format, file);
+      await loadGraph(); // Reload after import
+      alert("Import successful!");
+    } catch (err) {
+      console.error(err);
+      alert("Import failed");
+      setIsLoadingGraph(false);
+    }
   };
 
   const selectedNode = selectedNodeId ? flowNodes.find(n => n.id === selectedNodeId) : null;
@@ -532,11 +581,33 @@ function Workspace() {
             <Icon name="share" />
           </button>
 
+          <label
+            aria-label="Import"
+            title="Import Markdown or OPML"
+            className="cursor-pointer text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all flex items-center"
+          >
+            <Icon name="upload" />
+            <input type="file" className="hidden" accept=".md,.opml" onChange={handleImport} />
+          </label>
+
           <button
-            aria-label="Download"
+            aria-label="Export Markdown"
+            title="Export Markdown"
+            onClick={() => handleExport("markdown")}
             className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
           >
             <Icon name="download" />
+            <span className="text-[10px] ml-1 font-bold">MD</span>
+          </button>
+
+          <button
+            aria-label="Export OPML"
+            title="Export OPML"
+            onClick={() => handleExport("opml")}
+            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
+          >
+            <Icon name="download" />
+            <span className="text-[10px] ml-1 font-bold">OPML</span>
           </button>
 
           <button className="hidden md:block px-md py-sm rounded-lg text-primary bg-surface-container-high/50 text-label-md hover:bg-surface-container-high transition-all">
@@ -631,7 +702,10 @@ function Workspace() {
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 z-[1]">
+            <div 
+                className="absolute inset-0 z-[1]"
+                onPointerMove={(e) => broadcastCursorMove({ x: e.clientX, y: e.clientY })}
+              >
               {isLoadingGraph && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                   <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-md py-sm shadow-sm">
@@ -645,6 +719,25 @@ function Workspace() {
                   {graphError}
                 </div>
               )}
+
+              {Object.values(remoteUsers).map((user) => {
+                if (!user.cursor) return null;
+                return (
+                  <div
+                    key={user.userId}
+                    className="fixed pointer-events-none z-[100] flex flex-col items-start transition-all duration-75"
+                    style={{
+                      top: user.cursor.y,
+                      left: user.cursor.x,
+                    }}
+                  >
+                    <Icon name="near_me" className="text-primary text-xl" />
+                    <div className="bg-primary text-on-primary text-[10px] px-1.5 py-0.5 rounded-sm shadow-md whitespace-nowrap -ml-2 -mt-1">
+                      {user.userName}
+                    </div>
+                  </div>
+                );
+              })}
 
               {!isLoadingGraph && flowNodes.length > 0 && (
                 <ReactFlow

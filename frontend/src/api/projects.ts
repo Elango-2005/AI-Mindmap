@@ -8,6 +8,7 @@ export interface Project {
     thumbnail: string | null;
     created_at: string;
     updated_at: string;
+    mind_maps?: { id: string }[];
 }
 
 export interface CreateProjectRequest {

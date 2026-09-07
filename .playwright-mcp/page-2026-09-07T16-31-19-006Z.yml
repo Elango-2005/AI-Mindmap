@@ -1,0 +1,49 @@
+- generic [ref=e781]:
+  - complementary [ref=e782]:
+    - generic [ref=e783]:
+      - link "Back to Workspace" [ref=e784] [cursor=pointer]:
+        - /url: /workspace
+        - generic [aria-hidden] [ref=e785]: arrow_back
+      - heading "Settings" [level=1] [ref=e787]
+    - navigation [ref=e788]:
+      - button "Profile" [ref=e789]:
+        - generic [aria-hidden] [ref=e790]: person
+      - button "Account" [ref=e792]:
+        - generic [aria-hidden] [ref=e793]: badge
+      - button "Appearance" [ref=e795]:
+        - generic [aria-hidden] [ref=e796]: palette
+      - button "Notifications" [ref=e798]:
+        - generic [aria-hidden] [ref=e799]: notifications
+      - button "API Keys" [ref=e801]:
+        - generic [aria-hidden] [ref=e802]: key
+    - link "Help Center" [ref=e805] [cursor=pointer]:
+      - /url: "#help"
+      - generic [aria-hidden] [ref=e806]: help_outline
+  - main [ref=e808]:
+    - generic [ref=e809]:
+      - generic [ref=e810]:
+        - heading "Appearance" [level=2] [ref=e811]
+        - paragraph [ref=e812]: Customize the look and feel of your workspace.
+      - generic [ref=e813]:
+        - generic [ref=e814]:
+          - generic [ref=e815]:
+            - heading "Theme Preference" [level=3] [ref=e816]
+            - paragraph [ref=e817]: Select your preferred color scheme.
+          - generic [ref=e818]:
+            - button "Light" [ref=e819]:
+              - generic [aria-hidden] [ref=e821]: light_mode
+            - button "Dark" [ref=e823]:
+              - generic [aria-hidden] [ref=e825]: dark_mode
+            - button "System" [ref=e827]:
+              - generic [aria-hidden] [ref=e831]: contrast
+        - generic [ref=e833]:
+          - generic [ref=e834]:
+            - generic [ref=e835]:
+              - heading "Reduced Motion" [level=3] [ref=e836]
+              - paragraph [ref=e837]: Minimize animations and transition effects.
+            - switch [ref=e838]
+          - generic [ref=e840]:
+            - generic [ref=e841]:
+              - heading "AI Intelligence Glow" [level=3] [ref=e842]
+              - paragraph [ref=e843]: Show subtle visual cues on AI-enhanced elements.
+            - switch [checked] [ref=e844]

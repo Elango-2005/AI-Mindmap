@@ -1,0 +1,128 @@
+- generic [ref=f2e2]:
+  - banner [ref=f2e3]:
+    - generic [ref=f2e4]:
+      - link "MindVault AI logo MindForge AI" [ref=f2e5] [cursor=pointer]:
+        - /url: /
+        - img "MindVault AI logo" [ref=f2e6]
+        - generic [ref=f2e7]: MindForge AI
+      - navigation [ref=f2e8]:
+        - link "Product" [ref=f2e9] [cursor=pointer]:
+          - /url: "#product"
+        - link "Features" [ref=f2e10] [cursor=pointer]:
+          - /url: "#features"
+        - link "Pricing" [ref=f2e11] [cursor=pointer]:
+          - /url: "#pricing"
+      - generic [ref=f2e12]:
+        - link "Sign In" [ref=f2e13] [cursor=pointer]:
+          - /url: /login
+        - link "Start Mapping for Free" [ref=f2e14] [cursor=pointer]:
+          - /url: /dashboard
+  - main [ref=f2e15]:
+    - generic [ref=f2e19]:
+      - generic [ref=f2e20]:
+        - generic [aria-hidden] [ref=f2e21]: auto_awesome
+        - generic [ref=f2e22]: Introducing AI Generation 2.0
+      - heading "Turn Thoughts into Intelligent Maps." [level=1] [ref=f2e23]
+      - paragraph [ref=f2e24]: The AI-powered knowledge workspace that transforms your text into interactive, expandable mind maps. Professional velocity meets cognitive clarity.
+      - generic [ref=f2e25]:
+        - link "Start Mapping for Free" [ref=f2e26] [cursor=pointer]:
+          - /url: /dashboard
+          - text: Start Mapping for Free
+          - generic [aria-hidden] [ref=f2e27]: arrow_forward
+        - link "View Demo" [ref=f2e28] [cursor=pointer]:
+          - /url: /present
+          - text: View Demo
+          - generic [aria-hidden] [ref=f2e29]: play_circle
+      - generic [ref=f2e30]:
+        - generic [ref=f2e31]:
+          - img "MindVault AI customer" [ref=f2e32]
+          - img "MindVault AI customer" [ref=f2e33]
+          - img "MindVault AI customer" [ref=f2e34]
+        - generic [ref=f2e35]: Joined by 10,000+ forward-thinkers
+    - generic [ref=f2e37]:
+      - generic [ref=f2e43]:
+        - generic [aria-hidden] [ref=f2e44]: lock
+        - text: mindforge.ai/workspace
+      - generic [ref=f2e45]:
+        - generic [ref=f2e47]:
+          - generic [ref=f2e49]:
+            - generic [aria-hidden] [ref=f2e50]: neurology
+            - generic [ref=f2e51]: Core Strategy
+          - paragraph [ref=f2e52]: Q4 Market Expansion & AI Integration Plan
+        - generic [ref=f2e54]:
+          - generic [ref=f2e55]:
+            - generic [aria-hidden] [ref=f2e56]: group
+            - generic [ref=f2e57]: Target Audience
+          - paragraph [ref=f2e58]: Enterprise decision makers looking for cognitive tools.
+        - generic [ref=f2e60]:
+          - generic [ref=f2e61]:
+            - generic [aria-hidden] [ref=f2e62]: lightbulb
+            - generic [ref=f2e63]: Feature Set
+          - paragraph [ref=f2e64]: Real-time collaboration, infinite canvas.
+        - generic [ref=f2e66]:
+          - generic [aria-hidden] [ref=f2e67]: auto_awesome
+          - textbox "AI prompt" [ref=f2e68]:
+            - /placeholder: Type an idea like 'Market Expansion Plan'...
+          - button "Send prompt" [ref=f2e69]:
+            - generic [aria-hidden] [ref=f2e70]: arrow_upward
+    - generic [ref=f2e71]:
+      - generic [ref=f2e72]:
+        - heading "Cognitive Velocity Unleashed" [level=2] [ref=f2e73]
+        - paragraph [ref=f2e74]: Everything you need to capture, organize, and expand complex ideas at the speed of thought.
+      - generic [ref=f2e75]:
+        - generic [ref=f2e77]:
+          - generic [aria-hidden] [ref=f2e79]: model_training
+          - heading "AI Generation" [level=3] [ref=f2e80]
+          - paragraph [ref=f2e81]: Type a single seed thought and watch as our AI instantly generates a comprehensive, multi-layered mind map, expanding on context and finding hidden connections.
+        - generic [ref=f2e82]:
+          - generic [aria-hidden] [ref=f2e84]: bolt
+          - heading "Instant Capture" [level=3] [ref=f2e85]
+          - paragraph [ref=f2e86]: Drop in notes, transcripts, or docs and get a structured map back in seconds — never lose a thought again.
+        - generic [ref=f2e87]:
+          - generic [aria-hidden] [ref=f2e89]: hub
+          - heading "Smart Connections" [level=3] [ref=f2e90]
+          - paragraph [ref=f2e91]: Automatic relationship lines that redraw and optimize themselves as you drag nodes, keeping your map visually pristine.
+        - generic [ref=f2e92]:
+          - generic [ref=f2e93]:
+            - generic [aria-hidden] [ref=f2e95]: group_add
+            - heading "Real-time Collaboration" [level=3] [ref=f2e96]
+            - paragraph [ref=f2e97]: Work simultaneously with your team. See cursors dance across the canvas as you build complex strategies together, instantly synced.
+          - generic [ref=f2e99]:
+            - generic [ref=f2e100]: Alex
+            - generic [ref=f2e103]: Sam
+    - generic [ref=f2e106]:
+      - generic [ref=f2e107]:
+        - heading "Simple, honest pricing" [level=2] [ref=f2e108]
+        - paragraph [ref=f2e109]: Start free. Upgrade when your maps outgrow your desk.
+      - generic [ref=f2e110]:
+        - generic [ref=f2e111]:
+          - generic [ref=f2e112]: Starter
+          - generic [ref=f2e113]: $0
+          - paragraph [ref=f2e114]: 3 maps, 100 AI nodes / month
+          - link "Get started" [ref=f2e115] [cursor=pointer]:
+            - /url: /login
+        - generic [ref=f2e116]:
+          - generic [ref=f2e117]: Pro
+          - generic [ref=f2e118]: $18
+          - paragraph [ref=f2e119]: Unlimited maps, AI 2.0, presentation mode
+          - link "Get started" [ref=f2e120] [cursor=pointer]:
+            - /url: /login
+        - generic [ref=f2e121]:
+          - generic [ref=f2e122]: Team
+          - generic [ref=f2e123]: $42
+          - paragraph [ref=f2e124]: Shared workspaces, roles, SSO
+          - link "Get started" [ref=f2e125] [cursor=pointer]:
+            - /url: /login
+  - contentinfo [ref=f2e126]:
+    - generic [ref=f2e127]:
+      - generic [ref=f2e128]: MindVault AI
+      - paragraph [ref=f2e129]: © 2024 MindVault AI. Intelligent Thought Mapping.
+    - navigation [ref=f2e130]:
+      - link "Privacy Policy" [ref=f2e131] [cursor=pointer]:
+        - /url: "#legal"
+      - link "Terms of Service" [ref=f2e132] [cursor=pointer]:
+        - /url: "#legal"
+      - link "API Docs" [ref=f2e133] [cursor=pointer]:
+        - /url: "#legal"
+      - link "Contact Support" [ref=f2e134] [cursor=pointer]:
+        - /url: "#legal"

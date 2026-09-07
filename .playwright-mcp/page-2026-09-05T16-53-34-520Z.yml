@@ -1,0 +1,36 @@
+- generic [ref=f4e3]:
+  - generic [ref=f4e4]:
+    - img "MindVault AI logo" [ref=f4e5]
+    - heading "MindVault AI" [level=1] [ref=f4e6]
+    - paragraph [ref=f4e7]: Intelligent Thought Mapping
+  - generic [ref=f4e8]:
+    - generic [ref=f4e9]:
+      - textbox "Email address" [ref=f4e10]:
+        - /placeholder: " "
+      - generic [ref=f4e11]: Email address
+    - generic [ref=f4e12]:
+      - textbox "Password" [ref=f4e13]:
+        - /placeholder: " "
+      - generic [ref=f4e14]: Password
+    - generic [ref=f4e15]:
+      - generic [ref=f4e16]:
+        - checkbox "Remember me" [ref=f4e17]
+        - generic [ref=f4e18]: Remember me
+      - link "Forgot password?" [ref=f4e19] [cursor=pointer]:
+        - /url: "#reset"
+    - button "Sign in" [ref=f4e20]:
+      - text: Sign in
+      - generic [aria-hidden] [ref=f4e21]: login
+  - generic [ref=f4e22]:
+    - generic [ref=f4e23]: Or continue with
+    - generic [ref=f4e28]:
+      - button "Google" [ref=f4e29]:
+        - generic [aria-hidden] [ref=f4e30]: public
+        - text: Google
+      - button "GitHub" [ref=f4e31]:
+        - generic [aria-hidden] [ref=f4e32]: code
+        - text: GitHub
+  - paragraph [ref=f4e33]:
+    - text: Don't have an account?
+    - link "Sign up" [ref=f4e34] [cursor=pointer]:
+      - /url: /register

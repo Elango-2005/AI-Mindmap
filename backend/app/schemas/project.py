@@ -20,10 +20,13 @@ class ProjectUpdate(BaseModel):
     thumbnail: str | None = None
 
 
+from app.schemas.mind_map import MindMapResponse
+
 class ProjectResponse(ProjectBase):
     id: UUID
     user_id: UUID
     created_at: datetime
     updated_at: datetime
+    mind_maps: list[MindMapResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

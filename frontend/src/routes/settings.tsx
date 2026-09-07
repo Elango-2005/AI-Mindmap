@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/api/auth";
+import { updateProfile, uploadAvatar } from "@/api/users";
+import { useRef } from "react";
 
 const TITLE = "Settings — MindVault AI";
 const DESCRIPTION = "Customize the theme, accent color, interface scaling, and your profile.";
@@ -58,8 +60,11 @@ function Settings() {
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
 
   // Profile state
-  const [user, setUser] = useState<{ full_name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ full_name: string; email: string; profile_image?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     getCurrentUser()
@@ -139,20 +144,90 @@ function Settings() {
               </header>
               <div className="flex flex-col gap-xl">
                 <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-                  <div className="mb-md">
+                  <div className="mb-md flex justify-between items-center">
                     <h3 className="text-label-md text-on-surface font-semibold">Personal Info</h3>
+                    {!isLoading && user && (
+                       <button
+                         onClick={async () => {
+                           if (isEditing) {
+                             try {
+                               setIsSaving(true);
+                               const updated = await updateProfile({ full_name: editName });
+                               setUser(updated);
+                               setIsEditing(false);
+                             } catch (e) {
+                               console.error(e);
+                               alert("Failed to update profile.");
+                             } finally {
+                               setIsSaving(false);
+                             }
+                           } else {
+                             setEditName(user.full_name);
+                             setIsEditing(true);
+                           }
+                         }}
+                         disabled={isSaving}
+                         className="text-primary hover:text-primary-fixed-dim text-label-sm font-bold transition-colors"
+                       >
+                         {isSaving ? "Saving..." : (isEditing ? "Save" : "Edit")}
+                       </button>
+                    )}
                   </div>
                   {isLoading ? (
                     <div className="text-label-md text-on-surface-variant">Loading profile...</div>
                   ) : user ? (
-                    <div className="flex flex-col gap-md">
-                      <div>
-                        <label className="text-label-sm text-on-surface-variant">Full Name</label>
-                        <div className="text-body-lg text-on-surface font-medium">{user.full_name}</div>
+                    <div className="flex flex-col gap-lg">
+                      <div className="flex items-center gap-lg">
+                        <img 
+                          src={user.profile_image ? `http://127.0.0.1:8000${user.profile_image}` : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.full_name)} 
+                          alt="Avatar" 
+                          className="w-24 h-24 rounded-full object-cover border-4 border-surface shadow-sm"
+                        />
+                        <div className="flex flex-col gap-2">
+                          <div className="text-body-md text-on-surface font-semibold">Profile Picture</div>
+                          <div className="text-body-sm text-on-surface-variant">Upload a new avatar (JPG, PNG).</div>
+                          
+                          <label className="cursor-pointer mt-1 bg-primary text-white hover:bg-primary-fixed-dim text-label-sm font-medium py-2 px-4 rounded-xl transition-colors inline-flex items-center gap-2 w-fit ai-glow shadow-sm">
+                            <Icon name="upload" className="text-[16px]" />
+                            Upload Image
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  // Optional: Add loading state here if needed
+                                  const updated = await uploadAvatar(file);
+                                  setUser(updated);
+                                } catch (err) {
+                                  console.error(err);
+                                  alert("Failed to upload avatar. Check console for details.");
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
+
+                      <div className="border-t border-outline-variant/30 pt-md">
+                        <label className="text-label-sm text-on-surface-variant">Full Name</label>
+                        {isEditing ? (
+                          <input 
+                            type="text" 
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="mt-1 w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-3 py-2 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          />
+                        ) : (
+                          <div className="text-body-lg text-on-surface font-medium mt-1">{user.full_name}</div>
+                        )}
+                      </div>
+                      
                       <div>
                         <label className="text-label-sm text-on-surface-variant">Email</label>
-                        <div className="text-body-lg text-on-surface font-medium">{user.email}</div>
+                        <div className="text-body-lg text-on-surface font-medium mt-1 opacity-70">{user.email} <span className="text-[10px] ml-2 bg-surface-container-highest px-2 py-1 rounded-full uppercase tracking-wider">Read Only</span></div>
                       </div>
                     </div>
                   ) : (

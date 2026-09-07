@@ -64,8 +64,12 @@ function Dashboard() {
   const handleCreateProject = async (title = "Untitled Project", prompt?: string) => {
     try {
       setIsCreating(true);
-      const project = await createProject(title, "Auto-generated project");
-      const mindMap = await createMindMap(project.id, title, "{}", prompt ? prompt : undefined);
+      const project = await createProject({ title, description: "Auto-generated project" });
+      const mindMap = await createMindMap(project.id, {
+        title,
+        graph_data: "{}",
+        ai_prompt: prompt ? prompt : undefined
+      });
       navigate({ to: "/workspace", search: { mindMapId: mindMap.id, topic: prompt } });
     } catch (e) {
       console.error(e);
