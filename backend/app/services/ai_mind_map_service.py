@@ -33,6 +33,7 @@ class AIMindMapService:
         mind_map_id: UUID,
         current_user: User,
         topic: str,
+        depth: int = 3,
     ) -> dict:
         """
         Generate a mind map using Gemini, validate it,
@@ -45,7 +46,8 @@ class AIMindMapService:
         )
 
         mind_map_data = self.ai_service.create_mind_map(
-            topic
+            topic,
+            depth
         )
 
         return self.replace_mind_map_graph(

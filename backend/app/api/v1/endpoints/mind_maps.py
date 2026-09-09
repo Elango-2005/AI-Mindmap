@@ -178,6 +178,7 @@ def generate_ai_mind_map(
             mind_map_id=mind_map_id,
             current_user=current_user,
             topic=request.topic,
+            depth=request.depth,
         )
 
     except MindMapNotFoundError as e:

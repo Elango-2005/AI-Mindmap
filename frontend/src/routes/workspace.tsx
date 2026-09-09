@@ -33,9 +33,11 @@ import {
 } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
 import { exportMindMap, importMindMap } from "@/api/integrations";
+import { toPng } from "html-to-image";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
+import { applyColorsToGraph } from "@/lib/graphColoring";
 import { LOGO_URL } from "@/lib/assets";
 import { useMindMapSync } from "@/hooks/useMindMapSync";
 
@@ -120,6 +122,7 @@ function Workspace() {
   const [graphError, setGraphError] = useState<string | null>(null);
 
   const [topic, setTopic] = useState(initialTopic || "");
+  const [depth, setDepth] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [generationError, setGenerationError] =
@@ -301,10 +304,15 @@ function Workspace() {
       );
 
       /*
+       * Apply attractive colors based on tree depth and branches
+       */
+      const { nodes: coloredNodes, edges: coloredEdges } = applyColorsToGraph(mappedNodes, mappedEdges);
+
+      /*
        * Update the UI immediately.
        */
-      setFlowNodes(mappedNodes);
-      setFlowEdges(mappedEdges);
+      setFlowNodes(coloredNodes);
+      setFlowEdges(coloredEdges);
 
       /*
        * Persist the generated initial positions so that
@@ -360,6 +368,7 @@ function Workspace() {
     try {
       await generateAIMindMap(mindMapId, {
         topic: finalTopic,
+        depth: depth,
       });
 
       await loadGraph();
@@ -431,10 +440,10 @@ function Workspace() {
     }
   }
 
-  async function handleSendChat() {
-    if (!chatInput.trim() || !mindMapId) return;
+  async function handleSendChat(overrideMessage?: string) {
+    const userMessage = (overrideMessage || chatInput).trim();
+    if (!userMessage || !mindMapId) return;
 
-    const userMessage = chatInput.trim();
     setChatInput("");
     setChatMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsChatting(true);
@@ -512,6 +521,30 @@ function Workspace() {
       console.error(e);
       alert("Export failed");
     }
+  };
+
+    const handleExportImage = () => {
+    const el = document.querySelector('.react-flow') as HTMLElement;
+    if (!el) return;
+    toPng(el, {
+      backgroundColor: document.documentElement.classList.contains('dark') ? '#111318' : '#f8f9ff',
+      filter: (node) => {
+        if (node?.classList?.contains('react-flow__minimap') || 
+            node?.classList?.contains('react-flow__controls') ||
+            node?.classList?.contains('react-flow__panel')) {
+          return false;
+        }
+        return true;
+      }
+    }).then((dataUrl) => {
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${mindMapTitle.replace(/\s+/g, '_')}.png`;
+      a.click();
+    }).catch((err) => {
+      console.error(err);
+      alert("Failed to export image");
+    });
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -598,6 +631,16 @@ function Workspace() {
           >
             <Icon name="download" />
             <span className="text-[10px] ml-1 font-bold">MD</span>
+          </button>
+
+          <button
+            aria-label="Export PNG"
+            title="Export PNG Image"
+            onClick={handleExportImage}
+            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
+          >
+            <Icon name="image" />
+            <span className="text-[10px] ml-1 font-bold">PNG</span>
           </button>
 
           <button
@@ -792,6 +835,10 @@ function Workspace() {
                     <span>Targeting: <strong className="text-on-surface">{selectedNode.data.label as string}</strong></span>
                   </div>
                 )}
+                                <div className="flex flex-wrap gap-2 px-2 pb-2">
+                  <button onClick={() => { handleSendChat("Highlight the most important nodes"); }} className="text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-2 py-1 rounded-full border border-outline-variant/30 transition-colors">? Prioritize</button>
+                  <button onClick={() => { handleSendChat("Find missing connections between branches"); }} className="text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-2 py-1 rounded-full border border-outline-variant/30 transition-colors">?? Connect</button>
+                </div>
                 <textarea 
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}

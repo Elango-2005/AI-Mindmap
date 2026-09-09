@@ -27,7 +27,7 @@ class AIService:
 
         return response.text
 
-    def build_mind_map_prompt(self, topic: str) -> str:
+    def build_mind_map_prompt(self, topic: str, depth: int = 3) -> str:
         """
         Build a prompt that instructs Gemini to generate
         a structured mind map.
@@ -47,14 +47,14 @@ Follow these rules:
 1. Treat the given topic as the main/root concept.
 2. Identify the most important concepts directly related
    to the root topic.
-3. Organize concepts into a clear parent-child hierarchy.
+3. Organize concepts into a clear parent-child hierarchy, expanding up to {depth} levels deep.
+   Level 1 is the root, Level 2 are primary branches, Level 3 are subtopics, etc.
+   Do not exceed {depth} levels of depth.
 4. Include meaningful subtopics rather than individual words.
-5. Keep the hierarchy approximately 3 to 4 levels deep.
-6. Avoid unnecessary or repetitive concepts.
-7. Make the relationships between concepts logically clear.
-8. Focus on educationally useful information.
-9. Do not include unrelated information.
-10. Do not invent facts.
+5. Make the relationships between concepts logically clear.
+6. Focus on educationally useful information.
+7. Do not include unrelated information.
+8. Do not invent facts.
 
 The response must contain:
 - A list of nodes.
@@ -66,12 +66,12 @@ Every edge must reference existing node IDs.
 Return only the structured mind map data.
 """
 
-    def generate_mind_map(self, topic: str) -> dict:
+    def generate_mind_map(self, topic: str, depth: int = 3) -> dict:
         """
         Generate a structured mind map using Gemini.
         """
 
-        prompt = self.build_mind_map_prompt(topic)
+        prompt = self.build_mind_map_prompt(topic, depth)
 
         response = self.client.models.generate_content(
             model=self.model,
@@ -212,6 +212,7 @@ Return only the structured mind map data.
         3. If the user asks to add nodes, create them and link them appropriately.
         4. Every node must have a unique string ID.
         5. Every edge must reference existing node IDs.
+        6. If the user asks to highlight, prioritize, or find important nodes, prefix the 'label' of the 3-5 most important nodes with '⭐ ' (a star emoji) and make their text bold or prominent if possible.
         """
 
         response = self.client.models.generate_content(
@@ -349,7 +350,7 @@ Return only the structured mind map data.
 
         return mind_map
 
-    def create_mind_map(self, topic: str) -> dict:
+    def create_mind_map(self, topic: str, depth: int = 3) -> dict:
         """
         Generate and validate a mind map for the given topic.
         """
@@ -370,7 +371,7 @@ Return only the structured mind map data.
         # --------------------------------------------------
 
         try:
-            mind_map = self.generate_mind_map(topic)
+            mind_map = self.generate_mind_map(topic, depth)
         except Exception as e:
             raise AIGenerationError(
                 "Failed to generate mind map using AI."

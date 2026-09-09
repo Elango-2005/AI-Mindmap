@@ -15,6 +15,13 @@ class AIMindMapGenerateRequest(BaseModel):
         max_length=500,
         description="Topic for generating the mind map.",
     )
+    
+    depth: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Depth of the generated mind map hierarchy.",
+    )
 
 
 class AIMindMapGenerateResponse(BaseModel):

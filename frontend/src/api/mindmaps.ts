@@ -41,6 +41,7 @@ export interface MindMapEdge {
 
 export interface GenerateAIMindMapRequest {
     topic: string;
+    depth?: number;
 }
 
 export interface GenerateAIMindMapResponse {
