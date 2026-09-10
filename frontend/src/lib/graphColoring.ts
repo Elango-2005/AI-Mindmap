@@ -26,6 +26,7 @@ export const DEFAULT_THEME = {
 };
 
 export function applyColorsToGraph(nodes: Node[], edges: Edge[]): { nodes: Node[], edges: Edge[] } {
+  // 1. Build an adjacency list (source -> targets) and in-degree map to identify root nodes
   const adj = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
 
@@ -41,12 +42,15 @@ export function applyColorsToGraph(nodes: Node[], edges: Edge[]): { nodes: Node[
     }
   }
 
+  // 2. Identify the root nodes (nodes with no incoming edges)
   const roots = nodes.filter((n) => inDegree.get(n.id) === 0);
   const nodeStyles = new Map<string, { depth: number, theme: any }>();
 
+  // 3. Perform a Breadth-First Search (BFS) to traverse the tree hierarchy
   for (const root of roots) {
     nodeStyles.set(root.id, { depth: 0, theme: ROOT_THEME });
     
+    // Assign a distinct theme from the palette to each direct primary branch
     let themeIndex = 0;
     const children = adj.get(root.id) || [];
     
@@ -54,6 +58,7 @@ export function applyColorsToGraph(nodes: Node[], edges: Edge[]): { nodes: Node[
       const childTheme = THEMES[themeIndex % THEMES.length];
       themeIndex++;
       
+      // 4. Perform a Depth-First Search (DFS) down the branch, cascading the parent's color theme
       const stack = [{ id: childId, depth: 1, theme: childTheme }];
       while (stack.length > 0) {
         const current = stack.pop()!;

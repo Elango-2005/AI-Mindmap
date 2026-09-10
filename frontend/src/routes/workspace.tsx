@@ -15,6 +15,8 @@ import {
   type NodeDragHandler,
   type Node as FlowNode,
   type Edge as FlowEdge,
+  getNodesBounds,
+  getViewportForBounds,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -441,7 +443,7 @@ function Workspace() {
   }
 
   async function handleSendChat(overrideMessage?: string) {
-    const userMessage = (overrideMessage || chatInput).trim();
+    const userMessage = (typeof overrideMessage === "string" ? overrideMessage : chatInput).trim();
     if (!userMessage || !mindMapId) return;
 
     setChatInput("");
@@ -524,18 +526,33 @@ function Workspace() {
   };
 
     const handleExportImage = () => {
-    const el = document.querySelector('.react-flow') as HTMLElement;
-    if (!el) return;
-    toPng(el, {
+    const nodesBounds = getNodesBounds(flowNodes);
+    
+    // Add padding to the bounds
+    const imageWidth = nodesBounds.width + 100;
+    const imageHeight = nodesBounds.height + 100;
+
+    const transform = getViewportForBounds(
+      nodesBounds,
+      imageWidth,
+      imageHeight,
+      0.5,
+      2,
+      0.1 // padding
+    );
+
+    const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewportEl) return;
+
+    toPng(viewportEl, {
       backgroundColor: document.documentElement.classList.contains('dark') ? '#111318' : '#f8f9ff',
-      filter: (node) => {
-        if (node?.classList?.contains('react-flow__minimap') || 
-            node?.classList?.contains('react-flow__controls') ||
-            node?.classList?.contains('react-flow__panel')) {
-          return false;
-        }
-        return true;
-      }
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+      },
     }).then((dataUrl) => {
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -708,6 +725,21 @@ function Workspace() {
                     className="text-tertiary text-[24px] ml-4"
                   />
                   
+                  <select
+                    value={depth}
+                    onChange={(e) => setDepth(Number(e.target.value))}
+                    className="bg-transparent border-none text-body-md text-on-surface-variant outline-none cursor-pointer hover:bg-surface-container-highest p-1 rounded-md transition-colors"
+                    title="Mind Map Depth"
+                  >
+                    <option value={1}>Depth 1</option>
+                    <option value={2}>Depth 2</option>
+                    <option value={3}>Depth 3</option>
+                    <option value={4}>Depth 4</option>
+                    <option value={5}>Depth 5</option>
+                  </select>
+                  
+                  <div className="w-[1px] h-6 bg-outline-variant/50 mx-1"></div>
+
                   <input
                     type="text"
                     value={topic}
@@ -855,7 +887,7 @@ function Workspace() {
                 <div className="flex justify-between items-center px-2 pb-1 mt-1">
                   <span className="text-label-sm text-on-surface-variant">Press Enter to send</span>
                   <button 
-                     onClick={handleSendChat}
+                     onClick={() => handleSendChat()}
                      disabled={isChatting || !chatInput.trim()}
                      className="bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center hover:bg-on-primary-fixed-variant disabled:opacity-50 transition-all"
                   >
