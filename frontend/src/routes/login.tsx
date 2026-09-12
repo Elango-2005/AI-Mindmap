@@ -121,9 +121,7 @@ function LoginPage() {
                 Remember me
               </label>
             </div>
-            <a href="#reset" className="text-label-md text-primary hover:underline">
-              Forgot password?
-            </a>
+            
           </div>
           {error && (
             <p className="text-label-sm text-error">

@@ -611,10 +611,7 @@ function Workspace() {
             Workspace
           </span>
 
-          <Link
-            to="/present"
-            className="text-on-surface-variant hover:text-primary transition-colors text-label-md"
-          >
+          <Link to="/present" search={{ mindMapId: mindMapId }} className="text-on-surface-variant hover:text-primary transition-colors text-label-md">
             Explore
           </Link>
         </div>
@@ -624,12 +621,7 @@ function Workspace() {
             {mindMapTitle}
           </span>
 
-          <button
-            aria-label="Share"
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
-          >
-            <Icon name="share" />
-          </button>
+          
 
           <label
             aria-label="Import"
@@ -670,9 +662,7 @@ function Workspace() {
             <span className="text-[10px] ml-1 font-bold">OPML</span>
           </button>
 
-          <button className="hidden md:block px-md py-sm rounded-lg text-primary bg-surface-container-high/50 text-label-md hover:bg-surface-container-high transition-all">
-            Upgrade
-          </button>
+          
 
           <button
             onClick={() => handleGenerateAI()}
@@ -686,19 +676,9 @@ function Workspace() {
             Regenerate
           </button>
 
-          <button
-            aria-label="Notifications"
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all ml-sm"
-          >
-            <Icon name="notifications" />
-          </button>
+          
 
-          <button
-            aria-label="Help"
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
-          >
-            <Icon name="help" />
-          </button>
+          
         </div>
       </nav>
 

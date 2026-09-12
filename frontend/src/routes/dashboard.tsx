@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { LOGO_URL, PROJECT_THUMBS } from "@/lib/assets";
-import { getProjects, createProject } from "@/api/projects";
+import { getProjects, createProject, deleteProject } from "@/api/projects";
 import { createMindMap } from "@/api/mindmaps";
 import { getCurrentUser } from "@/api/auth";
 
@@ -34,6 +34,32 @@ function Dashboard() {
   const [user, setUser] = useState<{ full_name: string } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [stats, setStats] = useState(DEFAULT_STATS);
+
+  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
+    
+    try {
+      await deleteProject(projectId);
+      setProjects((prev) => prev.filter(p => p.id !== projectId));
+      
+      // Update stats optimistically
+      setStats((prev) => {
+        const newStats = [...prev];
+        const mapsStat = newStats.find(s => s.label === "Total Maps");
+        if (mapsStat) {
+          mapsStat.value = String(Math.max(0, parseInt(mapsStat.value) - 1));
+        }
+        return newStats;
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete project");
+    }
+  };
+
 
   useEffect(() => {
     // Check auth

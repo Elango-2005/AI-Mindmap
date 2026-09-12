@@ -98,20 +98,14 @@ export function AppSidebar({
             {isCreating ? "Creating..." : "New MindMap"}
           </button>
         ) : null}
-        <a
-          href="#help"
-          className="text-on-surface-variant flex items-center gap-md px-md py-sm rounded-xl hover:bg-surface-container-low transition-all duration-200 text-label-md"
-        >
-          <Icon name="help_outline" />
-          <span>Help Center</span>
-        </a>
-        <a
-          href="#account"
+        
+        <Link
+          to="/settings"
           className="text-on-surface-variant flex items-center gap-md px-md py-sm rounded-xl hover:bg-surface-container-low transition-all duration-200 text-label-md"
         >
           <Icon name="person" />
           <span>Account</span>
-        </a>
+        </Link>
       </div>
     </aside>
   );
