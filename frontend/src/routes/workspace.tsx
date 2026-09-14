@@ -36,6 +36,15 @@ import {
 import { getMindMapEdges } from "@/api/edges";
 import { exportMindMap, importMindMap } from "@/api/integrations";
 import { toPng } from "html-to-image";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { updateMindMap } from "@/api/mindmaps";
+
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
@@ -146,6 +155,31 @@ function Workspace() {
   const [isChatting, setIsChatting] = useState(false);
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', content: string}[]>([]);
 
+
+  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
+  const [titleEditValue, setTitleEditValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleRenameSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    if (!titleEditValue.trim() || !mindMapId) {
+      setIsRenamingTitle(false);
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      const updated = await updateMindMap(mindMapId, { title: titleEditValue });
+      setMindMapTitle(updated.title);
+    } catch (e) {
+      console.error(e);
+      setGraphError("Failed to rename project.");
+    } finally {
+      setIsSaving(false);
+      setIsRenamingTitle(false);
+    }
+  };
+
   // Clear summary when selected node changes
   useEffect(() => {
     setNodeSummary(null);
@@ -228,6 +262,7 @@ function Workspace() {
               },
               data: {
                 label: node.label,
+                mindMapId,
               },
               type: "editable",
             };
@@ -585,272 +620,240 @@ function Workspace() {
   const outgoingEdges = selectedNodeId ? flowEdges.filter(e => e.source === selectedNodeId) : [];
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col">
-      <nav className="bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm flex justify-between items-center w-full px-lg py-md sticky top-0 z-50">
-        <div className="flex items-center gap-md">
-          <img
-            src={LOGO_URL}
-            alt="MindVault AI logo"
-            className="w-8 h-8 rounded-lg object-cover"
-          />
-
-          <span className="text-headline-md font-bold text-primary tracking-tight">
-            MindVault AI
-          </span>
-        </div>
-
-        <div className="hidden md:flex items-center gap-lg">
-          <Link
-            to="/dashboard"
-            className="text-on-surface-variant hover:text-primary transition-colors text-label-md"
-          >
-            Dashboard
-          </Link>
-
-          <span className="text-primary font-bold border-b-2 border-primary pb-1 text-label-md">
-            Workspace
-          </span>
-
-          <Link to="/present" search={{ mindMapId: mindMapId }} className="text-on-surface-variant hover:text-primary transition-colors text-label-md">
-            Explore
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-sm">
-          <span className="text-label-md text-on-surface-variant mr-md hidden md:inline">
-            {mindMapTitle}
-          </span>
-
-          
-
-          <label
-            aria-label="Import"
-            title="Import Markdown or OPML"
-            className="cursor-pointer text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all flex items-center"
-          >
-            <Icon name="upload" />
-            <input type="file" className="hidden" accept=".md,.opml" onChange={handleImport} />
-          </label>
-
-          <button
-            aria-label="Export Markdown"
-            title="Export Markdown"
-            onClick={() => handleExport("markdown")}
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
-          >
-            <Icon name="download" />
-            <span className="text-[10px] ml-1 font-bold">MD</span>
-          </button>
-
-          <button
-            aria-label="Export PNG"
-            title="Export PNG Image"
-            onClick={handleExportImage}
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
-          >
-            <Icon name="image" />
-            <span className="text-[10px] ml-1 font-bold">PNG</span>
-          </button>
-
-          <button
-            aria-label="Export OPML"
-            title="Export OPML"
-            onClick={() => handleExport("opml")}
-            className="text-on-surface-variant hover:bg-surface-container-high/50 p-sm rounded-lg transition-all"
-          >
-            <Icon name="download" />
-            <span className="text-[10px] ml-1 font-bold">OPML</span>
-          </button>
-
-          
-
-          <button
-            onClick={() => handleGenerateAI()}
-            disabled={isGenerating || !mindMapId}
-            className="bg-primary text-on-primary px-md py-sm rounded-lg text-label-md hover:bg-on-primary-fixed-variant transition-all flex items-center gap-xs ai-glow disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Icon
-              name={isGenerating ? "progress_activity" : "autorenew"}
-              className={`text-[18px] ${isGenerating ? "animate-spin" : ""}`}
-            />
-            Regenerate
-          </button>
-
-          
-
-          
-        </div>
-      </nav>
-
-      <div className="flex flex-1 overflow-hidden">
-        <AppSidebar
-          active="Projects"
-          showBrand={false}
-          ctaVariant="muted"
-        />
-
-        <main className={`flex-1 relative overflow-hidden bg-background ${flowNodes.length > 0 ? 'dot-grid' : ''}`}>
-          {mindMapId && flowNodes.length > 0 && (
-            <div className="absolute top-4 left-4 z-40 bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-3 py-2 text-label-sm">
-              Mind Map: {mindMapId}
-            </div>
-          )}
-
-          {flowNodes.length === 0 && !isLoadingGraph ? (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">
-              <div className="w-full max-w-3xl relative">
-                <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-2 shadow-level-2 flex items-center gap-2">
-                  <Icon
-                    name="auto_awesome"
-                    className="text-tertiary text-[24px] ml-4"
-                  />
-                  
-                  <select
-                    value={depth}
-                    onChange={(e) => setDepth(Number(e.target.value))}
-                    className="bg-transparent border-none text-body-md text-on-surface-variant outline-none cursor-pointer hover:bg-surface-container-highest p-1 rounded-md transition-colors"
-                    title="Mind Map Depth"
-                  >
-                    <option value={1}>Depth 1</option>
-                    <option value={2}>Depth 2</option>
-                    <option value={3}>Depth 3</option>
-                    <option value={4}>Depth 4</option>
-                    <option value={5}>Depth 5</option>
-                  </select>
-                  
-                  <div className="w-[1px] h-6 bg-outline-variant/50 mx-1"></div>
-
-                  <input
-                    type="text"
-                    value={topic}
-                    onChange={(event) => {
-                      setTopic(event.target.value);
-                      setGenerationError(null);
-                      setGenerationSuccess(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleGenerateAI();
-                    }}
-                    placeholder="Message AI to generate a mind map..."
-                    disabled={isGenerating}
-                    className="flex-1 bg-transparent border-none px-2 py-3 text-body-lg text-on-surface focus:outline-none disabled:opacity-60"
-                  />
-
-                  <button
-                    onClick={() => handleGenerateAI()}
-                    disabled={!mindMapId || !topic.trim() || isGenerating}
-                    className="bg-primary text-on-primary w-12 h-12 rounded-full hover:bg-on-primary-fixed-variant transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mr-1"
-                    title="Generate Mind Map"
-                  >
-                    <Icon
-                      name={isGenerating ? "progress_activity" : "arrow_upward"}
-                      className="text-[24px]"
-                    />
-                  </button>
-                </div>
-
-                {generationError && (
-                  <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded-lg text-label-sm whitespace-nowrap shadow-sm border border-error/20">
-                    {generationError}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div 
-                className="absolute inset-0 z-[1]"
-                onPointerMove={(e) => broadcastCursorMove({ x: e.clientX, y: e.clientY })}
+    <div className="h-screen overflow-hidden flex flex-col bg-background">
+      {/* Editor Header */}
+      <header className="h-14 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 flex items-center justify-between shrink-0 z-50">
+        {/* Left: Branding & Breadcrumbs */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <img src={LOGO_URL} alt="MindVault AI logo" className="w-6 h-6 rounded" />
+            <span className="font-bold text-primary hidden md:inline">MindVault AI</span>
+          </div>
+          <div className="w-px h-4 bg-outline-variant/50 hidden md:block" />
+          <div className="flex items-center gap-2 text-label-sm max-w-full">
+            <Link to="/dashboard" className="text-on-surface-variant hover:text-primary transition-colors hidden md:block">Dashboard</Link>
+            <Icon name="chevron_right" className="text-[14px] text-outline hidden md:block" />
+            
+            {/* Inline Editable Title */}
+            {isRenamingTitle ? (
+              <form onSubmit={handleRenameSubmit} className="flex items-center">
+                <input
+                  autoFocus
+                  type="text"
+                  value={titleEditValue}
+                  onChange={(e) => setTitleEditValue(e.target.value)}
+                  onBlur={handleRenameSubmit}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setIsRenamingTitle(false); }}
+                  className="bg-surface-container border border-primary rounded px-2 py-0.5 text-label-md font-semibold focus:outline-none w-48"
+                />
+              </form>
+            ) : (
+              <span 
+                className="text-on-surface font-medium hover:bg-surface-container-low px-2 py-0.5 rounded cursor-text flex items-center gap-1 group truncate max-w-[200px] sm:max-w-[300px]"
+                onClick={() => { setTitleEditValue(mindMapTitle); setIsRenamingTitle(true); }}
+                title="Click to rename"
               >
-              {isLoadingGraph && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                  <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-md py-sm shadow-sm">
-                    Loading mind map...
-                  </div>
-                </div>
-              )}
+                {mindMapTitle} <Icon name="edit" className="text-[14px] opacity-0 group-hover:opacity-100 text-outline-variant" />
+              </span>
+            )}
+          </div>
+        </div>
 
-              {graphError && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-error-container text-on-error-container border border-error/30 rounded-lg px-md py-sm">
-                  {graphError}
-                </div>
-              )}
+        {/* Right: Save Status & Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Save Status */}
+          <div className="hidden sm:flex text-label-sm text-on-surface-variant items-center gap-1 mr-2 transition-all">
+            {isSaving || isLoadingGraph ? (
+              <><Icon name="sync" className="animate-spin text-[14px]" /> <span>Saving...</span></>
+            ) : (
+              <><Icon name="check_circle" className="text-[14px]" /> <span>Saved</span></>
+            )}
+          </div>
 
-              {Object.values(remoteUsers).map((user) => {
-                if (!user.cursor) return null;
-                return (
-                  <div
-                    key={user.userId}
-                    className="fixed pointer-events-none z-[100] flex flex-col items-start transition-all duration-75"
-                    style={{
-                      top: user.cursor.y,
-                      left: user.cursor.x,
-                    }}
-                  >
-                    <Icon name="near_me" className="text-primary text-xl" />
-                    <div className="bg-primary text-on-primary text-[10px] px-1.5 py-0.5 rounded-sm shadow-md whitespace-nowrap -ml-2 -mt-1">
-                      {user.userName}
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
 
-              {!isLoadingGraph && flowNodes.length > 0 && (
-                <ReactFlow
-                  nodes={flowNodes}
-                  edges={flowEdges}
-                  nodeTypes={nodeTypes}
-                  fitView
-                  attributionPosition="bottom-left"
-                  nodesDraggable={true}
-                  nodesConnectable={false}
-                  elementsSelectable={true}
-                  onNodesChange={handleNodesChange}
-                  onNodeDragStop={handleNodeDragStop}
-                  onNodeClick={handleNodeClick}
-                  onPaneClick={handlePaneClick}
+          {/* Undo / Redo */}
+          <button className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" title="Undo (Coming in Phase J)">
+            <Icon name="undo" className="text-[18px]" />
+          </button>
+          <button className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" title="Redo (Coming in Phase J)">
+            <Icon name="redo" className="text-[18px]" />
+          </button>
+          
+          <div className="w-px h-4 bg-outline-variant/50 mx-1" />
+
+          {/* Import / Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors text-label-sm font-medium">
+                <Icon name="ios_share" className="text-[16px]" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <label className="cursor-pointer flex items-center w-full">
+                  <Icon name="upload" className="mr-2 text-[18px]" /> Import MD/OPML
+                  <input type="file" className="hidden" accept=".md,.opml" onChange={handleImport} />
+                </label>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportImage}>
+                <Icon name="image" className="mr-2 text-[18px]" /> Export PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("markdown")}>
+                <Icon name="article" className="mr-2 text-[18px]" /> Export Markdown
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("opml")}>
+                <Icon name="list" className="mr-2 text-[18px]" /> Export OPML
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Share Button Placeholder */}
+          <button 
+            className="bg-primary/10 text-primary hover:bg-primary/20 px-4 py-1.5 rounded-lg text-label-sm font-semibold flex items-center gap-1.5 transition-colors"
+            onClick={() => alert("Sharing features coming in Phase K")}
+          >
+            <Icon name="group_add" className="text-[18px]" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main 3-Panel Body */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* LEFT PANEL: Context / Sidebar */}
+        <AppSidebar showBrand={false} ctaVariant="muted" />
+
+        {/* CENTER PANEL: Canvas */}
+        <main className="flex-1 flex flex-col relative bg-surface-container-lowest dot-matrix">
+          
+          {/* Top Integrated Toolbar */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/80 backdrop-blur-md border border-outline-variant/30 rounded-xl shadow-sm flex items-center p-1.5 gap-1">
+            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5" onClick={() => alert("Layouts coming in Phase J")}>
+              <Icon name="account_tree" className="text-[16px]" /> Layout
+            </button>
+            <div className="w-px h-4 bg-outline-variant/50 mx-1" />
+            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5" onClick={() => alert("Themes coming in Phase J")}>
+              <Icon name="palette" className="text-[16px]" /> Theme
+            </button>
+            <div className="w-px h-4 bg-outline-variant/50 mx-1" />
+            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5" onClick={() => alert("Safe regeneration coming in Phase I")}>
+              <Icon name="auto_awesome" className="text-[16px]" /> Regenerate
+            </button>
+          </div>
+
+          <div className="flex-1 w-full h-full relative">
+            {graphError && (
+              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-error-container text-on-error-container border border-error/30 rounded-lg px-md py-sm shadow-md">
+                {graphError}
+              </div>
+            )}
+
+            {Object.values(remoteUsers).map((user) => {
+              if (!user.cursor) return null;
+              return (
+                <div
+                  key={user.userId}
+                  className="fixed pointer-events-none z-[100] flex flex-col items-start transition-all duration-75"
+                  style={{ top: user.cursor.y, left: user.cursor.x }}
                 >
-                  <Background />
-                  <Controls />
-                  <MiniMap />
-                </ReactFlow>
-              )}
-            </div>
-          )}
+                  <Icon name="near_me" className="text-primary text-xl" />
+                  <div className="bg-primary text-on-primary text-[10px] px-1.5 py-0.5 rounded-sm shadow-md whitespace-nowrap -ml-2 -mt-1">
+                    {user.userName}
+                  </div>
+                </div>
+              );
+            })}
+
+            {!isLoadingGraph && flowNodes.length > 0 && (
+              <ReactFlow
+                nodes={flowNodes}
+                edges={flowEdges}
+                nodeTypes={nodeTypes}
+                fitView
+                attributionPosition="bottom-left"
+                nodesDraggable={true}
+                nodesConnectable={false}
+                elementsSelectable={true}
+                onNodesChange={handleNodesChange}
+                onNodeDragStop={handleNodeDragStop}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                className="[&_.react-flow__controls]:left-4 [&_.react-flow__controls]:bottom-4 [&_.react-flow__controls]:right-auto"
+              >
+                <Background color="var(--color-outline-variant)" gap={24} size={2} />
+                <Controls showInteractive={false} />
+                <MiniMap className="!bg-surface-container-lowest !border !border-outline-variant/30 !rounded-xl !shadow-sm !bottom-4 !right-4" />
+              </ReactFlow>
+            )}
+            
+            {isLoadingGraph && (
+              <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/50 backdrop-blur-sm z-50">
+                <div className="flex flex-col items-center gap-4">
+                  <Icon name="sync" className="animate-spin text-primary text-[32px]" />
+                  <span className="text-label-lg text-on-surface-variant font-medium">Loading map...</span>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
 
+        {/* RIGHT PANEL: AI Assistant */}
         {flowNodes.length > 0 && (
-          <aside className="hidden lg:flex w-[400px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 h-full relative">
-            <div className="p-md border-b border-outline-variant/20 flex items-center gap-sm bg-surface-container-lowest">
-              <Icon name="psychology" className="text-tertiary text-[24px]" />
-              <h3 className="text-title-md text-on-surface">AI Assistant</h3>
+          <aside className="hidden lg:flex w-[320px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 h-full relative">
+            <div className="p-md border-b border-outline-variant/20 flex items-center justify-between bg-surface/50 backdrop-blur shrink-0">
+              <div className="flex items-center gap-2 text-primary">
+                <Icon name="psychology" className="text-[20px]" />
+                <h3 className="text-label-lg font-bold">AI Assistant</h3>
+              </div>
+              <button className="text-outline hover:text-on-surface transition-colors p-1 rounded-md hover:bg-surface-container">
+                <Icon name="close_fullscreen" className="text-[18px]" />
+              </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-md flex flex-col gap-md">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+              {chatMessages.length === 0 && (
+                <div className="flex flex-col items-center text-center p-6 gap-3 mt-10">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Icon name="auto_awesome" className="text-primary text-[24px]" />
+                  </div>
+                  <h4 className="text-body-lg font-semibold text-on-surface">How can I help?</h4>
+                  <p className="text-body-sm text-on-surface-variant">Select a node to get contextual suggestions, or ask me to restructure your map.</p>
+                </div>
+              )}
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`p-md rounded-xl ${msg.role === 'user' ? 'bg-primary-container text-on-primary-container self-end max-w-[80%]' : 'bg-surface text-on-surface border border-outline-variant/20 max-w-[90%]'}`}>
+                <div key={i} className={`p-3 rounded-2xl text-body-sm ${msg.role === 'user' ? 'bg-primary text-on-primary self-end max-w-[85%] rounded-br-sm' : 'bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] rounded-bl-sm'}`}>
                    {msg.content}
                 </div>
               ))}
               {isChatting && (
-                <div className="p-md rounded-xl bg-surface text-on-surface border border-outline-variant/20 max-w-[90%] flex items-center gap-sm text-label-sm">
-                   <Icon name="progress_activity" className="animate-spin" />
-                   AI is modifying the map...
+                <div className="p-3 rounded-2xl bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] flex items-center gap-2 text-label-sm rounded-bl-sm self-start">
+                   <Icon name="sync" className="animate-spin text-[16px] text-primary" />
+                   <span className="opacity-80">Modifying map...</span>
                 </div>
               )}
             </div>
             
-            <div className="p-md border-t border-outline-variant/20 bg-surface-container-lowest">
-              <div className="bg-surface border border-outline-variant/30 rounded-2xl flex flex-col p-2 focus-within:border-primary">
+            <div className="p-3 border-t border-outline-variant/20 bg-surface-container-lowest shrink-0">
+              <div className="bg-surface border border-outline-variant/50 rounded-2xl flex flex-col p-2 shadow-sm focus-within:border-primary transition-colors">
                 {selectedNode && (
-                  <div className="flex items-center gap-xs px-2 pt-1 pb-2 mb-1 border-b border-outline-variant/10 text-label-sm text-tertiary">
+                  <div className="flex items-center gap-2 px-2 pt-1 pb-2 mb-1 border-b border-outline-variant/10 text-label-xs text-primary">
                     <Icon name="adjust" className="text-[14px]" />
-                    <span>Targeting: <strong className="text-on-surface">{selectedNode.data.label as string}</strong></span>
+                    <span>Targeting: <strong className="font-bold truncate max-w-[150px] inline-block align-bottom">{selectedNode.data.label as string}</strong></span>
                   </div>
                 )}
-                                <div className="flex flex-wrap gap-2 px-2 pb-2">
-                  <button onClick={() => { handleSendChat("Highlight the most important nodes"); }} className="text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-2 py-1 rounded-full border border-outline-variant/30 transition-colors">? Prioritize</button>
-                  <button onClick={() => { handleSendChat("Find missing connections between branches"); }} className="text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-2 py-1 rounded-full border border-outline-variant/30 transition-colors">?? Connect</button>
+                
+                <div className="flex flex-wrap gap-1.5 px-2 pb-2 mt-1">
+                  <button onClick={() => handleSendChat("Highlight the most important nodes")} className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1">
+                    <Icon name="star" className="text-[12px] text-accent-amber" /> Prioritize
+                  </button>
+                  <button onClick={() => handleSendChat("Find missing connections between branches")} className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1">
+                    <Icon name="conversion_path" className="text-[12px] text-primary" /> Connect
+                  </button>
                 </div>
+                
                 <textarea 
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -861,17 +864,17 @@ function Workspace() {
                      }
                   }}
                   disabled={isChatting}
-                  placeholder="Ask AI to modify the map..."
-                  className="bg-transparent border-none text-body-md p-2 focus:outline-none resize-none min-h-[60px]"
+                  placeholder={selectedNode ? "Ask AI to modify this branch..." : "Ask AI to modify the map..."}
+                  className="w-full bg-transparent resize-none text-body-md text-on-surface p-2 focus:outline-none min-h-[44px] disabled:opacity-50 placeholder:text-outline"
+                  rows={1}
                 />
-                <div className="flex justify-between items-center px-2 pb-1 mt-1">
-                  <span className="text-label-sm text-on-surface-variant">Press Enter to send</span>
+                <div className="flex justify-end px-1 pb-1">
                   <button 
-                     onClick={() => handleSendChat()}
-                     disabled={isChatting || !chatInput.trim()}
-                     className="bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center hover:bg-on-primary-fixed-variant disabled:opacity-50 transition-all"
+                    onClick={() => handleSendChat()}
+                    disabled={!chatInput.trim() || isChatting}
+                    className="p-1.5 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary transition-colors"
                   >
-                     <Icon name="arrow_upward" className="text-[18px]" />
+                    <Icon name="arrow_upward" className="text-[18px]" />
                   </button>
                 </div>
               </div>
