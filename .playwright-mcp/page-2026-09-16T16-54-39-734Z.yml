@@ -1,0 +1,128 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "MindVault AI logo MindForge AI" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "MindVault AI logo" [ref=e6]
+        - generic [ref=e7]: MindForge AI
+      - navigation [ref=e8]:
+        - link "Product" [ref=e9] [cursor=pointer]:
+          - /url: "#product"
+        - link "Features" [ref=e10] [cursor=pointer]:
+          - /url: "#features"
+        - link "Pricing" [ref=e11] [cursor=pointer]:
+          - /url: "#pricing"
+      - generic [ref=e12]:
+        - link "Sign In" [ref=e13] [cursor=pointer]:
+          - /url: /login
+        - link "Start Mapping for Free" [ref=e14] [cursor=pointer]:
+          - /url: /dashboard
+  - main [ref=e15]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [aria-hidden] [ref=e21]: auto_awesome
+        - generic [ref=e22]: Introducing AI Generation 2.0
+      - heading "Turn Thoughts into Intelligent Maps." [level=1] [ref=e23]
+      - paragraph [ref=e24]: The AI-powered knowledge workspace that transforms your text into interactive, expandable mind maps. Professional velocity meets cognitive clarity.
+      - generic [ref=e25]:
+        - link "Start Mapping for Free" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard
+          - text: Start Mapping for Free
+          - generic [aria-hidden] [ref=e27]: arrow_forward
+        - link "View Demo" [ref=e28] [cursor=pointer]:
+          - /url: /present
+          - text: View Demo
+          - generic [aria-hidden] [ref=e29]: play_circle
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - img "MindVault AI customer" [ref=e32]
+          - img "MindVault AI customer" [ref=e33]
+          - img "MindVault AI customer" [ref=e34]
+        - generic [ref=e35]: Joined by 10,000+ forward-thinkers
+    - generic [ref=e37]:
+      - generic [ref=e43]:
+        - generic [aria-hidden] [ref=e44]: lock
+        - text: mindforge.ai/workspace
+      - generic [ref=e45]:
+        - generic [ref=e47]:
+          - generic [ref=e49]:
+            - generic [aria-hidden] [ref=e50]: neurology
+            - generic [ref=e51]: Core Strategy
+          - paragraph [ref=e52]: Q4 Market Expansion & AI Integration Plan
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - generic [aria-hidden] [ref=e56]: group
+            - generic [ref=e57]: Target Audience
+          - paragraph [ref=e58]: Enterprise decision makers looking for cognitive tools.
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [aria-hidden] [ref=e62]: lightbulb
+            - generic [ref=e63]: Feature Set
+          - paragraph [ref=e64]: Real-time collaboration, infinite canvas.
+        - generic [ref=e66]:
+          - generic [aria-hidden] [ref=e67]: auto_awesome
+          - textbox "AI prompt" [ref=e68]:
+            - /placeholder: Type an idea like 'Market Expansion Plan'...
+          - button "Send prompt" [ref=e69]:
+            - generic [aria-hidden] [ref=e70]: arrow_upward
+    - generic [ref=e71]:
+      - generic [ref=e72]:
+        - heading "Cognitive Velocity Unleashed" [level=2] [ref=e73]
+        - paragraph [ref=e74]: Everything you need to capture, organize, and expand complex ideas at the speed of thought.
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - generic [aria-hidden] [ref=e79]: model_training
+          - heading "AI Generation" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Type a single seed thought and watch as our AI instantly generates a comprehensive, multi-layered mind map, expanding on context and finding hidden connections.
+        - generic [ref=e82]:
+          - generic [aria-hidden] [ref=e84]: bolt
+          - heading "Instant Capture" [level=3] [ref=e85]
+          - paragraph [ref=e86]: Drop in notes, transcripts, or docs and get a structured map back in seconds — never lose a thought again.
+        - generic [ref=e87]:
+          - generic [aria-hidden] [ref=e89]: hub
+          - heading "Smart Connections" [level=3] [ref=e90]
+          - paragraph [ref=e91]: Automatic relationship lines that redraw and optimize themselves as you drag nodes, keeping your map visually pristine.
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [aria-hidden] [ref=e95]: group_add
+            - heading "Real-time Collaboration" [level=3] [ref=e96]
+            - paragraph [ref=e97]: Work simultaneously with your team. See cursors dance across the canvas as you build complex strategies together, instantly synced.
+          - generic [ref=e99]:
+            - generic [ref=e100]: Alex
+            - generic [ref=e103]: Sam
+    - generic [ref=e106]:
+      - generic [ref=e107]:
+        - heading "Simple, honest pricing" [level=2] [ref=e108]
+        - paragraph [ref=e109]: Start free. Upgrade when your maps outgrow your desk.
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]: Starter
+          - generic [ref=e113]: $0
+          - paragraph [ref=e114]: 3 maps, 100 AI nodes / month
+          - link "Get started" [ref=e115] [cursor=pointer]:
+            - /url: /login
+        - generic [ref=e116]:
+          - generic [ref=e117]: Pro
+          - generic [ref=e118]: $18
+          - paragraph [ref=e119]: Unlimited maps, AI 2.0, presentation mode
+          - link "Get started" [ref=e120] [cursor=pointer]:
+            - /url: /login
+        - generic [ref=e121]:
+          - generic [ref=e122]: Team
+          - generic [ref=e123]: $42
+          - paragraph [ref=e124]: Shared workspaces, roles, SSO
+          - link "Get started" [ref=e125] [cursor=pointer]:
+            - /url: /login
+  - contentinfo [ref=e126]:
+    - generic [ref=e127]:
+      - generic [ref=e128]: MindVault AI
+      - paragraph [ref=e129]: © 2024 MindVault AI. Intelligent Thought Mapping.
+    - navigation [ref=e130]:
+      - link "Privacy Policy" [ref=e131] [cursor=pointer]:
+        - /url: "#legal"
+      - link "Terms of Service" [ref=e132] [cursor=pointer]:
+        - /url: "#legal"
+      - link "API Docs" [ref=e133] [cursor=pointer]:
+        - /url: "#legal"
+      - link "Contact Support" [ref=e134] [cursor=pointer]:
+        - /url: "#legal"

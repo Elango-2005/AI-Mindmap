@@ -1,16 +1,16 @@
+
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Icon } from "@/components/Icon";
-import { LOGO_URL, SLIDE_VISUAL } from "@/lib/assets";
-import { cn } from "@/lib/utils";
+import { LOGO_URL } from "@/lib/assets";
 import { getMindMapNodes } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
 import { getMindMap } from "@/api/mindmaps";
-import { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, Background, useReactFlow, Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import { EditableNode } from "@/components/EditableNode";
+import { EditableEdge } from "@/components/EditableEdge";
 
-const TITLE = "Presentation Mode — Strategic Q4 Roadmap";
-const DESCRIPTION =
-  "Present your MindVault AI map as a slide deck, node by node, with AI-generated summaries.";
+const TITLE = "Presentation Mode";
 
 export const Route = createFileRoute("/present")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -19,23 +19,33 @@ export const Route = createFileRoute("/present")({
   head: () => ({
     meta: [
       { title: TITLE },
-      { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: TITLE },
-      { property: "og:description", content: DESCRIPTION },
     ],
   }),
-  component: Present,
+  component: PresentWrapper,
 });
+
+const nodeTypes = { editable: EditableNode };
+const edgeTypes = { editable: EditableEdge };
+
+function PresentWrapper() {
+  return (
+    <ReactFlowProvider>
+      <Present />
+    </ReactFlowProvider>
+  );
+}
 
 function Present() {
   const { mindMapId } = useSearch({ from: "/present" });
   const navigate = useNavigate();
+  const { fitView, setCenter } = useReactFlow();
 
   const [active, setActive] = useState(0);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
   const [edges, setEdges] = useState<FlowEdge[]>([]);
   const [title, setTitle] = useState("Loading...");
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (!mindMapId) return;
@@ -45,13 +55,30 @@ function Present() {
       getMindMapEdges(mindMapId),
       getMindMap(mindMapId)
     ]).then(([n, e, m]) => {
-      setNodes(n);
-      setEdges(e);
+      // Map nodes to Flow format
+      const mappedNodes: FlowNode[] = n.map(node => ({
+        id: node.id,
+        position: { x: node.position_x, y: node.position_y },
+        data: { label: node.label, mindMapId },
+        type: "editable"
+      }));
+
+      // Map edges to Flow format
+      const mappedEdges: FlowEdge[] = e.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: "editable",
+        animated: edge.animated
+      }));
+
+      setNodes(mappedNodes);
+      setEdges(mappedEdges);
       setTitle(m.title);
     }).catch(console.error).finally(() => setIsLoading(false));
   }, [mindMapId]);
 
-  // Generate slide order via DFS
+  // Generate slide order via BFS to show breadth first presentation
   const slides = useMemo(() => {
     if (nodes.length === 0) return [];
     
@@ -72,25 +99,76 @@ function Present() {
     const ordered: FlowNode[] = [];
     const visited = new Set<string>();
 
-    function dfs(nodeId: string) {
-      if (visited.has(nodeId)) return;
-      visited.add(nodeId);
-      const node = nodes.find(n => n.id === nodeId);
-      if (node) ordered.push(node);
-      const children = adj.get(nodeId) || [];
-      for (const child of children) {
-        dfs(child);
+    // BFS
+    const queue = [...roots];
+    while(queue.length > 0) {
+      const current = queue.shift()!;
+      if (!visited.has(current.id)) {
+        visited.add(current.id);
+        ordered.push(current);
+        const children = adj.get(current.id) || [];
+        for (const childId of children) {
+          const childNode = nodes.find(n => n.id === childId);
+          if (childNode && !visited.has(childNode.id)) {
+            queue.push(childNode);
+          }
+        }
       }
     }
-
-    roots.forEach(r => dfs(r.id));
-    // If there are unlinked nodes, just append them
+    
+    // Append disconnected nodes
     nodes.forEach(n => {
-      if (!visited.has(n.id)) dfs(n.id);
+      if (!visited.has(n.id)) ordered.push(n);
     });
 
     return ordered;
   }, [nodes, edges]);
+
+  const currentSlide = slides[active];
+  const revealedNodeIds = new Set(slides.slice(0, active + 1).map(n => n.id));
+
+  // Focus camera on active node
+  useEffect(() => {
+    if (currentSlide) {
+      setTimeout(() => {
+        setCenter(currentSlide.position.x + 100, currentSlide.position.y, { zoom: 1.2, duration: 800 });
+      }, 50);
+    }
+  }, [currentSlide, setCenter]);
+
+  // Autoplay functionality
+  useEffect(() => {
+    let interval: any;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setActive(curr => {
+          if (curr >= slides.length - 1) {
+            setIsPlaying(false);
+            return curr;
+          }
+          return curr + 1;
+        });
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, slides.length]);
+
+  // Compute presentation nodes/edges with dimming
+  const presentationNodes = useMemo(() => {
+    return nodes.map(n => ({
+      ...n,
+      style: { opacity: revealedNodeIds.has(n.id) ? 1 : 0.1, transition: 'opacity 0.8s ease' },
+      draggable: false,
+      selectable: false
+    }));
+  }, [nodes, revealedNodeIds]);
+
+  const presentationEdges = useMemo(() => {
+    return edges.map(e => ({
+      ...e,
+      style: { opacity: (revealedNodeIds.has(e.source) && revealedNodeIds.has(e.target)) ? 1 : 0.1, transition: 'opacity 0.8s ease' }
+    }));
+  }, [edges, revealedNodeIds]);
 
   if (!mindMapId) {
     return (
@@ -111,201 +189,107 @@ function Present() {
     return <div className="h-screen w-full flex items-center justify-center bg-stage text-inverse-on-surface">Empty Mind Map</div>;
   }
 
-  const currentSlide = slides[active];
-  // Find children of current slide
-  const childrenEdges = edges.filter(e => e.source === currentSlide?.id);
-  const childrenNodes = childrenEdges.map(e => nodes.find(n => n.id === e.target)).filter(Boolean) as FlowNode[];
-
-
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden bg-stage text-inverse-on-surface">
-      <header className="h-16 shrink-0 flex items-center justify-between px-lg border-b border-outline/10 glass-dark z-20 relative">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-background text-on-surface relative">
+      <header className="h-16 shrink-0 flex items-center justify-between px-lg border-b border-outline-variant/30 bg-surface/80 backdrop-blur-md z-50 absolute top-0 left-0 right-0">
         <div className="flex items-center gap-md">
           <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface-container-lowest shadow-sm">
             <img src={LOGO_URL} alt="MindVault AI logo" className="w-full h-full object-cover" />
           </div>
           <div className="flex items-center gap-sm">
-            <h1 className="text-headline-md text-inverse-on-surface">Strategic Q4 Roadmap</h1>
-            <span className="px-2 py-1 rounded bg-primary/30 text-inverse-primary text-label-sm">
+            <h1 className="text-headline-md text-on-surface font-semibold truncate max-w-sm">{title}</h1>
+            <span className="px-2 py-1 rounded bg-primary/20 text-primary text-label-sm font-bold uppercase tracking-wider hidden sm:inline-block">
               Presentation
             </span>
           </div>
         </div>
         <Link
           to="/workspace"
-          className="flex items-center gap-xs px-md py-sm rounded-lg hover:bg-surface-variant/20 transition-colors text-label-md text-outline-variant hover:text-inverse-on-surface group"
+          search={{ mindMapId, topic: undefined }}
+          className="flex items-center gap-xs px-md py-sm rounded-lg hover:bg-surface-container transition-colors text-label-md text-on-surface-variant hover:text-on-surface group"
         >
           Exit
           <Icon name="close" className="text-[18px] group-hover:text-error transition-colors" />
         </Link>
       </header>
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <aside className="hidden md:flex w-[260px] shrink-0 border-r border-outline/10 glass-dark flex-col z-10">
-          <div className="px-md py-sm border-b border-outline/10 flex items-center justify-between text-label-sm text-outline-variant uppercase tracking-wider">
-            <span>Slide Thumbnails</span>
-            <span className="bg-surface-variant/10 px-2 py-0.5 rounded">8 Nodes</span>
+      <main className="flex-1 w-full relative">
+        <ReactFlow
+          nodes={presentationNodes}
+          edges={presentationEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          className="bg-surface-container-lowest"
+        >
+          <Background color="var(--color-outline-variant)" gap={24} size={2} />
+        </ReactFlow>
+
+        {/* Overlay Card for Active Node */}
+        <div className="absolute top-24 right-8 w-80 bg-surface/95 backdrop-blur-xl border border-outline-variant/30 rounded-2xl shadow-level-3 p-lg flex flex-col z-40 transition-all duration-500 ease-in-out transform translate-y-0">
+          <div className="flex items-center gap-sm mb-md text-primary">
+            <Icon name="psychology" className="text-[24px]" />
+            <span className="text-label-md uppercase tracking-widest font-semibold">Focus Mode</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-sm flex flex-col gap-sm">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.data?.label as string}
-                onClick={() => setActive(i)}
-                className={cn(
-                  "w-full text-left rounded-xl p-sm relative group overflow-hidden transition-all duration-200 border",
-                  active === i
-                    ? "bg-primary/10 border-primary/30 ring-1 ring-primary"
-                    : "border-transparent hover:bg-surface-variant/10 hover:border-outline/10 opacity-60 hover:opacity-100",
-                )}
-              >
-                <div className="relative z-10 flex gap-sm items-start">
-                  <span
-                    className={cn(
-                      "text-label-sm w-5 pt-0.5",
-                      active === i ? "text-primary-fixed-dim" : "text-outline-variant",
-                    )}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div className="flex-1">
-                    <div className="aspect-video rounded-md mb-2 border border-outline/10 relative overflow-hidden flex flex-col items-center justify-center gap-1 bg-surface-container-lowest/10">
-                      <div className="w-3/4 h-1.5 bg-primary-fixed-dim/40 rounded-full" />
-                      <div className="w-1/2 h-1.5 bg-outline/30 rounded-full" />
-                    </div>
-                    <h3
-                      className={cn(
-                        "text-label-md truncate",
-                        active === i
-                          ? "text-inverse-on-surface"
-                          : "text-outline-variant group-hover:text-inverse-on-surface",
-                      )}
-                    >
-                      {slide.data?.label as string}
-                    </h3>
-                  </div>
-                </div>
-              </button>
-            ))}
+          <h2 className="text-headline-md text-on-surface font-bold leading-tight mb-sm">
+            {currentSlide?.data?.['label'] as string}
+          </h2>
+          <p className="text-body-md text-on-surface-variant leading-relaxed">
+            This node is part of the sequence exploring the concept of "{currentSlide?.data?.['label'] as string}". 
+          </p>
+          <div className="mt-md pt-md border-t border-outline-variant/20 flex justify-between items-center text-label-sm text-on-surface-variant">
+            <span>Step {active + 1} of {slides.length}</span>
+            <span className="px-2 py-1 bg-surface-container rounded-full text-xs">Node {currentSlide?.id.slice(0, 4)}</span>
           </div>
-        </aside>
+        </div>
 
-        <main className="flex-1 relative flex items-center justify-center p-lg md:p-xl overflow-hidden bg-stage-deep">
-          <div
-            className="absolute inset-0 pointer-events-none opacity-[0.05]"
-            style={{
-              backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          />
+        {/* Playback Controls */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center p-1.5 bg-surface/90 backdrop-blur-xl border border-outline-variant/30 rounded-full shadow-level-2 z-50">
+          <button
+            onClick={() => { setIsPlaying(false); setActive(0); }}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors"
+            title="Restart"
+          >
+            <Icon name="replay" />
+          </button>
+          
+          <button
+            disabled={active === 0}
+            onClick={() => { setIsPlaying(false); setActive((i) => Math.max(0, i - 1)); }}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <Icon name="chevron_left" />
+          </button>
 
-          <div className="w-full max-w-5xl aspect-[16/9] bg-surface-container-lowest rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-outline-variant/30 flex flex-col overflow-hidden relative text-on-surface">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
+          <button 
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="px-md h-10 flex items-center justify-center gap-xs rounded-full text-on-primary bg-primary hover:bg-primary/90 text-label-md font-bold transition-colors mx-2 shadow-sm"
+          >
+            <Icon name={isPlaying ? "pause" : "play_arrow"} className="text-[20px]" />
+            {isPlaying ? "Pause" : "Play"}
+          </button>
 
-            <div className="flex-1 p-lg md:p-xxl flex flex-col overflow-hidden">
-              <header className="flex justify-between items-start mb-lg">
-                <div>
-                  <div className="flex items-center gap-sm mb-xs">
-                    <Icon name="auto_awesome" className="text-primary text-[20px]" />
-                    <span className="text-label-sm text-primary uppercase tracking-widest">
-                      AI Generated Node
-                    </span>
-                  </div>
-                  <h2 className="text-headline-lg md:text-display text-on-surface leading-tight">
-                    {currentSlide?.data?.label as string || "Untitled Node"}
-                  </h2>
-                </div>
-                {currentSlide?.data?.label?.toString().includes("?") && (<span className="px-3 py-1 rounded-full bg-error-container text-on-error-container text-label-sm flex items-center gap-xs shrink-0"><span className="w-2 h-2 rounded-full bg-error" /> High Priority</span>)}
-              </header>
+          <button
+            disabled={active === slides.length - 1}
+            onClick={() => { setIsPlaying(false); setActive((i) => Math.min(slides.length - 1, i + 1)); }}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <Icon name="chevron_right" />
+          </button>
 
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-lg overflow-hidden">
-                <div className="md:col-span-8 flex flex-col gap-lg">
-                  <div className="p-lg rounded-xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm flex-1">
-                    <p className="text-body-md md:text-body-lg text-on-surface-variant mb-md">
-                      {currentSlide?.data?.isImportant ? "? Highly prioritized concept requiring strategic focus." : "Detailed breakdown of the conceptual branch."}
-                    </p>
-                                        <ul className="flex flex-col gap-sm text-body-md text-on-surface">
-                      {childrenNodes.length > 0 ? childrenNodes.map(child => (
-                        <li key={child.id} className="flex items-start gap-sm">
-                          <Icon
-                            name="chevron_right"
-                            className="text-secondary text-[20px] shrink-0 mt-0.5"
-                          />
-                          <span className="text-body-lg text-on-surface-variant">
-                            {child.data?.label as string}
-                          </span>
-                        </li>
-                      )) : (
-                        <div className="flex flex-col items-center justify-center h-full opacity-50 py-lg">
-                          <Icon name="account_tree" className="text-[48px] mb-sm" />
-                          <span>End of this branch</span>
-                        </div>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="md:col-span-4 flex flex-col gap-lg">
-                  <div className="flex-1 min-h-24 rounded-xl bg-surface-container overflow-hidden relative border border-outline-variant/30">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url('${SLIDE_VISUAL}')` }}
-                      role="img"
-                      aria-label="Abstract render of interconnected glass spheres"
-                    />
-                  </div>
-                  <div className="p-lg rounded-xl bg-primary-container text-on-primary-container flex flex-col justify-center items-center text-center">
-                    <span className="text-label-sm opacity-80 uppercase tracking-wider mb-1">
-                      Target Growth
-                    </span>
-                    <span className="text-display font-bold leading-none">35%</span>
-                    <span className="text-body-md mt-1 opacity-90">MoM in Q4</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-lg md:px-xxl py-md border-t border-outline-variant/20 bg-surface text-on-surface-variant text-label-md flex items-center justify-between">
-              <div className="flex items-center gap-xs">
-                <span>Root</span>
-                <Icon name="chevron_right" className="text-[16px] text-outline-variant/60" />
-                <span className="text-on-surface font-semibold">{currentSlide?.data?.label as string || "Untitled Node"}</span>
-              </div>
-              <span>Slide {active + 1} of {slides.length}</span>
-            </div>
-          </div>
-
-          <div className="absolute bottom-lg left-1/2 -translate-x-1/2 flex items-center p-1 bg-inverse-surface/80 backdrop-blur-xl border border-outline/20 rounded-full shadow-2xl z-20">
-            <button
-              aria-label="Previous slide"
-              disabled={active === 0}
-              onClick={() => setActive((i) => Math.max(0, i - 1))}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-inverse-on-surface hover:bg-surface-variant/20 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-            >
-              <Icon name="chevron_left" />
-            </button>
-            <div className="w-px h-6 bg-outline/20 mx-1" />
-            <button className="px-md h-10 flex items-center justify-center gap-sm rounded-full text-inverse-on-surface bg-primary/30 hover:bg-primary/40 text-label-md transition-colors mx-1">
-              <Icon name="play_arrow" className="text-[20px]" />
-              Autoplay
-            </button>
-            <div className="w-px h-6 bg-outline/20 mx-1" />
-            <button
-              aria-label="Next slide"
-              onClick={() => setActive((i) => Math.min(slides.length - 1, i + 1))}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-inverse-on-surface hover:bg-surface-variant/20 transition-colors"
-            >
-              <Icon name="chevron_right" />
-            </button>
-            <div className="w-px h-6 bg-outline/20 mx-1" />
-            <button
-              aria-label="Fullscreen"
-              className="w-10 h-10 flex items-center justify-center rounded-full text-outline-variant hover:text-inverse-on-surface hover:bg-surface-variant/20 transition-colors"
-            >
-              <Icon name="fullscreen" className="text-[20px]" />
-            </button>
-          </div>
-        </main>
-      </div>
+          <button
+            onClick={() => { setIsPlaying(false); setActive(slides.length - 1); }}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+            title="Jump to End"
+          >
+            <Icon name="skip_next" />
+          </button>
+        </div>
+      </main>
     </div>
   );
 }

@@ -99,7 +99,8 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       setEdges((eds) => [...eds, {
         id: newEdge.id,
         source: id,
-        target: newNode.id
+        target: newNode.id,
+        type: "editable"
       }]);
     } catch (e) {
       console.error(e);
@@ -139,7 +140,8 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       setEdges((eds) => [...eds, {
         id: newEdge.id,
         source: parentEdge.source,
-        target: newNode.id
+        target: newNode.id,
+        type: "editable"
       }]);
     } catch (e) {
       console.error(e);
@@ -148,14 +150,24 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
   };
 
   const handleDelete = async () => {
-    if (!confirm("Delete this node?")) return;
-    try {
-      await deleteNode(id);
-      setNodes(nds => nds.filter(n => n.id !== id));
-      setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to delete node.");
+    if (data.onDelete) {
+      data.onDelete();
+    } else {
+      if (!confirm("Delete this node?")) return;
+      try {
+        await deleteNode(id);
+        setNodes(nds => nds.filter(n => n.id !== id));
+        setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
+      } catch (e) {
+        console.error(e);
+        toast.error("Failed to delete node.");
+      }
+    }
+  };
+  
+  const handleRegenerate = () => {
+    if (data.onRegenerate) {
+      data.onRegenerate();
     }
   };
 
@@ -175,7 +187,9 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       const newEdges = res.edges.map(e => ({
         id: e.id,
         source: e.source,
-        target: e.target
+        target: e.target,
+        type: "editable",
+        animated: true
       }));
 
       // In a real app we'd filter out duplicates, but we assume backend returns *only* the new ones 

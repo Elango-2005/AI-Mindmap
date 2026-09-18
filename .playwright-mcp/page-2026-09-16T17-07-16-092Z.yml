@@ -1,0 +1,25 @@
+- generic [ref=f2e3]:
+  - generic [ref=f2e4]:
+    - img "MindVault AI logo" [ref=f2e5]
+    - heading "Create your account" [level=1] [ref=f2e6]
+    - paragraph [ref=f2e7]: Start building intelligent mind maps
+  - generic [ref=f2e8]:
+    - generic [ref=f2e9]:
+      - textbox "Full name" [ref=f2e10]:
+        - /placeholder: " "
+      - generic [ref=f2e11]: Full name
+    - generic [ref=f2e12]:
+      - textbox "Email address" [ref=f2e13]:
+        - /placeholder: " "
+      - generic [ref=f2e14]: Email address
+    - generic [ref=f2e15]:
+      - textbox "Password" [ref=f2e16]:
+        - /placeholder: " "
+      - generic [ref=f2e17]: Password
+    - button "Create account" [ref=f2e18]:
+      - text: Create account
+      - generic [aria-hidden] [ref=f2e19]: person_add
+  - paragraph [ref=f2e20]:
+    - text: Already have an account?
+    - link "Sign in" [ref=f2e21] [cursor=pointer]:
+      - /url: /login

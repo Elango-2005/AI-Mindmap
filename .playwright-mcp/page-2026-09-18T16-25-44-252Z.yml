@@ -1,0 +1,121 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - generic: MindVault AI
+        - generic:
+          - link:
+            - /url: /dashboard
+            - text: Dashboard
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - generic:
+          - generic [aria-hidden]: check_circle
+          - generic: Saved
+        - button:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+          - generic: Export
+        - button:
+          - generic [aria-hidden]: group_add
+          - generic: Share
+    - generic:
+      - complementary:
+        - generic:
+          - heading [level=2]: Knowledge Hub
+          - paragraph: Premium AI Workspace
+        - button:
+          - generic [aria-hidden]: add
+          - text: New MindMap
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: folder_open
+            - generic: Projects
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: auto_awesome_motion
+            - generic: Templates
+          - link:
+            - /url: /history
+            - generic [aria-hidden]: history
+            - generic: History
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: settings
+            - generic: Settings
+        - generic:
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: person
+            - generic: Account
+      - generic:
+        - generic:
+          - generic:
+            - generic [aria-hidden]: list_alt
+            - heading [level=3]: Outline View
+          - button:
+            - generic [aria-hidden]: close
+        - generic:
+          - generic:
+            - generic [aria-hidden]: search
+            - textbox:
+              - /placeholder: Search outline...
+        - generic:
+          - generic:
+            - generic [aria-hidden]: account_tree
+            - paragraph: No nodes found in this map.
+        - generic:
+          - generic: 0 total nodes
+          - generic: 0 connections
+      - main:
+        - generic:
+          - button [expanded]:
+            - generic [aria-hidden]: account_tree
+            - generic: Layout
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic: Theme
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+            - generic: Outline
+          - button:
+            - generic [aria-hidden]: auto_awesome
+            - generic: Regenerate
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - menu "account_tree Layout arrow_drop_down" [active] [ref=e272]:
+    - menuitem "Balanced Mind Map 2-sided radial branches" [ref=e273] [cursor=pointer]:
+      - generic [aria-hidden] [ref=e274]: hub
+      - generic [ref=e275]:
+        - generic [ref=e276]: Balanced Mind Map
+        - generic [ref=e277]: 2-sided radial branches
+    - menuitem "Horizontal Left-to-right expansion" [ref=e278] [cursor=pointer]:
+      - generic [aria-hidden] [ref=e279]: trending_flat
+      - generic [ref=e280]:
+        - generic [ref=e281]: Horizontal
+        - generic [ref=e282]: Left-to-right expansion
+      - generic [aria-hidden] [ref=e283]: check
+    - menuitem "Vertical Top-to-bottom hierarchy" [ref=e284] [cursor=pointer]:
+      - generic [aria-hidden] [ref=e285]: alt_route
+      - generic [ref=e286]:
+        - generic [ref=e287]: Vertical
+        - generic [ref=e288]: Top-to-bottom hierarchy

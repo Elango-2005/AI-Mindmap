@@ -15,6 +15,7 @@ import {
   type NodeDragHandler,
   type Node as FlowNode,
   type Edge as FlowEdge,
+  type ReactFlowInstance,
   getNodesBounds,
   getViewportForBounds,
 } from "@xyflow/react";
@@ -32,6 +33,7 @@ import {
   summarizeNode,
   expandNode,
   findConnectionsNode,
+  deleteNode,
 } from "@/api/nodes";
 import { getMindMapEdges } from "@/api/edges";
 import { exportMindMap, importMindMap } from "@/api/integrations";
@@ -48,7 +50,11 @@ import { updateMindMap } from "@/api/mindmaps";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
-import { applyColorsToGraph } from "@/lib/graphColoring";
+import { EditableEdge } from "@/components/EditableEdge";
+import { THEME_PALETTES, type ThemeKey, applyColorsToGraph } from "@/lib/graphColoring";
+import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
+import { OutlinePanel } from "@/components/OutlinePanel";
+import { toast } from "sonner";
 import { LOGO_URL } from "@/lib/assets";
 import { useMindMapSync } from "@/hooks/useMindMapSync";
 
@@ -106,6 +112,10 @@ const nodeTypes = {
   editable: EditableNode,
 };
 
+const edgeTypes = {
+  editable: EditableEdge,
+};
+
 function Workspace() {
   const { mindMapId, topic: initialTopic } = useSearch({
     from: "/workspace",
@@ -160,6 +170,57 @@ function Workspace() {
   const [titleEditValue, setTitleEditValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Safe Regeneration / Delete Modal State
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'delete' | 'regenerate';
+    nodeId: string;
+    nodeLabel: string;
+  } | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  
+  const executeConfirmAction = async () => {
+    if (!confirmAction) return;
+    setIsConfirming(true);
+    try {
+      // Find all descendants
+      const descendants: string[] = [];
+      const queue = [confirmAction.nodeId];
+      while(queue.length > 0) {
+        const current = queue.shift();
+        const children = flowEdges.filter(e => e.source === current).map(e => e.target);
+        for (const child of children) {
+          if (!descendants.includes(child)) {
+            descendants.push(child);
+            queue.push(child);
+          }
+        }
+      }
+      
+      if (confirmAction.type === 'delete') {
+        const toDelete = [confirmAction.nodeId, ...descendants];
+        await Promise.all(toDelete.map(id => deleteNode(id)));
+        setFlowNodes(nds => nds.filter(n => !toDelete.includes(n.id)));
+        setFlowEdges(eds => eds.filter(e => !toDelete.includes(e.source) && !toDelete.includes(e.target)));
+        toast.success("Node and its branch deleted.");
+      } else if (confirmAction.type === 'regenerate') {
+        if (descendants.length > 0) {
+          await Promise.all(descendants.map(id => deleteNode(id)));
+          setFlowNodes(nds => nds.filter(n => !descendants.includes(n.id)));
+          setFlowEdges(eds => eds.filter(e => !descendants.includes(e.source) && !descendants.includes(e.target)));
+        }
+        toast.info("AI is regenerating the branch...");
+        await expandNode(confirmAction.nodeId);
+        await loadGraph(); // Reload to render new descendants with layout/colors
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(`Failed to ${confirmAction.type} branch.`);
+    } finally {
+      setIsConfirming(false);
+      setConfirmAction(null);
+    }
+  };
+
   const handleRenameSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!titleEditValue.trim() || !mindMapId) {
@@ -177,6 +238,155 @@ function Workspace() {
     } finally {
       setIsSaving(false);
       setIsRenamingTitle(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // PHASE J: Controls, Layouts, Themes, Outline & History State
+  // -------------------------------------------------------------
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
+  const [currentLayout, setCurrentLayout] = useState<LayoutDirection>("horizontal");
+  const [currentTheme, setCurrentTheme] = useState<ThemeKey>("vibrant");
+  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const [showMiniMap, setShowMiniMap] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Undo / Redo History Stack
+  const [history, setHistory] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] }[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+
+  const pushToHistory = (newNodes: FlowNode[], newEdges: FlowEdge[]) => {
+    setHistory((prev) => {
+      const upToCurrent = prev.slice(0, historyIndex + 1);
+      return [...upToCurrent, { nodes: newNodes, edges: newEdges }].slice(-30);
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, 29));
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const targetIdx = historyIndex - 1;
+      const snapshot = history[targetIdx];
+      setFlowNodes(snapshot.nodes);
+      setFlowEdges(snapshot.edges);
+      setHistoryIndex(targetIdx);
+      toast.info("Action undone");
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const targetIdx = historyIndex + 1;
+      const snapshot = history[targetIdx];
+      setFlowNodes(snapshot.nodes);
+      setFlowEdges(snapshot.edges);
+      setHistoryIndex(targetIdx);
+      toast.info("Action redone");
+    }
+  };
+
+  // Keyboard shortcut listener for Undo / Redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "z")
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [historyIndex, history]);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  const handleApplyLayout = async (dir: LayoutDirection) => {
+    if (flowNodes.length === 0) return;
+    setCurrentLayout(dir);
+    const result = applyLayout(flowNodes, flowEdges, dir);
+    pushToHistory(result.nodes, result.edges);
+    setFlowNodes(result.nodes);
+    setFlowEdges(result.edges);
+
+    setTimeout(() => {
+      rfInstance?.fitView({ duration: 600, padding: 0.2 });
+    }, 50);
+
+    toast.success(`Applied ${dir.charAt(0).toUpperCase() + dir.slice(1)} layout`);
+
+    try {
+      await Promise.all(
+        result.nodes.map((n) =>
+          updateNode(n.id, {
+            position_x: n.position.x,
+            position_y: n.position.y,
+          })
+        )
+      );
+    } catch (err) {
+      console.warn("Could not persist all node positions:", err);
+    }
+  };
+
+  const handleSelectTheme = (themeKey: ThemeKey) => {
+    setCurrentTheme(themeKey);
+    const { nodes: coloredNodes, edges: coloredEdges } = applyColorsToGraph(
+      flowNodes,
+      flowEdges,
+      themeKey
+    );
+    pushToHistory(coloredNodes, coloredEdges);
+    setFlowNodes(coloredNodes);
+    setFlowEdges(coloredEdges);
+    if (mindMapId) {
+      localStorage.setItem(`mindmap_theme_${mindMapId}`, themeKey);
+    }
+    toast.success(`Theme updated to ${THEME_PALETTES[themeKey].name}`);
+  };
+
+  const handleRegenerateClick = () => {
+    if (selectedNode) {
+      setConfirmAction({
+        type: "regenerate",
+        nodeId: selectedNode.id,
+        nodeLabel: (selectedNode.data?.label as string) || "Selected Branch",
+      });
+    } else {
+      const rootNode =
+        flowNodes.find((n) => !flowEdges.some((e) => e.target === n.id)) ||
+        flowNodes[0];
+      if (rootNode) {
+        setConfirmAction({
+          type: "regenerate",
+          nodeId: rootNode.id,
+          nodeLabel: (rootNode.data?.label as string) || mindMapTitle,
+        });
+      } else {
+        toast.error("No nodes available to regenerate.");
+      }
     }
   };
 
@@ -263,6 +473,8 @@ function Workspace() {
               data: {
                 label: node.label,
                 mindMapId,
+                onDelete: () => setConfirmAction({ type: 'delete', nodeId: node.id, nodeLabel: node.label }),
+                onRegenerate: () => setConfirmAction({ type: 'regenerate', nodeId: node.id, nodeLabel: node.label })
               },
               type: "editable",
             };
@@ -335,21 +547,25 @@ function Workspace() {
           source: edge.source,
           target: edge.target,
           label: edge.label ?? undefined,
-          type: edge.type || "default",
+          type: "editable",
           animated: edge.animated,
         }),
       );
 
       /*
-       * Apply attractive colors based on tree depth and branches
+       * Apply attractive colors based on tree depth, branches, and selected theme
        */
-      const { nodes: coloredNodes, edges: coloredEdges } = applyColorsToGraph(mappedNodes, mappedEdges);
+      const savedTheme = (localStorage.getItem(`mindmap_theme_${mindMapId}`) as ThemeKey) || "vibrant";
+      setCurrentTheme(savedTheme);
+      const { nodes: coloredNodes, edges: coloredEdges } = applyColorsToGraph(mappedNodes, mappedEdges, savedTheme);
 
       /*
-       * Update the UI immediately.
+       * Update the UI immediately and initialize history stack.
        */
       setFlowNodes(coloredNodes);
       setFlowEdges(coloredEdges);
+      setHistory([{ nodes: coloredNodes, edges: coloredEdges }]);
+      setHistoryIndex(0);
 
       /*
        * Persist the generated initial positions so that
@@ -477,7 +693,7 @@ function Workspace() {
     }
   }
 
-  async function handleSendChat(overrideMessage?: string) {
+    async function handleSendChat(overrideMessage?: string) {
     const userMessage = (typeof overrideMessage === "string" ? overrideMessage : chatInput).trim();
     if (!userMessage || !mindMapId) return;
 
@@ -488,7 +704,36 @@ function Workspace() {
     try {
       const response = await chatMindMap(mindMapId, userMessage, selectedNodeId);
       setChatMessages((prev) => [...prev, { role: "ai", content: response.response_text }]);
-      await loadGraph(); // Reload to get updated graph
+      
+      // Smart merging to animate new edges
+      const existingNodeIds = new Set(flowNodes.map(n => n.id));
+      const existingEdgeIds = new Set(flowEdges.map(e => e.id));
+      
+      const newNodes = response.nodes.filter(n => !existingNodeIds.has(n.id)).map(n => ({
+        id: n.id,
+        position: { x: n.position_x || (selectedNode ? selectedNode.position.x + 200 : 0), y: n.position_y || (selectedNode ? selectedNode.position.y + 150 : 0) },
+        data: { label: n.label, mindMapId },
+        type: "editable"
+      }));
+      
+      const newEdges = response.edges.filter(e => !existingEdgeIds.has(e.id)).map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        type: "editable",
+        animated: true // Set animation for newly AI-generated edges!
+      }));
+      
+      if (newNodes.length > 0 || newEdges.length > 0) {
+        const mergedNodes = [...flowNodes, ...newNodes];
+        const mergedEdges = [...flowEdges, ...newEdges];
+        const { nodes: coloredNodes, edges: coloredEdges } = applyColorsToGraph(mergedNodes, mergedEdges);
+        setFlowNodes(coloredNodes);
+        setFlowEdges(coloredEdges);
+      } else {
+        // If it was just modifications to existing nodes (like Rename or Delete), fallback to full reload
+        await loadGraph();
+      }
     } catch (error) {
       console.error("Chat failed:", error);
       setChatMessages((prev) => [...prev, { role: "ai", content: "Sorry, I encountered an error modifying the map." }]);
@@ -673,10 +918,20 @@ function Workspace() {
           <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
 
           {/* Undo / Redo */}
-          <button className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" title="Undo (Coming in Phase J)">
+          <button 
+            onClick={handleUndo}
+            disabled={historyIndex <= 0}
+            className="p-1.5 hover:bg-surface-container-low disabled:opacity-30 disabled:hover:bg-transparent rounded-lg text-on-surface-variant transition-colors" 
+            title="Undo (Ctrl+Z)"
+          >
             <Icon name="undo" className="text-[18px]" />
           </button>
-          <button className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" title="Redo (Coming in Phase J)">
+          <button 
+            onClick={handleRedo}
+            disabled={historyIndex >= history.length - 1}
+            className="p-1.5 hover:bg-surface-container-low disabled:opacity-30 disabled:hover:bg-transparent rounded-lg text-on-surface-variant transition-colors" 
+            title="Redo (Ctrl+Y)"
+          >
             <Icon name="redo" className="text-[18px]" />
           </button>
           
@@ -690,7 +945,13 @@ function Workspace() {
                 <span className="hidden sm:inline">Export</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem asChild>
+                <Link to="/present" search={{ mindMapId }} className="flex items-center w-full cursor-pointer">
+                  <Icon name="play_circle" className="mr-2 text-[18px] text-primary" /> Present Mind Map
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <label className="cursor-pointer flex items-center w-full">
                   <Icon name="upload" className="mr-2 text-[18px]" /> Import MD/OPML
@@ -699,21 +960,25 @@ function Workspace() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleExportImage}>
-                <Icon name="image" className="mr-2 text-[18px]" /> Export PNG
+                <Icon name="image" className="mr-2 text-[18px]" /> Export PNG Image
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("markdown")}>
-                <Icon name="article" className="mr-2 text-[18px]" /> Export Markdown
+                <Icon name="article" className="mr-2 text-[18px]" /> Export Markdown (.md)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("opml")}>
-                <Icon name="list" className="mr-2 text-[18px]" /> Export OPML
+                <Icon name="list" className="mr-2 text-[18px]" /> Export OPML (.opml)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Share Button Placeholder */}
+          {/* Share Button */}
           <button 
             className="bg-primary/10 text-primary hover:bg-primary/20 px-4 py-1.5 rounded-lg text-label-sm font-semibold flex items-center gap-1.5 transition-colors"
-            onClick={() => alert("Sharing features coming in Phase K")}
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast.success("Mind map link copied to clipboard!");
+            }}
+            title="Copy shareable mind map link"
           >
             <Icon name="group_add" className="text-[18px]" />
             <span className="hidden sm:inline">Share</span>
@@ -726,21 +991,116 @@ function Workspace() {
         {/* LEFT PANEL: Context / Sidebar */}
         <AppSidebar showBrand={false} ctaVariant="muted" />
 
+        {/* OUTLINE PANEL (Collapsible, Phase J) */}
+        {isOutlineOpen && (
+          <OutlinePanel
+            nodes={flowNodes}
+            edges={flowEdges}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={(nodeId) => {
+              setSelectedNodeId(nodeId);
+              const targetNode = flowNodes.find((n) => n.id === nodeId);
+              if (targetNode && rfInstance) {
+                rfInstance.setCenter(targetNode.position.x, targetNode.position.y, {
+                  zoom: 1.2,
+                  duration: 600,
+                });
+              }
+            }}
+            onClose={() => setIsOutlineOpen(false)}
+          />
+        )}
+
         {/* CENTER PANEL: Canvas */}
         <main className="flex-1 flex flex-col relative bg-surface-container-lowest dot-matrix">
           
           {/* Top Integrated Toolbar */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/80 backdrop-blur-md border border-outline-variant/30 rounded-xl shadow-sm flex items-center p-1.5 gap-1">
-            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5" onClick={() => alert("Layouts coming in Phase J")}>
-              <Icon name="account_tree" className="text-[16px]" /> Layout
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/85 backdrop-blur-md border border-outline-variant/30 rounded-xl shadow-sm flex items-center p-1.5 gap-1">
+            {/* Layout Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                  <Icon name="account_tree" className="text-[16px] text-primary" />
+                  <span>Layout</span>
+                  <Icon name="arrow_drop_down" className="text-[16px] text-outline" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuItem onClick={() => handleApplyLayout("balanced")} className="cursor-pointer">
+                  <Icon name="hub" className="mr-2 text-[18px] text-primary" />
+                  <div className="flex flex-col flex-1">
+                    <span className="font-medium">Balanced Mind Map</span>
+                    <span className="text-[10px] text-on-surface-variant">2-sided radial branches</span>
+                  </div>
+                  {currentLayout === "balanced" && <Icon name="check" className="ml-auto text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleApplyLayout("horizontal")} className="cursor-pointer">
+                  <Icon name="trending_flat" className="mr-2 text-[18px] text-primary" />
+                  <div className="flex flex-col flex-1">
+                    <span className="font-medium">Horizontal</span>
+                    <span className="text-[10px] text-on-surface-variant">Left-to-right expansion</span>
+                  </div>
+                  {currentLayout === "horizontal" && <Icon name="check" className="ml-auto text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleApplyLayout("vertical")} className="cursor-pointer">
+                  <Icon name="alt_route" className="mr-2 text-[18px] text-primary" />
+                  <div className="flex flex-col flex-1">
+                    <span className="font-medium">Vertical</span>
+                    <span className="text-[10px] text-on-surface-variant">Top-to-bottom hierarchy</span>
+                  </div>
+                  {currentLayout === "vertical" && <Icon name="check" className="ml-auto text-[16px] text-primary" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+
+            {/* Theme Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                  <Icon name="palette" className="text-[16px] text-accent-violet" />
+                  <span>Theme</span>
+                  <Icon name="arrow_drop_down" className="text-[16px] text-outline" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-60">
+                {Object.values(THEME_PALETTES).map((t) => (
+                  <DropdownMenuItem key={t.id} onClick={() => handleSelectTheme(t.id)} className="cursor-pointer flex items-center gap-2">
+                    <div className="flex items-center gap-1 shrink-0">
+                      {t.previewColors.map((color, idx) => (
+                        <span key={idx} className="w-2.5 h-2.5 rounded-full border border-black/10" style={{ backgroundColor: color }} />
+                      ))}
+                    </div>
+                    <span className="flex-1 font-medium text-body-sm">{t.name}</span>
+                    {currentTheme === t.id && <Icon name="check" className="text-[16px] text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+
+            {/* Outline View Toggle */}
+            <button 
+              className={`px-3 py-1.5 rounded-lg text-label-sm font-medium transition-colors flex items-center gap-1.5 ${isOutlineOpen ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+              onClick={() => setIsOutlineOpen(!isOutlineOpen)}
+              title="Toggle Outline Tree View"
+            >
+              <Icon name="list_alt" className="text-[16px]" />
+              <span>Outline</span>
             </button>
-            <div className="w-px h-4 bg-outline-variant/50 mx-1" />
-            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5" onClick={() => alert("Themes coming in Phase J")}>
-              <Icon name="palette" className="text-[16px]" /> Theme
-            </button>
-            <div className="w-px h-4 bg-outline-variant/50 mx-1" />
-            <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5" onClick={() => alert("Safe regeneration coming in Phase I")}>
-              <Icon name="auto_awesome" className="text-[16px]" /> Regenerate
+
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+
+            {/* Regenerate Map Button */}
+            <button 
+              className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+              onClick={handleRegenerateClick}
+              title="Safe Regenerate Map or Branch"
+            >
+              <Icon name="auto_awesome" className="text-[16px]" />
+              <span>Regenerate</span>
             </button>
           </div>
 
@@ -772,6 +1132,8 @@ function Workspace() {
                 nodes={flowNodes}
                 edges={flowEdges}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onInit={(instance) => setRfInstance(instance)}
                 fitView
                 attributionPosition="bottom-left"
                 nodesDraggable={true}
@@ -785,9 +1147,51 @@ function Workspace() {
               >
                 <Background color="var(--color-outline-variant)" gap={24} size={2} />
                 <Controls showInteractive={false} />
-                <MiniMap className="!bg-surface-container-lowest !border !border-outline-variant/30 !rounded-xl !shadow-sm !bottom-4 !right-4" />
+                {showMiniMap && (
+                  <MiniMap className="!bg-surface-container-lowest !border !border-outline-variant/30 !rounded-xl !shadow-sm !bottom-16 !right-4" />
+                )}
               </ReactFlow>
             )}
+
+            {/* Floating Quick Canvas Controls Bar (Phase J) */}
+            <div className="absolute bottom-4 right-4 z-10 bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-xl shadow-md flex items-center p-1 gap-0.5 text-on-surface-variant">
+              <button
+                onClick={() => rfInstance?.zoomIn({ duration: 250 })}
+                className="p-1.5 hover:bg-surface-container hover:text-primary rounded-lg transition-colors"
+                title="Zoom In"
+              >
+                <Icon name="add" className="text-[18px]" />
+              </button>
+              <button
+                onClick={() => rfInstance?.zoomOut({ duration: 250 })}
+                className="p-1.5 hover:bg-surface-container hover:text-primary rounded-lg transition-colors"
+                title="Zoom Out"
+              >
+                <Icon name="remove" className="text-[18px]" />
+              </button>
+              <div className="w-px h-3.5 bg-outline-variant/50 mx-0.5" />
+              <button
+                onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })}
+                className="p-1.5 hover:bg-surface-container hover:text-primary rounded-lg transition-colors"
+                title="Fit View to Screen"
+              >
+                <Icon name="crop_free" className="text-[18px]" />
+              </button>
+              <button
+                onClick={() => setShowMiniMap(!showMiniMap)}
+                className={`p-1.5 rounded-lg transition-colors ${showMiniMap ? 'text-primary bg-primary/10' : 'hover:bg-surface-container hover:text-primary'}`}
+                title={showMiniMap ? "Hide MiniMap" : "Show MiniMap"}
+              >
+                <Icon name="map" className="text-[18px]" />
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="p-1.5 hover:bg-surface-container hover:text-primary rounded-lg transition-colors"
+                title={isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
+              >
+                <Icon name={isFullscreen ? "fullscreen_exit" : "fullscreen"} className="text-[18px]" />
+              </button>
+            </div>
             
             {isLoadingGraph && (
               <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/50 backdrop-blur-sm z-50">
@@ -881,6 +1285,44 @@ function Workspace() {
             </div>
           </aside>
         )}
+      {/* Safe Regeneration / Delete Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-md p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4 text-error">
+              <Icon name="warning" className="text-[28px]" />
+              <h2 className="text-headline-sm font-bold text-on-surface">
+                {confirmAction.type === 'delete' ? 'Delete Branch?' : 'Regenerate Branch?'}
+              </h2>
+            </div>
+            
+            <p className="text-body-md text-on-surface-variant mb-6">
+              {confirmAction.type === 'delete' 
+                ? <>You are about to delete <strong>{confirmAction.nodeLabel}</strong> and all of its descendants. This action cannot be undone.</>
+                : <>You are about to regenerate the descendants of <strong>{confirmAction.nodeLabel}</strong>. All existing child nodes will be permanently replaced with new AI-generated content.</>
+              }
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                disabled={isConfirming}
+                className="px-4 py-2 rounded-full text-label-md font-medium hover:bg-surface-container transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeConfirmAction}
+                disabled={isConfirming}
+                className="px-4 py-2 rounded-full text-label-md font-medium bg-error text-on-error hover:bg-error/90 flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {isConfirming && <Icon name="sync" className="animate-spin text-[16px]" />}
+                {confirmAction.type === 'delete' ? 'Delete' : 'Regenerate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

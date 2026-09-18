@@ -1,0 +1,76 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - img "MindVault AI logo" [ref=e5]
+      - generic [ref=e6]:
+        - heading "Knowledge Hub" [level=2] [ref=e7]
+        - paragraph [ref=e8]: Premium AI Workspace
+    - navigation [ref=e9]:
+      - link "Projects" [ref=e10] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=e11]: folder_open
+      - link "Templates" [ref=e13] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=e14]: auto_awesome_motion
+      - link "History" [ref=e16] [cursor=pointer]:
+        - /url: /history
+        - generic [aria-hidden] [ref=e17]: history
+      - link "Settings" [ref=e19] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=e20]: settings
+    - generic [ref=e22]:
+      - button "New MindMap" [ref=e23]:
+        - generic [aria-hidden] [ref=e24]: add
+        - text: New MindMap
+      - link "Account" [ref=e25] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=e26]: person
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [aria-hidden] [ref=e31]: search
+        - textbox "Search mind maps" [ref=e32]:
+          - /placeholder: Search mind maps, nodes, or tags...
+      - generic [ref=e33]:
+        - button "Filters" [ref=e34]:
+          - generic [aria-hidden] [ref=e35]: filter_list
+          - text: Filters
+        - generic [ref=e36]:
+          - button "Grid view" [ref=e37]:
+            - generic [aria-hidden] [ref=e38]: grid_view
+          - button "List view" [ref=e39]:
+            - generic [aria-hidden] [ref=e40]: view_list
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - paragraph [ref=e44]: Welcome back, there.
+          - heading "Ready to map something new?" [level=1] [ref=e45]
+        - button "New Project" [ref=e46]:
+          - generic [aria-hidden] [ref=e47]: add
+          - text: New Project
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e51]:
+            - generic [ref=e52]: Total Maps
+            - generic [aria-hidden] [ref=e53]: account_tree
+          - generic [ref=e54]: "0"
+        - generic [ref=e55]:
+          - generic [ref=e57]:
+            - generic [ref=e58]: Nodes Generated
+            - generic [aria-hidden] [ref=e59]: auto_awesome
+          - generic [ref=e60]: 1.2k
+        - generic [ref=e61]:
+          - generic [ref=e63]:
+            - generic [ref=e64]: Hours Saved
+            - generic [aria-hidden] [ref=e65]: timer
+          - generic [ref=e66]: 1h
+      - generic [ref=e67]:
+        - heading "Recent Projects" [level=2] [ref=e69]
+        - generic [ref=e70]:
+          - generic [aria-hidden] [ref=e71]: account_tree
+          - generic [ref=e72]:
+            - heading "No projects found" [level=3] [ref=e73]
+            - paragraph [ref=e74]: Create your first mind map manually or let AI generate one for you.
+          - button "New Project" [ref=e75]:
+            - generic [aria-hidden] [ref=e76]: add
+            - text: New Project

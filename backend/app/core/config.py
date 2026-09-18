@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI MindMap API"
     PROJECT_VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    DEBUG: bool = False
+    DEBUG: str | bool = False
 
     # --------------------------------------------------
     # Database

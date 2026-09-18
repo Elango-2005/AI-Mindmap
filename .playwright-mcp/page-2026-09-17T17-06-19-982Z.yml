@@ -1,0 +1,60 @@
+- generic [ref=f1e110]:
+  - banner [ref=f1e111]:
+    - generic [ref=f1e112]:
+      - generic [ref=f1e113]:
+        - img "MindVault AI logo" [ref=f1e114]
+        - generic [ref=f1e115]: MindVault AI
+      - generic [ref=f1e117]:
+        - link "Dashboard" [ref=f1e118] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [aria-hidden] [ref=f1e119]: chevron_right
+        - generic "Click to rename" [ref=f1e120]:
+          - text: Untitled Project
+          - generic [aria-hidden] [ref=f1e121]: edit
+    - generic [ref=f1e122]:
+      - generic [ref=f1e123]:
+        - generic [aria-hidden] [ref=f1e124]: check_circle
+        - generic [ref=f1e125]: Saved
+      - button "Undo (Coming in Phase J)" [ref=f1e127]:
+        - generic [aria-hidden] [ref=f1e128]: undo
+      - button "Redo (Coming in Phase J)" [ref=f1e129]:
+        - generic [aria-hidden] [ref=f1e130]: redo
+      - button "Export" [ref=f1e132]:
+        - generic [aria-hidden] [ref=f1e133]: ios_share
+      - button "Share" [ref=f1e135]:
+        - generic [aria-hidden] [ref=f1e136]: group_add
+  - generic [ref=f1e138]:
+    - complementary [ref=f1e139]:
+      - generic [ref=f1e140]:
+        - heading "Knowledge Hub" [level=2] [ref=f1e141]
+        - paragraph [ref=f1e142]: Premium AI Workspace
+      - button "New MindMap" [ref=f1e143]:
+        - generic [aria-hidden] [ref=f1e144]: add
+        - text: New MindMap
+      - navigation [ref=f1e145]:
+        - link "Projects" [ref=f1e146] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f1e147]: folder_open
+        - link "Templates" [ref=f1e149] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f1e150]: auto_awesome_motion
+        - link "History" [ref=f1e152] [cursor=pointer]:
+          - /url: /history
+          - generic [aria-hidden] [ref=f1e153]: history
+        - link "Settings" [ref=f1e155] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f1e156]: settings
+      - link "Account" [ref=f1e159] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f1e160]: person
+    - main [ref=f1e162]:
+      - generic [ref=f1e163]:
+        - button "Layout" [ref=f1e164]:
+          - generic [aria-hidden] [ref=f1e165]: account_tree
+          - text: Layout
+        - button "Theme" [ref=f1e167]:
+          - generic [aria-hidden] [ref=f1e168]: palette
+          - text: Theme
+        - button "Regenerate" [ref=f1e170]:
+          - generic [aria-hidden] [ref=f1e171]: auto_awesome
+          - text: Regenerate

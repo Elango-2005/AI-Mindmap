@@ -1,0 +1,122 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - generic: MindVault AI
+        - generic:
+          - link:
+            - /url: /dashboard
+            - text: Dashboard
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - generic:
+          - generic [aria-hidden]: check_circle
+          - generic: Saved
+        - button:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button [expanded]:
+          - generic [aria-hidden]: ios_share
+          - generic: Export
+        - button:
+          - generic [aria-hidden]: group_add
+          - generic: Share
+    - generic:
+      - complementary:
+        - generic:
+          - heading [level=2]: Knowledge Hub
+          - paragraph: Premium AI Workspace
+        - button:
+          - generic [aria-hidden]: add
+          - text: New MindMap
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: folder_open
+            - generic: Projects
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: auto_awesome_motion
+            - generic: Templates
+          - link:
+            - /url: /history
+            - generic [aria-hidden]: history
+            - generic: History
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: settings
+            - generic: Settings
+        - generic:
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: person
+            - generic: Account
+      - generic:
+        - generic:
+          - generic:
+            - generic [aria-hidden]: list_alt
+            - heading [level=3]: Outline View
+          - button:
+            - generic [aria-hidden]: close
+        - generic:
+          - generic:
+            - generic [aria-hidden]: search
+            - textbox:
+              - /placeholder: Search outline...
+        - generic:
+          - generic:
+            - generic [aria-hidden]: account_tree
+            - paragraph: No nodes found in this map.
+        - generic:
+          - generic: 0 total nodes
+          - generic: 0 connections
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic: Layout
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic: Theme
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+            - generic: Outline
+          - button:
+            - generic [aria-hidden]: auto_awesome
+            - generic: Regenerate
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - menu "ios_share Export" [active] [ref=e289]:
+    - menuitem "Present Mind Map" [ref=e290] [cursor=pointer]:
+      - generic [aria-hidden] [ref=e291]: play_circle
+      - text: Present Mind Map
+    - separator [ref=e292]
+    - menuitem "Import MD/OPML" [ref=e293] [cursor=pointer]:
+      - generic [aria-hidden] [ref=e294]: upload
+      - text: Import MD/OPML
+    - separator [ref=e295]
+    - menuitem "Export PNG Image" [ref=e296]:
+      - generic [aria-hidden] [ref=e297]: image
+      - text: Export PNG Image
+    - menuitem "Export Markdown (.md)" [ref=e298]:
+      - generic [aria-hidden] [ref=e299]: article
+      - text: Export Markdown (.md)
+    - menuitem "Export OPML (.opml)" [ref=e300]:
+      - generic [aria-hidden] [ref=e301]: list
+      - text: Export OPML (.opml)

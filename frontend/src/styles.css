@@ -234,3 +234,25 @@
   }
 }
 
+
+@keyframes pulseEdge {
+  0% { stroke: var(--color-accent-violet); stroke-width: 3; filter: drop-shadow(0 0 4px var(--color-accent-violet)); }
+  50% { stroke: var(--color-primary); stroke-width: 4; filter: drop-shadow(0 0 8px var(--color-primary)); }
+  100% { stroke: var(--color-accent-violet); stroke-width: 3; filter: drop-shadow(0 0 4px var(--color-accent-violet)); }
+}
+
+.animate-pulse-edge {
+  animation: pulseEdge 2s infinite ease-in-out;
+  stroke-dasharray: 10 5;
+  animation: dash 1s linear infinite, pulseEdge 2s infinite ease-in-out;
+}
+
+@keyframes dash {
+  from {
+    stroke-dashoffset: 15;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+

@@ -6,7 +6,7 @@ from app.core.config import settings
 # Create SQLAlchemy engine
 engine = create_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
+    echo=(settings.DEBUG is True or settings.DEBUG == "True" or settings.DEBUG == "true"),
     future=True,
 )
 
