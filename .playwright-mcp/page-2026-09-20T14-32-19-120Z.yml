@@ -1,0 +1,127 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - generic: MindVault AI
+        - generic:
+          - link:
+            - /url: /dashboard
+            - text: Dashboard
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - generic:
+          - generic [aria-hidden]: check_circle
+          - generic: Saved
+        - button [disabled]:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+          - generic: Export
+        - button:
+          - generic [aria-hidden]: group_add
+          - generic: Share
+    - generic:
+      - complementary:
+        - generic:
+          - heading [level=2]: Knowledge Hub
+          - paragraph: Premium AI Workspace
+        - button:
+          - generic [aria-hidden]: add
+          - text: New MindMap
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: folder_open
+            - generic: Projects
+          - link:
+            - /url: /dashboard
+            - generic [aria-hidden]: auto_awesome_motion
+            - generic: Templates
+          - link:
+            - /url: /history
+            - generic [aria-hidden]: history
+            - generic: History
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: settings
+            - generic: Settings
+        - generic:
+          - link:
+            - /url: /settings
+            - generic [aria-hidden]: person
+            - generic: Account
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic: Layout
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic: Theme
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+            - generic: Outline
+          - button:
+            - generic [aria-hidden]: auto_awesome
+            - generic: Regenerate
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - dialog [ref=f2e87]:
+    - generic [ref=f2e88]:
+      - generic [ref=f2e89]:
+        - generic [aria-hidden] [ref=f2e90]: group_add
+        - heading "Share \"Untitled Project\"" [level=2] [ref=f2e91]
+      - paragraph [ref=f2e92]: Anyone with this link can collaborate and view this mind map in real-time.
+    - generic [ref=f2e93]:
+      - generic [ref=f2e94]:
+        - generic [ref=f2e95]:
+          - textbox [ref=f2e96]: http://localhost:8081/workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+          - generic [aria-hidden] [ref=f2e97]: link
+        - button "Copied!" [active] [ref=f2e131]:
+          - generic [aria-hidden] [ref=f2e99]: check
+      - generic [ref=f2e101]:
+        - generic [ref=f2e102]:
+          - generic [aria-hidden] [ref=f2e104]: edit
+          - generic [ref=f2e105]:
+            - paragraph [ref=f2e106]: General Access
+            - paragraph [ref=f2e107]: Anyone with the link can edit nodes in real-time
+        - combobox [ref=f2e108] [cursor=pointer]:
+          - option "Can Edit" [selected]
+          - option "Can View"
+      - generic [ref=f2e109]:
+        - heading "Active Collaborators (1)" [level=4] [ref=f2e110]
+        - generic [ref=f2e112]:
+          - generic [ref=f2e113]:
+            - generic [ref=f2e114]: You
+            - generic [ref=f2e115]: You(Owner)
+          - generic [ref=f2e116]: Active now
+      - generic [ref=f2e117]:
+        - generic [ref=f2e118]: "Quick Export:"
+        - generic [ref=f2e119]:
+          - button "PNG" [ref=f2e120]:
+            - generic [aria-hidden] [ref=f2e121]: image
+            - text: PNG
+          - button "Markdown" [ref=f2e122]:
+            - generic [aria-hidden] [ref=f2e123]: article
+            - text: Markdown
+          - button "OPML" [ref=f2e124]:
+            - generic [aria-hidden] [ref=f2e125]: list
+            - text: OPML
+    - button "Close" [ref=f2e126] [cursor=pointer]

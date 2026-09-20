@@ -1,0 +1,75 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - button:
+          - generic [aria-hidden]: menu
+        - generic:
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - button [disabled]:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+        - button:
+          - generic [aria-hidden]: group_add
+        - button:
+          - generic [aria-hidden]: psychology
+    - generic:
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+          - button:
+            - generic [aria-hidden]: auto_awesome
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - dialog [ref=f6e59]:
+    - button "Close" [active] [ref=f6e60] [cursor=pointer]
+    - complementary [ref=f6e65]:
+      - generic [ref=f6e66]:
+        - img "MindVault AI logo" [ref=f6e67]
+        - generic [ref=f6e68]:
+          - heading "Knowledge Hub" [level=2] [ref=f6e69]
+          - paragraph [ref=f6e70]: Premium AI Workspace
+      - navigation [ref=f6e71]:
+        - link "Projects" [ref=f6e72] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f6e73]: folder_open
+        - link "Templates" [ref=f6e75] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f6e76]: auto_awesome_motion
+        - link "History" [ref=f6e78] [cursor=pointer]:
+          - /url: /history
+          - generic [aria-hidden] [ref=f6e79]: history
+        - link "Settings" [ref=f6e81] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f6e82]: settings
+      - generic [ref=f6e84]:
+        - button "New MindMap" [ref=f6e85]:
+          - generic [aria-hidden] [ref=f6e86]: add
+          - text: New MindMap
+        - link "Account" [ref=f6e87] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f6e88]: person

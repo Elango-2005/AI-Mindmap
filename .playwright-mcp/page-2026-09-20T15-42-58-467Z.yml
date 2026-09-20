@@ -1,0 +1,66 @@
+- generic [ref=f4e34]:
+  - generic [ref=f4e35]:
+    - generic [ref=f4e36]:
+      - img "MindVault AI logo" [ref=f4e37]
+      - generic [ref=f4e38]: MindVault AI
+    - button "Open menu" [ref=f4e39]:
+      - generic [aria-hidden] [ref=f4e40]: menu
+  - main [ref=f4e41]:
+    - generic [ref=f4e42]:
+      - generic [ref=f4e43]:
+        - generic [aria-hidden] [ref=f4e44]: search
+        - textbox "Search mind maps" [ref=f4e45]:
+          - /placeholder: Search mind maps, nodes, or tags...
+      - generic [ref=f4e46]:
+        - button "Filters" [ref=f4e47]:
+          - generic [aria-hidden] [ref=f4e48]: filter_list
+          - text: Filters
+        - generic [ref=f4e49]:
+          - button "Grid view" [ref=f4e50]:
+            - generic [aria-hidden] [ref=f4e51]: grid_view
+          - button "List view" [ref=f4e52]:
+            - generic [aria-hidden] [ref=f4e53]: view_list
+    - generic [ref=f4e54]:
+      - generic [ref=f4e55]:
+        - generic [ref=f4e56]:
+          - paragraph [ref=f4e57]: Welcome back, Frontend.
+          - heading "Ready to map something new?" [level=1] [ref=f4e58]
+        - button "New Project" [ref=f4e59]:
+          - generic [aria-hidden] [ref=f4e60]: add
+          - text: New Project
+      - generic [ref=f4e61]:
+        - generic [ref=f4e62]:
+          - generic [ref=f4e64]:
+            - generic [ref=f4e65]: Total Maps
+            - generic [aria-hidden] [ref=f4e66]: account_tree
+          - generic [ref=f4e67]: "1"
+        - generic [ref=f4e68]:
+          - generic [ref=f4e70]:
+            - generic [ref=f4e71]: Nodes Generated
+            - generic [aria-hidden] [ref=f4e72]: auto_awesome
+          - generic [ref=f4e73]: "1"
+        - generic [ref=f4e74]:
+          - generic [ref=f4e76]:
+            - generic [ref=f4e77]: Hours Saved
+            - generic [aria-hidden] [ref=f4e78]: timer
+          - generic [ref=f4e79]: 1h
+      - generic [ref=f4e80]:
+        - heading "Recent Projects" [level=2] [ref=f4e82]
+        - link "Untitled Project mind map preview AI Gen Untitled Project 9/17/2026 1 Nodes" [ref=f4e84] [cursor=pointer]:
+          - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+          - generic [ref=f4e86]:
+            - img "Untitled Project mind map preview" [ref=f4e87]
+            - generic [ref=f4e88]:
+              - generic [aria-hidden] [ref=f4e89]: auto_awesome
+              - generic [ref=f4e90]: AI Gen
+            - button [ref=f4e92]:
+              - generic [aria-hidden] [ref=f4e93]: more_vert
+          - generic [ref=f4e94]:
+            - heading "Untitled Project" [level=3] [ref=f4e95]
+            - generic [ref=f4e96]:
+              - generic "Created on" [ref=f4e97]:
+                - generic [aria-hidden] [ref=f4e98]: calendar_today
+                - text: 9/17/2026
+              - generic "Nodes inside" [ref=f4e99]:
+                - generic [aria-hidden] [ref=f4e100]: account_tree
+                - text: 1 Nodes

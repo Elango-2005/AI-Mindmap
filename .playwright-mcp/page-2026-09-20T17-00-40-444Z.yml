@@ -1,0 +1,72 @@
+- generic [ref=f10e2]:
+  - banner [ref=f10e3]:
+    - generic [ref=f10e4]:
+      - generic [ref=f10e5]:
+        - img "MindVault AI logo" [ref=f10e6]
+        - generic [ref=f10e7]: MindVault AI
+      - generic [ref=f10e9]:
+        - link "Dashboard" [ref=f10e10] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [aria-hidden] [ref=f10e11]: chevron_right
+        - generic "Click to rename" [ref=f10e12]:
+          - text: Loading...
+          - generic [aria-hidden] [ref=f10e13]: edit
+    - generic [ref=f10e14]:
+      - generic [ref=f10e15]:
+        - generic [aria-hidden] [ref=f10e16]: check_circle
+        - generic [ref=f10e17]: Saved
+      - button "Undo (Ctrl+Z)" [disabled] [ref=f10e19]:
+        - generic [aria-hidden] [ref=f10e20]: undo
+      - button "Redo (Ctrl+Y)" [disabled] [ref=f10e21]:
+        - generic [aria-hidden] [ref=f10e22]: redo
+      - button "Export" [ref=f10e24]:
+        - generic [aria-hidden] [ref=f10e25]: ios_share
+      - button "Share" [ref=f10e27]:
+        - generic [aria-hidden] [ref=f10e28]: group_add
+  - generic [ref=f10e30]:
+    - complementary [ref=f10e31]:
+      - generic [ref=f10e32]:
+        - heading "Knowledge Hub" [level=2] [ref=f10e33]
+        - paragraph [ref=f10e34]: Premium AI Workspace
+      - button "New MindMap" [ref=f10e35]:
+        - generic [aria-hidden] [ref=f10e36]: add
+        - text: New MindMap
+      - navigation [ref=f10e37]:
+        - link "Projects" [ref=f10e38] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f10e39]: folder_open
+        - link "Templates" [ref=f10e41] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f10e42]: auto_awesome_motion
+        - link "History" [ref=f10e44] [cursor=pointer]:
+          - /url: /history
+          - generic [aria-hidden] [ref=f10e45]: history
+        - link "Settings" [ref=f10e47] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f10e48]: settings
+      - link "Account" [ref=f10e51] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f10e52]: person
+    - main [ref=f10e54]:
+      - generic [ref=f10e55]:
+        - button "Layout" [ref=f10e56]:
+          - generic [aria-hidden] [ref=f10e57]: account_tree
+          - generic [aria-hidden] [ref=f10e59]: arrow_drop_down
+        - button "Theme" [ref=f10e61]:
+          - generic [aria-hidden] [ref=f10e62]: palette
+          - generic [aria-hidden] [ref=f10e64]: arrow_drop_down
+        - button "Outline" [ref=f10e66]:
+          - generic [aria-hidden] [ref=f10e67]: list_alt
+        - button "Regenerate" [ref=f10e70]:
+          - generic [aria-hidden] [ref=f10e71]: auto_awesome
+      - generic [ref=f10e74]:
+        - button "Zoom In" [ref=f10e75]:
+          - generic [aria-hidden] [ref=f10e76]: add
+        - button "Zoom Out" [ref=f10e77]:
+          - generic [aria-hidden] [ref=f10e78]: remove
+        - button "Fit View to Screen" [ref=f10e80]:
+          - generic [aria-hidden] [ref=f10e81]: crop_free
+        - button "Hide MiniMap" [ref=f10e82]:
+          - generic [aria-hidden] [ref=f10e83]: map
+        - button "Toggle Fullscreen" [ref=f10e84]:
+          - generic [aria-hidden] [ref=f10e85]: fullscreen

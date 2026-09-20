@@ -1,0 +1,89 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - button:
+          - generic [aria-hidden]: menu
+        - generic:
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - button [disabled]:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+        - button:
+          - generic [aria-hidden]: group_add
+        - button:
+          - generic [aria-hidden]: psychology
+    - generic:
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+          - button:
+            - generic [aria-hidden]: auto_awesome
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - dialog [ref=f7e55]:
+    - generic [ref=f7e56]:
+      - generic [ref=f7e57]:
+        - generic [aria-hidden] [ref=f7e58]: group_add
+        - heading "Share \"Untitled Project\"" [level=2] [ref=f7e59]
+      - paragraph [ref=f7e60]: Anyone with this link can collaborate and view this mind map in real-time.
+    - generic [ref=f7e61]:
+      - generic [ref=f7e62]:
+        - generic [ref=f7e63]:
+          - textbox [ref=f7e64]: http://localhost:8081/workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+          - generic [aria-hidden] [ref=f7e65]: link
+        - button "Copied!" [active] [ref=f7e99]:
+          - generic [aria-hidden] [ref=f7e67]: check
+      - generic [ref=f7e69]:
+        - generic [ref=f7e70]:
+          - generic [aria-hidden] [ref=f7e72]: edit
+          - generic [ref=f7e73]:
+            - paragraph [ref=f7e74]: General Access
+            - paragraph [ref=f7e75]: Anyone with the link can edit nodes in real-time
+        - combobox [ref=f7e76] [cursor=pointer]:
+          - option "Can Edit" [selected]
+          - option "Can View"
+      - generic [ref=f7e77]:
+        - heading "Active Collaborators (1)" [level=4] [ref=f7e78]
+        - generic [ref=f7e80]:
+          - generic [ref=f7e81]:
+            - generic [ref=f7e82]: You
+            - generic [ref=f7e83]: You(Owner)
+          - generic [ref=f7e84]: Active now
+      - generic [ref=f7e85]:
+        - generic [ref=f7e86]: "Quick Export:"
+        - generic [ref=f7e87]:
+          - button "PNG" [ref=f7e88]:
+            - generic [aria-hidden] [ref=f7e89]: image
+            - text: PNG
+          - button "Markdown" [ref=f7e90]:
+            - generic [aria-hidden] [ref=f7e91]: article
+            - text: Markdown
+          - button "OPML" [ref=f7e92]:
+            - generic [aria-hidden] [ref=f7e93]: list
+            - text: OPML
+    - button "Close" [ref=f7e94] [cursor=pointer]

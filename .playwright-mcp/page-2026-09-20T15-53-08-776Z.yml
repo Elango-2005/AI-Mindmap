@@ -1,0 +1,37 @@
+- main [ref=f8e3]:
+  - generic [ref=f8e5]:
+    - generic [ref=f8e6]:
+      - button "Open Navigation" [ref=f8e7]:
+        - generic [aria-hidden] [ref=f8e8]: menu
+      - generic [ref=f8e9]:
+        - heading "History" [level=1] [ref=f8e10]
+        - paragraph [ref=f8e11]: All your mind maps, sorted by recent activity
+    - generic [ref=f8e12]:
+      - generic [aria-hidden] [ref=f8e13]: search
+      - textbox "Search maps or projects..." [ref=f8e14]
+  - generic [ref=f8e19]:
+    - generic [ref=f8e20]:
+      - heading "This Week" [level=2] [ref=f8e21]
+      - generic [ref=f8e23]:
+        - link [ref=f8e24] [cursor=pointer]:
+          - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+          - generic [aria-hidden] [ref=f8e26]: account_tree
+          - generic [ref=f8e27]:
+            - paragraph [ref=f8e28]: Untitled Project
+            - paragraph [ref=f8e29]:
+              - generic [aria-hidden] [ref=f8e30]: folder_open
+              - text: Untitled Project
+        - generic [ref=f8e31]:
+          - generic [ref=f8e32]:
+            - paragraph [ref=f8e33]: 3d ago
+            - paragraph [ref=f8e34]: Sep 17
+          - generic [ref=f8e35]:
+            - link "Present Slideshow" [ref=f8e36] [cursor=pointer]:
+              - /url: /present?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+              - generic [aria-hidden] [ref=f8e37]: play_circle
+            - button "Copy Share Link" [ref=f8e38]:
+              - generic [aria-hidden] [ref=f8e39]: link
+            - link "Open in Workspace" [ref=f8e40] [cursor=pointer]:
+              - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+              - generic [aria-hidden] [ref=f8e41]: chevron_right
+    - paragraph [ref=f8e42]: Showing 1 mind map

@@ -24,6 +24,32 @@
   --spacing-margin: 32px;
   --spacing-gutter: 24px;
 
+  /* Container & Max Width scale */
+  --container-xs: 20rem;
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --container-2xl: 42rem;
+  --container-3xl: 48rem;
+  --container-4xl: 56rem;
+  --container-5xl: 64rem;
+  --container-6xl: 72rem;
+  --container-7xl: 80rem;
+
+  /* Max Width tokens */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-3xl: 48rem;
+  --max-width-4xl: 56rem;
+  --max-width-5xl: 64rem;
+  --max-width-6xl: 72rem;
+  --max-width-7xl: 80rem;
+
   /* Radii */
   --radius-sm: 0.25rem;
   --radius-DEFAULT: 0.25rem;
@@ -255,4 +281,5 @@
     stroke-dashoffset: 0;
   }
 }
+
 

@@ -1,0 +1,49 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - button:
+          - generic [aria-hidden]: menu
+        - generic:
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - button [disabled]:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+        - button:
+          - generic [aria-hidden]: group_add
+        - button:
+          - generic [aria-hidden]: psychology
+    - generic:
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+          - button:
+            - generic [aria-hidden]: auto_awesome
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - dialog [ref=f5e55]:
+    - button "Close" [active] [ref=f5e56] [cursor=pointer]

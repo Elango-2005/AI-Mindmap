@@ -19,10 +19,12 @@ export function AppSidebar({
   active = "Projects",
   showBrand = true,
   ctaVariant = "primary",
+  className,
 }: {
   active?: string;
   showBrand?: boolean;
   ctaVariant?: "primary" | "muted";
+  className?: string;
 }) {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
@@ -42,7 +44,7 @@ export function AppSidebar({
   };
 
   return (
-    <aside className="hidden md:flex w-[280px] shrink-0 flex-col h-full bg-surface border-r border-outline-variant/20 p-md gap-sm">
+    <aside className={cn("w-[280px] shrink-0 flex flex-col h-full bg-surface border-r border-outline-variant/20 p-md gap-sm", className ?? "hidden md:flex")}>
       {showBrand ? (
         <div className="flex items-center gap-md px-md py-sm mb-lg">
           <img alt="MindVault AI logo" className="w-10 h-10 rounded-lg" src={LOGO_URL} />

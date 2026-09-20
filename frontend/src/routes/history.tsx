@@ -4,6 +4,8 @@ import { getProjects } from "@/api/projects";
 import { getProjectMindMaps, type MindMap } from "@/api/mindmaps";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon } from "@/components/Icon";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 interface HistoryEntry {
   mindMap: MindMap;
@@ -25,6 +27,7 @@ function HistoryComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   useEffect(() => {
     async function loadHistory() {
@@ -54,6 +57,14 @@ function HistoryComponent() {
     loadHistory();
   }, []);
 
+  const handleCopyLink = (e: React.MouseEvent, mindMapId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/workspace?mindMapId=${mindMapId}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Mind map link copied to clipboard!");
+  };
+
   const filtered = entries.filter(
     (e) =>
       e.mindMap.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -79,15 +90,37 @@ function HistoryComponent() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* Desktop Sidebar */}
       <AppSidebar active="History" ctaVariant="muted" showBrand />
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
+        <SheetContent side="left" className="p-0 w-[280px] bg-surface border-r border-outline-variant/30">
+          <AppSidebar active="History" ctaVariant="primary" showBrand className="flex w-full border-r-0" />
+        </SheetContent>
+      </Sheet>
+
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="px-xl py-lg border-b border-outline-variant/20 bg-surface shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-headline-lg text-on-surface font-bold">History</h1>
-              <p className="text-body-md text-on-surface-variant mt-0.5">All your mind maps, sorted by recent activity</p>
+        <header className="px-4 sm:px-xl py-4 sm:py-lg border-b border-outline-variant/20 bg-surface shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3">
+              {/* Mobile Hamburger Toggle */}
+              <button
+                onClick={() => setIsMobileNavOpen(true)}
+                className="md:hidden p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors shrink-0"
+                title="Open Navigation"
+              >
+                <Icon name="menu" className="text-[22px]" />
+              </button>
+              <div>
+                <h1 className="text-headline-md sm:text-headline-lg text-on-surface font-bold">History</h1>
+                <p className="text-body-sm sm:text-body-md text-on-surface-variant mt-0.5">
+                  All your mind maps, sorted by recent activity
+                </p>
+              </div>
             </div>
-            <div className="relative w-72">
+
+            <div className="relative w-full sm:w-72">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]" />
               <input
                 type="text"
@@ -100,7 +133,7 @@ function HistoryComponent() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-xl py-lg">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-xl py-4 sm:py-lg">
           {loading && (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-on-surface-variant">
               <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
@@ -125,7 +158,7 @@ function HistoryComponent() {
               {!search && (
                 <Link
                   to="/dashboard"
-                  className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5"
+                  className="bg-primary text-on-primary text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 transition-all hover:-translate-y-0.5"
                 >
                   <Icon name="add" />
                   New Project
@@ -134,7 +167,7 @@ function HistoryComponent() {
             </div>
           )}
           {!loading && !error && filtered.length > 0 && (
-            <div className="flex flex-col gap-xl max-w-3xl">
+            <div className="flex flex-col gap-xl max-w-4xl">
               {GROUP_ORDER.filter((g) => grouped[g]).map((groupLabel) => (
                 <section key={groupLabel}>
                   <h2 className="text-label-md font-semibold text-on-surface-variant uppercase tracking-wider mb-md">
@@ -142,32 +175,65 @@ function HistoryComponent() {
                   </h2>
                   <div className="flex flex-col gap-sm">
                     {grouped[groupLabel].map((entry) => (
-                      <Link
+                      <div
                         key={entry.mindMap.id}
-                        to="/workspace"
-                        search={{ mindMapId: entry.mindMap.id }}
-                        className="group flex items-center gap-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-lg py-md hover:shadow-level-1 hover:-translate-y-0.5 transition-all"
+                        className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 sm:px-lg py-3 sm:py-md hover:shadow-level-1 hover:border-primary/40 transition-all"
                       >
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Icon name="account_tree" className="text-primary text-[20px]" />
+                        <Link
+                          to="/workspace"
+                          search={{ mindMapId: entry.mindMap.id }}
+                          className="flex items-center gap-3 sm:gap-md flex-1 min-w-0"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors text-primary">
+                            <Icon name="account_tree" className="text-[20px]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-md font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
+                              {entry.mindMap.title}
+                            </p>
+                            <p className="text-label-sm text-on-surface-variant mt-0.5 flex items-center gap-1 truncate">
+                              <Icon name="folder_open" className="text-[14px] text-outline" />
+                              {entry.projectTitle}
+                            </p>
+                          </div>
+                        </Link>
+
+                        {/* Actions & Timestamps */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/10">
+                          <div className="text-left sm:text-right">
+                            <p className="text-label-sm text-on-surface-variant font-medium">{timeAgo(entry.mindMap.updated_at)}</p>
+                            <p className="text-label-xs text-outline mt-0.5">
+                              {new Date(entry.mindMap.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Link
+                              to="/present"
+                              search={{ mindMapId: entry.mindMap.id }}
+                              className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
+                              title="Present Slideshow"
+                            >
+                              <Icon name="play_circle" className="text-[18px]" />
+                            </Link>
+                            <button
+                              onClick={(e) => handleCopyLink(e, entry.mindMap.id)}
+                              className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
+                              title="Copy Share Link"
+                            >
+                              <Icon name="link" className="text-[18px]" />
+                            </button>
+                            <Link
+                              to="/workspace"
+                              search={{ mindMapId: entry.mindMap.id }}
+                              className="p-2 rounded-lg text-outline group-hover:text-primary hover:bg-surface-container transition-colors"
+                              title="Open in Workspace"
+                            >
+                              <Icon name="chevron_right" className="text-[18px]" />
+                            </Link>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-body-md font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
-                            {entry.mindMap.title}
-                          </p>
-                          <p className="text-label-sm text-on-surface-variant mt-0.5 flex items-center gap-1">
-                            <Icon name="folder_open" className="text-[14px]" />
-                            {entry.projectTitle}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-label-sm text-on-surface-variant">{timeAgo(entry.mindMap.updated_at)}</p>
-                          <p className="text-label-xs text-outline mt-0.5">
-                            {new Date(entry.mindMap.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </p>
-                        </div>
-                        <Icon name="chevron_right" className="text-outline group-hover:text-primary transition-colors shrink-0" />
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 </section>

@@ -1,0 +1,86 @@
+- generic [ref=f11e34]:
+  - complementary [ref=f11e35]:
+    - generic [ref=f11e36]:
+      - img "MindVault AI logo" [ref=f11e37]
+      - generic [ref=f11e38]:
+        - heading "Knowledge Hub" [level=2] [ref=f11e39]
+        - paragraph [ref=f11e40]: Premium AI Workspace
+    - navigation [ref=f11e41]:
+      - link "Projects" [ref=f11e42] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f11e43]: folder_open
+      - link "Templates" [ref=f11e45] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [aria-hidden] [ref=f11e46]: auto_awesome_motion
+      - link "History" [ref=f11e48] [cursor=pointer]:
+        - /url: /history
+        - generic [aria-hidden] [ref=f11e49]: history
+      - link "Settings" [ref=f11e51] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f11e52]: settings
+    - generic [ref=f11e54]:
+      - button "New MindMap" [ref=f11e55]:
+        - generic [aria-hidden] [ref=f11e56]: add
+        - text: New MindMap
+      - link "Account" [ref=f11e57] [cursor=pointer]:
+        - /url: /settings
+        - generic [aria-hidden] [ref=f11e58]: person
+  - main [ref=f11e60]:
+    - generic [ref=f11e61]:
+      - generic [ref=f11e62]:
+        - generic [aria-hidden] [ref=f11e63]: search
+        - textbox "Search mind maps" [ref=f11e64]:
+          - /placeholder: Search mind maps, nodes, or tags...
+      - generic [ref=f11e65]:
+        - button "Filters" [ref=f11e66]:
+          - generic [aria-hidden] [ref=f11e67]: filter_list
+          - text: Filters
+        - generic [ref=f11e68]:
+          - button "Grid view" [ref=f11e69]:
+            - generic [aria-hidden] [ref=f11e70]: grid_view
+          - button "List view" [ref=f11e71]:
+            - generic [aria-hidden] [ref=f11e72]: view_list
+    - generic [ref=f11e73]:
+      - generic [ref=f11e74]:
+        - generic [ref=f11e75]:
+          - paragraph [ref=f11e76]: Welcome back, Frontend.
+          - heading "Ready to map something new?" [level=1] [ref=f11e77]
+        - button "New Project" [ref=f11e78]:
+          - generic [aria-hidden] [ref=f11e79]: add
+          - text: New Project
+      - generic [ref=f11e80]:
+        - generic [ref=f11e81]:
+          - generic [ref=f11e83]:
+            - generic [ref=f11e84]: Total Maps
+            - generic [aria-hidden] [ref=f11e85]: account_tree
+          - generic [ref=f11e86]: "1"
+        - generic [ref=f11e87]:
+          - generic [ref=f11e89]:
+            - generic [ref=f11e90]: Nodes Generated
+            - generic [aria-hidden] [ref=f11e91]: auto_awesome
+          - generic [ref=f11e92]: "1"
+        - generic [ref=f11e93]:
+          - generic [ref=f11e95]:
+            - generic [ref=f11e96]: Hours Saved
+            - generic [aria-hidden] [ref=f11e97]: timer
+          - generic [ref=f11e98]: 1h
+      - generic [ref=f11e99]:
+        - heading "Recent Projects" [level=2] [ref=f11e101]
+        - link "Untitled Project mind map preview AI Gen Untitled Project 9/17/2026 1 Nodes" [ref=f11e103] [cursor=pointer]:
+          - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+          - generic [ref=f11e105]:
+            - img "Untitled Project mind map preview" [ref=f11e106]
+            - generic [ref=f11e107]:
+              - generic [aria-hidden] [ref=f11e108]: auto_awesome
+              - generic [ref=f11e109]: AI Gen
+            - button [ref=f11e111]:
+              - generic [aria-hidden] [ref=f11e112]: more_vert
+          - generic [ref=f11e113]:
+            - heading "Untitled Project" [level=3] [ref=f11e114]
+            - generic [ref=f11e115]:
+              - generic "Created on" [ref=f11e116]:
+                - generic [aria-hidden] [ref=f11e117]: calendar_today
+                - text: 9/17/2026
+              - generic "Nodes inside" [ref=f11e118]:
+                - generic [aria-hidden] [ref=f11e119]: account_tree
+                - text: 1 Nodes

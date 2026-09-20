@@ -54,6 +54,8 @@ import { EditableEdge } from "@/components/EditableEdge";
 import { THEME_PALETTES, type ThemeKey, applyColorsToGraph } from "@/lib/graphColoring";
 import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
 import { OutlinePanel } from "@/components/OutlinePanel";
+import { ShareModal } from "@/components/ShareModal";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { LOGO_URL } from "@/lib/assets";
 import { useMindMapSync } from "@/hooks/useMindMapSync";
@@ -250,6 +252,11 @@ function Workspace() {
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Phase K & L: Share Modal & Mobile Responsive Sheets
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isMobileAIOpen, setIsMobileAIOpen] = useState(false);
 
   // Undo / Redo History Stack
   const [history, setHistory] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] }[]>([]);
@@ -864,13 +871,134 @@ function Workspace() {
   const incomingEdges = selectedNodeId ? flowEdges.filter(e => e.target === selectedNodeId) : [];
   const outgoingEdges = selectedNodeId ? flowEdges.filter(e => e.source === selectedNodeId) : [];
 
+  const renderAIAssistantContent = (isMobile = false) => (
+    <div className="flex flex-col h-full bg-surface-container-lowest">
+      <div className="p-md border-b border-outline-variant/20 flex items-center justify-between bg-surface/50 backdrop-blur shrink-0">
+        <div className="flex items-center gap-2 text-primary">
+          <Icon name="psychology" className="text-[20px]" />
+          <h3 className="text-label-lg font-bold">AI Assistant</h3>
+        </div>
+        {isMobile ? (
+          <button
+            onClick={() => setIsMobileAIOpen(false)}
+            className="text-outline hover:text-on-surface transition-colors p-1 rounded-md hover:bg-surface-container"
+            title="Close AI Assistant"
+          >
+            <Icon name="close" className="text-[18px]" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] text-outline font-medium">Ready</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {chatMessages.length === 0 && (
+          <div className="flex flex-col items-center text-center p-6 gap-3 mt-8">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+              <Icon name="auto_awesome" className="text-primary text-[24px]" />
+            </div>
+            <h4 className="text-body-lg font-semibold text-on-surface">How can I help?</h4>
+            <p className="text-body-sm text-on-surface-variant">
+              Select a node to get contextual suggestions, or ask me to restructure your map.
+            </p>
+          </div>
+        )}
+        {chatMessages.map((msg, i) => (
+          <div
+            key={i}
+            className={`p-3 rounded-2xl text-body-sm ${
+              msg.role === "user"
+                ? "bg-primary text-on-primary self-end max-w-[85%] rounded-br-sm"
+                : "bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] rounded-bl-sm"
+            }`}
+          >
+            {msg.content}
+          </div>
+        ))}
+        {isChatting && (
+          <div className="p-3 rounded-2xl bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] flex items-center gap-2 text-label-sm rounded-bl-sm self-start">
+            <Icon name="sync" className="animate-spin text-[16px] text-primary" />
+            <span className="opacity-80">Modifying map...</span>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3 border-t border-outline-variant/20 bg-surface-container-lowest shrink-0">
+        <div className="bg-surface border border-outline-variant/50 rounded-2xl flex flex-col p-2 shadow-sm focus-within:border-primary transition-colors">
+          {selectedNode && (
+            <div className="flex items-center gap-2 px-2 pt-1 pb-2 mb-1 border-b border-outline-variant/10 text-label-xs text-primary">
+              <Icon name="adjust" className="text-[14px]" />
+              <span>
+                Targeting:{" "}
+                <strong className="font-bold truncate max-w-[150px] inline-block align-bottom">
+                  {selectedNode.data.label as string}
+                </strong>
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-1.5 px-2 pb-2 mt-1">
+            <button
+              onClick={() => handleSendChat("Highlight the most important nodes")}
+              className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1"
+            >
+              <Icon name="star" className="text-[12px] text-accent-amber" /> Prioritize
+            </button>
+            <button
+              onClick={() => handleSendChat("Find missing connections between branches")}
+              className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1"
+            >
+              <Icon name="conversion_path" className="text-[12px] text-primary" /> Connect
+            </button>
+          </div>
+
+          <textarea
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendChat();
+              }
+            }}
+            disabled={isChatting}
+            placeholder={selectedNode ? "Ask AI to modify this branch..." : "Ask AI to modify the map..."}
+            className="w-full bg-transparent resize-none text-body-md text-on-surface p-2 focus:outline-none min-h-[44px] disabled:opacity-50 placeholder:text-outline"
+            rows={1}
+          />
+          <div className="flex justify-end px-1 pb-1">
+            <button
+              onClick={() => handleSendChat()}
+              disabled={!chatInput.trim() || isChatting}
+              className="p-1.5 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary transition-colors"
+            >
+              <Icon name="arrow_upward" className="text-[18px]" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-background">
       {/* Editor Header */}
       <header className="h-14 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 flex items-center justify-between shrink-0 z-50">
         {/* Left: Branding & Breadcrumbs */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          {/* Mobile Navigation Drawer Toggle (Phase L) */}
+          <button
+            onClick={() => setIsMobileNavOpen(true)}
+            className="md:hidden p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors shrink-0"
+            title="Open Navigation Menu"
+          >
+            <Icon name="menu" className="text-[20px]" />
+          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
             <img src={LOGO_URL} alt="MindVault AI logo" className="w-6 h-6 rounded" />
             <span className="font-bold text-primary hidden md:inline">MindVault AI</span>
           </div>
@@ -894,7 +1022,7 @@ function Workspace() {
               </form>
             ) : (
               <span 
-                className="text-on-surface font-medium hover:bg-surface-container-low px-2 py-0.5 rounded cursor-text flex items-center gap-1 group truncate max-w-[200px] sm:max-w-[300px]"
+                className="text-on-surface font-medium hover:bg-surface-container-low px-2 py-0.5 rounded cursor-text flex items-center gap-1 group truncate max-w-[150px] sm:max-w-[300px]"
                 onClick={() => { setTitleEditValue(mindMapTitle); setIsRenamingTitle(true); }}
                 title="Click to rename"
               >
@@ -905,7 +1033,7 @@ function Workspace() {
         </div>
 
         {/* Right: Save Status & Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {/* Save Status */}
           <div className="hidden sm:flex text-label-sm text-on-surface-variant items-center gap-1 mr-2 transition-all">
             {isSaving || isLoadingGraph ? (
@@ -940,7 +1068,7 @@ function Workspace() {
           {/* Import / Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors text-label-sm font-medium">
+              <button className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors text-label-sm font-medium">
                 <Icon name="ios_share" className="text-[16px]" />
                 <span className="hidden sm:inline">Export</span>
               </button>
@@ -971,17 +1099,24 @@ function Workspace() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Share Button */}
+          {/* Share Button (Phase K) */}
           <button 
-            className="bg-primary/10 text-primary hover:bg-primary/20 px-4 py-1.5 rounded-lg text-label-sm font-semibold flex items-center gap-1.5 transition-colors"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              toast.success("Mind map link copied to clipboard!");
-            }}
-            title="Copy shareable mind map link"
+            className="bg-primary/10 text-primary hover:bg-primary/20 px-3 sm:px-4 py-1.5 rounded-lg text-label-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+            onClick={() => setIsShareModalOpen(true)}
+            title="Share Mind Map with Collaborators"
           >
             <Icon name="group_add" className="text-[18px]" />
             <span className="hidden sm:inline">Share</span>
+          </button>
+
+          {/* Mobile AI Assistant Toggle (Phase L) */}
+          <button
+            onClick={() => setIsMobileAIOpen(true)}
+            className="lg:hidden p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors flex items-center gap-1 text-label-xs font-semibold shrink-0"
+            title="Open AI Assistant"
+          >
+            <Icon name="psychology" className="text-[20px]" />
+            <span className="hidden sm:inline">AI</span>
           </button>
         </div>
       </header>
@@ -1014,15 +1149,15 @@ function Workspace() {
         {/* CENTER PANEL: Canvas */}
         <main className="flex-1 flex flex-col relative bg-surface-container-lowest dot-matrix">
           
-          {/* Top Integrated Toolbar */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/85 backdrop-blur-md border border-outline-variant/30 rounded-xl shadow-sm flex items-center p-1.5 gap-1">
+          {/* Top Integrated Toolbar (Responsive for Mobile/Tablet) */}
+          <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/85 backdrop-blur-md border border-outline-variant/30 rounded-xl shadow-sm flex items-center p-1 sm:p-1.5 gap-0.5 sm:gap-1 max-w-[95vw] overflow-x-auto">
             {/* Layout Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                <button className="px-2 sm:px-3 py-1.5 rounded-lg text-label-xs sm:text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <Icon name="account_tree" className="text-[16px] text-primary" />
-                  <span>Layout</span>
-                  <Icon name="arrow_drop_down" className="text-[16px] text-outline" />
+                  <span className="hidden sm:inline">Layout</span>
+                  <Icon name="arrow_drop_down" className="text-[14px] text-outline" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
@@ -1053,15 +1188,15 @@ function Workspace() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5 shrink-0" />
 
             {/* Theme Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                <button className="px-2 sm:px-3 py-1.5 rounded-lg text-label-xs sm:text-label-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <Icon name="palette" className="text-[16px] text-accent-violet" />
-                  <span>Theme</span>
-                  <Icon name="arrow_drop_down" className="text-[16px] text-outline" />
+                  <span className="hidden sm:inline">Theme</span>
+                  <Icon name="arrow_drop_down" className="text-[14px] text-outline" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-60">
@@ -1079,28 +1214,28 @@ function Workspace() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5 shrink-0" />
 
             {/* Outline View Toggle */}
             <button 
-              className={`px-3 py-1.5 rounded-lg text-label-sm font-medium transition-colors flex items-center gap-1.5 ${isOutlineOpen ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-label-xs sm:text-label-sm font-medium transition-colors flex items-center gap-1 sm:gap-1.5 shrink-0 ${isOutlineOpen ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
               onClick={() => setIsOutlineOpen(!isOutlineOpen)}
               title="Toggle Outline Tree View"
             >
               <Icon name="list_alt" className="text-[16px]" />
-              <span>Outline</span>
+              <span className="hidden sm:inline">Outline</span>
             </button>
 
-            <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+            <div className="w-px h-4 bg-outline-variant/50 mx-0.5 shrink-0" />
 
             {/* Regenerate Map Button */}
             <button 
-              className="px-3 py-1.5 rounded-lg text-label-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+              className="px-2 sm:px-3 py-1.5 rounded-lg text-label-xs sm:text-label-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-1 sm:gap-1.5 shrink-0"
               onClick={handleRegenerateClick}
               title="Safe Regenerate Map or Branch"
             >
               <Icon name="auto_awesome" className="text-[16px]" />
-              <span>Regenerate</span>
+              <span className="hidden sm:inline">Regenerate</span>
             </button>
           </div>
 
@@ -1204,91 +1339,45 @@ function Workspace() {
           </div>
         </main>
 
-        {/* RIGHT PANEL: AI Assistant */}
+        {/* RIGHT PANEL: AI Assistant (Desktop) */}
         {flowNodes.length > 0 && (
           <aside className="hidden lg:flex w-[320px] bg-surface-container-lowest border-l border-outline-variant/30 shadow-sm flex-col z-20 h-full relative">
-            <div className="p-md border-b border-outline-variant/20 flex items-center justify-between bg-surface/50 backdrop-blur shrink-0">
-              <div className="flex items-center gap-2 text-primary">
-                <Icon name="psychology" className="text-[20px]" />
-                <h3 className="text-label-lg font-bold">AI Assistant</h3>
-              </div>
-              <button className="text-outline hover:text-on-surface transition-colors p-1 rounded-md hover:bg-surface-container">
-                <Icon name="close_fullscreen" className="text-[18px]" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-              {chatMessages.length === 0 && (
-                <div className="flex flex-col items-center text-center p-6 gap-3 mt-10">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Icon name="auto_awesome" className="text-primary text-[24px]" />
-                  </div>
-                  <h4 className="text-body-lg font-semibold text-on-surface">How can I help?</h4>
-                  <p className="text-body-sm text-on-surface-variant">Select a node to get contextual suggestions, or ask me to restructure your map.</p>
-                </div>
-              )}
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`p-3 rounded-2xl text-body-sm ${msg.role === 'user' ? 'bg-primary text-on-primary self-end max-w-[85%] rounded-br-sm' : 'bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] rounded-bl-sm'}`}>
-                   {msg.content}
-                </div>
-              ))}
-              {isChatting && (
-                <div className="p-3 rounded-2xl bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] flex items-center gap-2 text-label-sm rounded-bl-sm self-start">
-                   <Icon name="sync" className="animate-spin text-[16px] text-primary" />
-                   <span className="opacity-80">Modifying map...</span>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-3 border-t border-outline-variant/20 bg-surface-container-lowest shrink-0">
-              <div className="bg-surface border border-outline-variant/50 rounded-2xl flex flex-col p-2 shadow-sm focus-within:border-primary transition-colors">
-                {selectedNode && (
-                  <div className="flex items-center gap-2 px-2 pt-1 pb-2 mb-1 border-b border-outline-variant/10 text-label-xs text-primary">
-                    <Icon name="adjust" className="text-[14px]" />
-                    <span>Targeting: <strong className="font-bold truncate max-w-[150px] inline-block align-bottom">{selectedNode.data.label as string}</strong></span>
-                  </div>
-                )}
-                
-                <div className="flex flex-wrap gap-1.5 px-2 pb-2 mt-1">
-                  <button onClick={() => handleSendChat("Highlight the most important nodes")} className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1">
-                    <Icon name="star" className="text-[12px] text-accent-amber" /> Prioritize
-                  </button>
-                  <button onClick={() => handleSendChat("Find missing connections between branches")} className="text-[11px] font-medium bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-full transition-colors flex items-center gap-1">
-                    <Icon name="conversion_path" className="text-[12px] text-primary" /> Connect
-                  </button>
-                </div>
-                
-                <textarea 
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                     if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendChat();
-                     }
-                  }}
-                  disabled={isChatting}
-                  placeholder={selectedNode ? "Ask AI to modify this branch..." : "Ask AI to modify the map..."}
-                  className="w-full bg-transparent resize-none text-body-md text-on-surface p-2 focus:outline-none min-h-[44px] disabled:opacity-50 placeholder:text-outline"
-                  rows={1}
-                />
-                <div className="flex justify-end px-1 pb-1">
-                  <button 
-                    onClick={() => handleSendChat()}
-                    disabled={!chatInput.trim() || isChatting}
-                    className="p-1.5 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary transition-colors"
-                  >
-                    <Icon name="arrow_upward" className="text-[18px]" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            {renderAIAssistantContent(false)}
           </aside>
         )}
+
+        {/* Mobile AI Assistant Sheet (Phase L) */}
+        <Sheet open={isMobileAIOpen} onOpenChange={setIsMobileAIOpen}>
+          <SheetContent side="right" className="p-0 w-[320px] sm:w-[380px] bg-surface-container-lowest border-l border-outline-variant/30">
+            {renderAIAssistantContent(true)}
+          </SheetContent>
+        </Sheet>
+
+        {/* Mobile Navigation Sheet (Phase L) */}
+        <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
+          <SheetContent side="left" className="p-0 w-[280px] bg-surface border-r border-outline-variant/30">
+            <AppSidebar showBrand ctaVariant="primary" className="flex w-full border-r-0" />
+          </SheetContent>
+        </Sheet>
+
+        {/* Share Modal (Phase K) */}
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          mindMapTitle={mindMapTitle}
+          remoteUsers={remoteUsers}
+          onExport={(format) => {
+            if (format === "png") {
+              handleExportImage();
+            } else {
+              handleExport(format);
+            }
+          }}
+        />
       {/* Safe Regeneration / Delete Confirmation Modal */}
       {confirmAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-md p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-[28rem] p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4 text-error">
               <Icon name="warning" className="text-[28px]" />
               <h2 className="text-headline-sm font-bold text-on-surface">

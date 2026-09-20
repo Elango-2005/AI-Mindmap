@@ -1,0 +1,71 @@
+- generic:
+  - generic [aria-hidden]:
+    - banner:
+      - generic:
+        - button:
+          - generic [aria-hidden]: menu
+        - generic:
+          - generic [aria-hidden]: chevron_right
+          - generic:
+            - text: Untitled Project
+            - generic [aria-hidden]: edit
+      - generic:
+        - button [disabled]:
+          - generic [aria-hidden]: undo
+        - button [disabled]:
+          - generic [aria-hidden]: redo
+        - button:
+          - generic [aria-hidden]: ios_share
+        - button:
+          - generic [aria-hidden]: group_add
+        - button:
+          - generic [aria-hidden]: psychology
+    - generic:
+      - main:
+        - generic:
+          - button:
+            - generic [aria-hidden]: account_tree
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: palette
+            - generic [aria-hidden]: arrow_drop_down
+          - button:
+            - generic [aria-hidden]: list_alt
+          - button:
+            - generic [aria-hidden]: auto_awesome
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: add
+            - button:
+              - generic [aria-hidden]: remove
+            - button:
+              - generic [aria-hidden]: crop_free
+            - button:
+              - generic [aria-hidden]: map
+            - button:
+              - generic [aria-hidden]: fullscreen
+  - dialog [ref=f6e91]:
+    - button "Close" [active] [ref=f6e92] [cursor=pointer]
+    - generic [ref=f6e97]:
+      - generic [ref=f6e98]:
+        - generic [ref=f6e99]:
+          - generic [aria-hidden] [ref=f6e100]: psychology
+          - heading "AI Assistant" [level=3] [ref=f6e101]
+        - button "Close AI Assistant" [ref=f6e102]:
+          - generic [aria-hidden] [ref=f6e103]: close
+      - generic [ref=f6e105]:
+        - generic [aria-hidden] [ref=f6e107]: auto_awesome
+        - heading "How can I help?" [level=4] [ref=f6e108]
+        - paragraph [ref=f6e109]: Select a node to get contextual suggestions, or ask me to restructure your map.
+      - generic [ref=f6e111]:
+        - generic [ref=f6e112]:
+          - button "Prioritize" [ref=f6e113]:
+            - generic [aria-hidden] [ref=f6e114]: star
+            - text: Prioritize
+          - button "Connect" [ref=f6e115]:
+            - generic [aria-hidden] [ref=f6e116]: conversion_path
+            - text: Connect
+        - textbox "Ask AI to modify the map..." [ref=f6e117]
+        - button [disabled] [ref=f6e119]:
+          - generic [aria-hidden] [ref=f6e120]: arrow_upward

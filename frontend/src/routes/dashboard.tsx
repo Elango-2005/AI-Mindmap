@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const TITLE = "Dashboard - MindVault AI";
 const DESCRIPTION = "Your recent mind maps, AI generation stats, and workspace shortcuts.";
@@ -41,6 +42,7 @@ function Dashboard() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   useEffect(() => {
     // Check auth
@@ -151,11 +153,19 @@ function Dashboard() {
         </div>
         <button
           aria-label="Open menu"
+          onClick={() => setIsMobileNavOpen(true)}
           className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high/50 transition-all"
         >
           <Icon name="menu" />
         </button>
       </div>
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
+        <SheetContent side="left" className="p-0 w-[280px] bg-surface border-r border-outline-variant/30">
+          <AppSidebar active="Projects" ctaVariant="primary" showBrand className="flex w-full border-r-0" />
+        </SheetContent>
+      </Sheet>
 
       <AppSidebar active="Projects" />
 

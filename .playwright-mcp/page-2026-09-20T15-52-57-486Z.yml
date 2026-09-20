@@ -1,0 +1,72 @@
+- generic:
+  - generic [aria-hidden]:
+    - main:
+      - generic:
+        - generic:
+          - generic:
+            - button:
+              - generic [aria-hidden]: menu
+            - generic:
+              - heading [level=1]: History
+              - paragraph: All your mind maps, sorted by recent activity
+          - generic:
+            - generic [aria-hidden]: search
+            - textbox:
+              - /placeholder: Search maps or projects...
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=2]: This Week
+            - generic:
+              - generic:
+                - link:
+                  - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+                  - generic:
+                    - generic [aria-hidden]: account_tree
+                  - generic:
+                    - paragraph: Untitled Project
+                    - paragraph:
+                      - generic [aria-hidden]: folder_open
+                      - text: Untitled Project
+                - generic:
+                  - generic:
+                    - paragraph: 3d ago
+                    - paragraph: Sep 17
+                  - generic:
+                    - link:
+                      - /url: /present?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+                      - generic [aria-hidden]: play_circle
+                    - button:
+                      - generic [aria-hidden]: link
+                    - link:
+                      - /url: /workspace?mindMapId=1d26974a-f071-471a-9ac7-fd56bcffeb75
+                      - generic [aria-hidden]: chevron_right
+          - paragraph: Showing 1 mind map
+  - dialog [ref=f8e44]:
+    - button "Close" [active] [ref=f8e45] [cursor=pointer]
+    - complementary [ref=f8e50]:
+      - generic [ref=f8e51]:
+        - img "MindVault AI logo" [ref=f8e52]
+        - generic [ref=f8e53]:
+          - heading "Knowledge Hub" [level=2] [ref=f8e54]
+          - paragraph [ref=f8e55]: Premium AI Workspace
+      - navigation [ref=f8e56]:
+        - link "Projects" [ref=f8e57] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f8e58]: folder_open
+        - link "Templates" [ref=f8e60] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [aria-hidden] [ref=f8e61]: auto_awesome_motion
+        - link "History" [ref=f8e63] [cursor=pointer]:
+          - /url: /history
+          - generic [aria-hidden] [ref=f8e64]: history
+        - link "Settings" [ref=f8e66] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f8e67]: settings
+      - generic [ref=f8e69]:
+        - button "New MindMap" [ref=f8e70]:
+          - generic [aria-hidden] [ref=f8e71]: add
+          - text: New MindMap
+        - link "Account" [ref=f8e72] [cursor=pointer]:
+          - /url: /settings
+          - generic [aria-hidden] [ref=f8e73]: person
