@@ -43,3 +43,13 @@ Thumbs.db
 coverage/
 frontend/.output/
 frontend/.wrangler/
+
+# ==========================
+# Testing & Artifacts
+# ==========================
+.playwright-mcp/
+
+# ==========================
+# Uploads
+# ==========================
+backend/static/avatars/

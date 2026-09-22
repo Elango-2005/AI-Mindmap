@@ -14,7 +14,7 @@ interface ShareModalProps {
   onClose: () => void;
   mindMapTitle: string;
   remoteUsers?: Record<string, { userId: string; userName: string; color: string }>;
-  onExport?: (format: "markdown" | "opml" | "png") => void;
+  onExport?: (format: "markdown" | "opml" | "png" | "pdf") => void;
 }
 
 export function ShareModal({
@@ -163,6 +163,12 @@ export function ShareModal({
                   className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
                 >
                   <Icon name="image" className="text-[14px]" /> PNG
+                </button>
+                <button
+                  onClick={() => onExport("pdf")}
+                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
+                >
+                  <Icon name="picture_as_pdf" className="text-[14px] text-error" /> PDF
                 </button>
                 <button
                   onClick={() => onExport("markdown")}

@@ -55,6 +55,7 @@ import { THEME_PALETTES, type ThemeKey, applyColorsToGraph } from "@/lib/graphCo
 import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
 import { OutlinePanel } from "@/components/OutlinePanel";
 import { ShareModal } from "@/components/ShareModal";
+import { exportMindMapToPdf } from "@/lib/exportPdf";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { LOGO_URL } from "@/lib/assets";
@@ -851,6 +852,13 @@ function Workspace() {
     });
   };
 
+  const handleExportPDF = () => {
+    exportMindMapToPdf({
+      nodes: flowNodes,
+      title: mindMapTitle,
+    });
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!mindMapId || !e.target.files?.length) return;
     const file = e.target.files[0];
@@ -1087,6 +1095,9 @@ function Workspace() {
                 </label>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <Icon name="picture_as_pdf" className="mr-2 text-[18px] text-error" /> Export PDF Document (.pdf)
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportImage}>
                 <Icon name="image" className="mr-2 text-[18px]" /> Export PNG Image
               </DropdownMenuItem>
@@ -1369,6 +1380,8 @@ function Workspace() {
           onExport={(format) => {
             if (format === "png") {
               handleExportImage();
+            } else if (format === "pdf") {
+              handleExportPDF();
             } else {
               handleExport(format);
             }
