@@ -40,7 +40,6 @@ export function ShareModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md bg-surface border border-outline-variant/30 text-on-surface shadow-level-3">
       <DialogContent className="w-[calc(100%-2rem)] max-w-[30rem] bg-surface border border-outline-variant/30 text-on-surface shadow-level-3 p-5 sm:p-6 rounded-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2 text-primary mb-1">
@@ -54,18 +53,14 @@ export function ShareModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
         <div className="w-full min-w-0 space-y-4 py-2">
           {/* Shareable Link Input with Copy Button */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
           <div className="w-full min-w-0 flex items-center gap-2">
             <div className="relative flex-1 min-w-0">
               <input
                 type="text"
                 readOnly
                 value={shareUrl}
-                className="w-full pl-3 pr-8 py-2 bg-surface-container-low border border-outline-variant/50 rounded-xl text-body-sm text-on-surface font-mono select-all focus:outline-none"
                 className="w-full min-w-0 pl-3 pr-8 py-2 bg-surface-container-low border border-outline-variant/50 rounded-xl text-body-sm text-on-surface font-mono select-all focus:outline-none"
               />
               <Icon
@@ -75,7 +70,6 @@ export function ShareModal({
             </div>
             <button
               onClick={handleCopy}
-              className={`px-4 py-2 rounded-xl text-label-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
               className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-label-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
                 copied
                   ? "bg-primary text-on-primary"
@@ -88,9 +82,6 @@ export function ShareModal({
           </div>
 
           {/* Access Permissions Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/20">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/20 gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -99,10 +90,8 @@ export function ShareModal({
                   className="text-[18px]"
                 />
               </div>
-              <div>
               <div className="min-w-0">
                 <p className="text-label-sm font-semibold text-on-surface">General Access</p>
-                <p className="text-label-xs text-on-surface-variant">
                 <p className="text-label-xs text-on-surface-variant truncate">
                   {accessLevel === "edit"
                     ? "Anyone with the link can edit nodes in real-time"
@@ -113,7 +102,6 @@ export function ShareModal({
             <select
               value={accessLevel}
               onChange={(e) => setAccessLevel(e.target.value as "edit" | "view")}
-              className="bg-surface-container border border-outline-variant/40 text-on-surface rounded-lg text-label-xs px-2.5 py-1.5 focus:outline-none cursor-pointer"
               className="bg-surface-container border border-outline-variant/40 text-on-surface rounded-lg text-label-xs px-2.5 py-1.5 focus:outline-none cursor-pointer shrink-0 self-start sm:self-auto"
             >
               <option value="edit">Can Edit</option>
@@ -167,10 +155,8 @@ export function ShareModal({
 
           {/* Quick Export Shortcuts */}
           {onExport && (
-            <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-between">
             <div className="pt-2 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-2">
               <span className="text-label-xs text-outline font-medium">Quick Export:</span>
-              <div className="flex items-center gap-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   onClick={() => onExport("png")}
@@ -198,4 +184,3 @@ export function ShareModal({
     </Dialog>
   );
 }
-
