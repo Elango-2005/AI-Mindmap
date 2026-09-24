@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import PlainTextResponse, Response, HTMLResponse
+from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user
@@ -55,9 +55,6 @@ def export_mind_map(
         elif format.lower() == "opml":
             content = export_service.generate_opml(current_user, mind_map_id)
             return Response(content, media_type="text/x-opml")
-        elif format.lower() == "html":
-            content = export_service.generate_html(current_user, mind_map_id)
-            return HTMLResponse(content)
         else:
             raise HTTPException(status_code=400, detail="Unsupported format")
     except ValueError as e:

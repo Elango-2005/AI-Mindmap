@@ -56,7 +56,6 @@ import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
 import { OutlinePanel } from "@/components/OutlinePanel";
 import { ShareModal } from "@/components/ShareModal";
 import { exportMindMapToPdf } from "@/lib/exportPdf";
-import { exportMindMapToHtml } from "@/lib/exportHtml";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { LOGO_URL } from "@/lib/assets";
@@ -860,14 +859,6 @@ function Workspace() {
     });
   };
 
-  const handleExportHTML = () => {
-    exportMindMapToHtml({
-      nodes: flowNodes,
-      edges: flowEdges,
-      title: mindMapTitle,
-    });
-  };
-
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!mindMapId || !e.target.files?.length) return;
     const file = e.target.files[0];
@@ -1104,9 +1095,6 @@ function Workspace() {
                 </label>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleExportHTML}>
-                <Icon name="language" className="mr-2 text-[18px] text-primary" /> Export Interactive Web Page (.html)
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPDF}>
                 <Icon name="picture_as_pdf" className="mr-2 text-[18px] text-error" /> Export PDF Document (.pdf)
               </DropdownMenuItem>
@@ -1394,8 +1382,6 @@ function Workspace() {
               handleExportImage();
             } else if (format === "pdf") {
               handleExportPDF();
-            } else if (format === "html") {
-              handleExportHTML();
             } else {
               handleExport(format);
             }
