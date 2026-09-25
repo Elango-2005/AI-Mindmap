@@ -795,25 +795,27 @@ function Workspace() {
     setSelectedNodeId(null);
   };
 
-  const handleExport = async (format: "markdown" | "opml") => {
+  const handleExport = async (format: "markdown" | "opml" | "xmind" | "freemind") => {
     if (!mindMapId) return;
     try {
       const blob = await exportMindMap(mindMapId, format);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${mindMapTitle.replace(/\s+/g, '_')}.${format === 'markdown' ? 'md' : 'opml'}`;
+      const extension = format === 'markdown' ? 'md' : (format === 'freemind' ? 'mm' : format);
+      a.download = `${mindMapTitle.replace(/\s+/g, '_')}.${extension}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
+      toast.success(`Exported ${extension.toUpperCase()} successfully!`);
     } catch (e) {
       console.error(e);
-      alert("Export failed");
+      toast.error("Export failed");
     }
   };
 
-    const handleExportImage = () => {
+  const handleExportImage = () => {
     const nodesBounds = getNodesBounds(flowNodes);
     
     // Add padding to the bounds
@@ -848,7 +850,7 @@ function Workspace() {
       a.click();
     }).catch((err) => {
       console.error(err);
-      alert("Failed to export image");
+      toast.error("Failed to export image");
     });
   };
 
@@ -862,16 +864,27 @@ function Workspace() {
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!mindMapId || !e.target.files?.length) return;
     const file = e.target.files[0];
-    const format = file.name.endsWith(".opml") ? "opml" : "markdown";
+    const fileName = file.name.toLowerCase();
+    let format: "markdown" | "opml" | "freemind" | "xmind" = "markdown";
+    if (fileName.endsWith(".xmind")) {
+      format = "xmind";
+    } else if (fileName.endsWith(".mm")) {
+      format = "freemind";
+    } else if (fileName.endsWith(".opml")) {
+      format = "opml";
+    }
+
     try {
       setIsLoadingGraph(true);
       await importMindMap(mindMapId, format, file);
       await loadGraph(); // Reload after import
-      alert("Import successful!");
+      toast.success(`Successfully imported ${file.name}!`);
     } catch (err) {
       console.error(err);
-      alert("Import failed");
+      toast.error("Import failed");
       setIsLoadingGraph(false);
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -1090,8 +1103,8 @@ function Workspace() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <label className="cursor-pointer flex items-center w-full">
-                  <Icon name="upload" className="mr-2 text-[18px]" /> Import MD/OPML
-                  <input type="file" className="hidden" accept=".md,.opml" onChange={handleImport} />
+                  <Icon name="upload" className="mr-2 text-[18px]" /> Import (MD, OPML, MM, XMind)
+                  <input type="file" className="hidden" accept=".md,.opml,.mm,.xmind" onChange={handleImport} />
                 </label>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -1100,6 +1113,12 @@ function Workspace() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportImage}>
                 <Icon name="image" className="mr-2 text-[18px]" /> Export PNG Image
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("xmind")}>
+                <Icon name="hub" className="mr-2 text-[18px] text-indigo-500" /> Export XMind (.xmind)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("freemind")}>
+                <Icon name="account_tree" className="mr-2 text-[18px] text-amber-500" /> Export FreeMind / Coggle (.mm)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("markdown")}>
                 <Icon name="article" className="mr-2 text-[18px]" /> Export Markdown (.md)

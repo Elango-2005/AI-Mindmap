@@ -1,13 +1,15 @@
 import api from "./client";
 
-export async function exportMindMap(mindMapId: string, format: "markdown" | "opml"): Promise<Blob> {
+export type IntegrationFormat = "markdown" | "opml" | "freemind" | "xmind";
+
+export async function exportMindMap(mindMapId: string, format: IntegrationFormat): Promise<Blob> {
   const response = await api.get(`/integrations/export/${mindMapId}?format=${format}`, {
     responseType: "blob",
   });
   return response.data;
 }
 
-export async function importMindMap(mindMapId: string, format: "markdown" | "opml", file: File): Promise<any> {
+export async function importMindMap(mindMapId: string, format: IntegrationFormat, file: File): Promise<any> {
   const formData = new FormData();
   formData.append("format", format);
   formData.append("file", file);

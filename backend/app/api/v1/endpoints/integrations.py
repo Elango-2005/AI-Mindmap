@@ -14,10 +14,9 @@ from app.services.import_service import ImportService
 from app.repositories.node_repository import NodeRepository
 from app.repositories.edge_repository import EdgeRepository
 from app.repositories.mind_map_repository import MindMapRepository
+from app.repositories.project_repository import ProjectRepository
 
 router = APIRouter()
-
-from app.repositories.project_repository import ProjectRepository
 
 def get_export_service(db: Session = Depends(get_db)):
     node_repo = NodeRepository(db)
@@ -49,12 +48,30 @@ def export_mind_map(
     export_service: ExportService = Depends(get_export_service)
 ):
     try:
-        if format.lower() == "markdown" or format.lower() == "md":
+        fmt = format.lower()
+        if fmt in ["markdown", "md"]:
             content = export_service.generate_markdown(current_user, mind_map_id)
             return PlainTextResponse(content, media_type="text/markdown")
-        elif format.lower() == "opml":
+        elif fmt == "opml":
             content = export_service.generate_opml(current_user, mind_map_id)
             return Response(content, media_type="text/x-opml")
+        elif fmt in ["freemind", "mm"]:
+            content = export_service.generate_freemind(current_user, mind_map_id)
+            return Response(
+                content,
+                media_type="application/x-freemind",
+                headers={"Content-Disposition": 'attachment; filename="mindmap.mm"'}
+            )
+        elif fmt == "xmind":
+            zip_bytes = export_service.generate_xmind(current_user, mind_map_id)
+            return Response(
+                zip_bytes,
+                media_type="application/vnd.xmind.workbook",
+                headers={"Content-Disposition": 'attachment; filename="mindmap.xmind"'}
+            )
+        elif fmt == "html":
+            content = export_service.generate_html(current_user, mind_map_id)
+            return HTMLResponse(content)
         else:
             raise HTTPException(status_code=400, detail="Unsupported format")
     except ValueError as e:
@@ -68,14 +85,18 @@ def import_mind_map(
     current_user: User = Depends(get_current_user),
     import_service: ImportService = Depends(get_import_service)
 ):
-    content = file.file.read()
-    content_str = content.decode("utf-8")
+    content_bytes = file.file.read()
+    fmt = format.lower()
     
     try:
-        if format.lower() == "markdown" or format.lower() == "md":
-            import_service.parse_markdown(content_str, current_user, mind_map_id)
-        elif format.lower() == "opml":
-            import_service.parse_opml(content_str, current_user, mind_map_id)
+        if fmt in ["markdown", "md"]:
+            import_service.parse_markdown(content_bytes.decode("utf-8", errors="replace"), current_user, mind_map_id)
+        elif fmt == "opml":
+            import_service.parse_opml(content_bytes.decode("utf-8", errors="replace"), current_user, mind_map_id)
+        elif fmt in ["freemind", "mm"]:
+            import_service.parse_freemind(content_bytes.decode("utf-8", errors="replace"), current_user, mind_map_id)
+        elif fmt == "xmind":
+            import_service.parse_xmind(content_bytes, current_user, mind_map_id)
         else:
             raise HTTPException(status_code=400, detail="Unsupported format")
             
