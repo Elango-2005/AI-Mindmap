@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     edges,
     integrations,
     websockets,
+    templates,
 )
 
 api_router = APIRouter()
@@ -21,3 +22,4 @@ api_router.include_router(nodes.router)
 api_router.include_router(edges.router)
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(websockets.router, prefix="/ws", tags=["websockets"])
+api_router.include_router(templates.router, prefix="/templates", tags=["templates"])

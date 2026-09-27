@@ -6,6 +6,7 @@ import { LOGO_URL, PROJECT_THUMBS } from "@/lib/assets";
 import { getProjects, createProject, deleteProject, updateProject, type Project } from "@/api/projects";
 import { createMindMap } from "@/api/mindmaps";
 import { getCurrentUser } from "@/api/auth";
+import { TemplatesModal } from "@/components/TemplatesModal";
 
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ function Dashboard() {
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
   useEffect(() => {
     // Check auth
@@ -220,14 +222,23 @@ function Dashboard() {
                 Ready to map something new?
               </h1>
             </div>
-            <button
-              onClick={() => handleCreateProject()}
-              disabled={isCreating}
-              className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            >
-              <Icon name="add" />
-              {isCreating ? "Creating..." : "New Project"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsTemplatesOpen(true)}
+                className="bg-surface-container-high text-on-surface hover:bg-surface-container-highest text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 transition-all hover:-translate-y-0.5 border border-outline-variant/30"
+              >
+                <Icon name="auto_awesome_motion" />
+                Explore Templates
+              </button>
+              <button
+                onClick={() => handleCreateProject()}
+                disabled={isCreating}
+                className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 disabled:opacity-50"
+              >
+                <Icon name="add" />
+                {isCreating ? "Creating..." : "New Project"}
+              </button>
+            </div>
           </header>
 
           <section className="grid grid-cols-1 md:grid-cols-3 gap-lg">
@@ -253,6 +264,40 @@ function Dashboard() {
                 </div>
               </div>
             ))}
+          </section>
+
+          <section className="flex flex-col gap-md">
+            <h2 className="text-headline-md text-on-surface">Start with a Smart Template</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x">
+              {[
+                { id: "sys-arch-001", title: "Cloud Architecture", icon: "cloud", bg: "bg-blue-100", text: "text-blue-700" },
+                { id: "prod-roadmap-001", title: "Product Strategy", icon: "map", bg: "bg-purple-100", text: "text-purple-700" },
+                { id: "ml-ai-001", title: "Machine Learning & AI", icon: "psychology", bg: "bg-indigo-100", text: "text-indigo-700" },
+                { id: "fullstack-001", title: "Modern Full-Stack", icon: "code", bg: "bg-green-100", text: "text-green-700" },
+                { id: "gtm-launch-001", title: "GTM Launch", icon: "rocket_launch", bg: "bg-orange-100", text: "text-orange-700" },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setIsTemplatesOpen(true)}
+                  className="snap-start shrink-0 w-[240px] p-5 rounded-2xl bg-surface border border-outline-variant/30 hover:border-primary/50 hover:shadow-level-1 transition-all text-left group"
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${t.bg} ${t.text}`}>
+                    <Icon name={t.icon} />
+                  </div>
+                  <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors">{t.title}</h3>
+                  <p className="text-body-sm text-on-surface-variant mt-1">Curated knowledge map</p>
+                </button>
+              ))}
+              <button
+                onClick={() => setIsTemplatesOpen(true)}
+                className="snap-start shrink-0 w-[240px] p-5 rounded-2xl bg-surface-container-low border border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface transition-all flex flex-col items-center justify-center text-center gap-2 group"
+              >
+                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                  <Icon name="arrow_forward" />
+                </div>
+                <span className="text-body-md font-semibold text-on-surface-variant group-hover:text-primary">View all templates</span>
+              </button>
+            </div>
           </section>
 
           <section className="flex flex-col gap-md pb-xl">
@@ -467,6 +512,7 @@ function Dashboard() {
           </section>
         </div>
       </main>
+      <TemplatesModal isOpen={isTemplatesOpen} onClose={() => setIsTemplatesOpen(false)} />
     </div>
   );
 }
