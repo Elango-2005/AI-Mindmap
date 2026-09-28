@@ -442,8 +442,8 @@ class TemplateService:
             MindMapCreate(title=template.title),
         )
 
-        node_service = NodeService(NodeRepository(db), MindMapRepository(db), ProjectRepository(db))
-        edge_service = EdgeService(EdgeRepository(db), NodeRepository(db), MindMapRepository(db), ProjectRepository(db))
+        node_service = NodeService(NodeRepository(db), MindMapRepository(db))
+        edge_service = EdgeService(EdgeRepository(db), MindMapRepository(db), NodeRepository(db))
         import_service = ImportService(node_service, edge_service, mind_map_service)
 
         import_service._create_tree(
