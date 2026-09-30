@@ -66,8 +66,8 @@ def instantiate_template(
             db,
         )
         return InstantiateTemplateResponse(
-            project_id=project.id,
-            mind_map_id=mind_map.id,
+            project_id=str(project.id),
+            mind_map_id=str(mind_map.id),
             title=mind_map.title,
             node_count=node_count,
             edge_count=edge_count,
@@ -78,6 +78,8 @@ def instantiate_template(
             detail=str(e),
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to instantiate template: {str(e)}",
