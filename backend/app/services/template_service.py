@@ -452,7 +452,7 @@ class TemplateService:
             mind_map.id,
         )
 
-        created_nodes = node_service.get_nodes_by_mind_map(mind_map.id, current_user)
-        created_edges = edge_service.get_edges_by_mind_map(mind_map.id, current_user)
+        created_nodes = node_service.get_mind_map_nodes(mind_map.id, current_user)
+        created_edges = edge_service.get_mind_map_edges(mind_map.id, current_user)
 
         return project, mind_map, len(created_nodes), len(created_edges)
