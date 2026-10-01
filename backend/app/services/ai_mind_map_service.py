@@ -157,66 +157,70 @@ class AIMindMapService:
         existing_positions: dict = None,
     ) -> dict:
         """
-        Replace the existing graph of a mind map with
-        a validated new graph in a single transaction.
-
-        If anything fails, the entire operation is rolled back.
+        Replace the existing graph of a mind map by upserting nodes
+        to preserve stable UUIDs.
         """
+        import uuid
 
-        nodes = mind_map_data["nodes"]
-        edges = mind_map_data["edges"]
+        nodes_data = mind_map_data["nodes"]
+        edges_data = mind_map_data["edges"]
 
         node_id_mapping: dict[str, UUID] = {}
         created_nodes: list[Node] = []
         created_edges: list[Edge] = []
 
         try:
-            # --------------------------------------------------
-            # Step 1: Delete existing graph
-            # --------------------------------------------------
+            # 1. Fetch existing nodes
+            existing_nodes = self.db.query(Node).filter(Node.mind_map_id == mind_map_id).all()
+            existing_node_dict = {str(n.id): n for n in existing_nodes}
+            
+            # Track which existing nodes are still present in AI response
+            kept_node_ids = set()
 
-            self._delete_existing_graph(
-                mind_map_id
-            )
-
-            # --------------------------------------------------
-            # Step 2: Create new nodes
-            # --------------------------------------------------
-
-            for node_data in nodes:
+            # 2. Upsert nodes
+            for node_data in nodes_data:
+                node_ai_id = node_data["id"]
+                
+                # Determine position
                 pos_x = 0.0
                 pos_y = 0.0
-                
-                if existing_positions and node_data["id"] in existing_positions:
-                    pos_x = existing_positions[node_data["id"]]["x"]
-                    pos_y = existing_positions[node_data["id"]]["y"]
-                
-                node = Node(
-                    mind_map_id=mind_map_id,
-                    label=node_data["label"],
-                    type="default",
-                    position_x=pos_x,
-                    position_y=pos_y,
-                )
+                if existing_positions and node_ai_id in existing_positions:
+                    pos_x = existing_positions[node_ai_id]["x"]
+                    pos_y = existing_positions[node_ai_id]["y"]
 
-                self.db.add(node)
-                self.db.flush()
+                if node_ai_id in existing_node_dict:
+                    # UPDATE existing node
+                    node = existing_node_dict[node_ai_id]
+                    node.label = node_data["label"]
+                    # Optionally update position if AI changes it, but usually AI just leaves it to frontend layout
+                    kept_node_ids.add(node_ai_id)
+                    node_id_mapping[node_ai_id] = node.id
+                    created_nodes.append(node)
+                else:
+                    # CREATE new node
+                    node = Node(
+                        mind_map_id=mind_map_id,
+                        label=node_data["label"],
+                        type="default",
+                        position_x=pos_x,
+                        position_y=pos_y,
+                    )
+                    self.db.add(node)
+                    self.db.flush()
+                    node_id_mapping[node_ai_id] = node.id
+                    created_nodes.append(node)
+            
+            # 3. Delete removed nodes
+            for n_id, n_obj in existing_node_dict.items():
+                if n_id not in kept_node_ids:
+                    self.db.delete(n_obj)
 
-                node_id_mapping[node_data["id"]] = node.id
-                created_nodes.append(node)
+            # 4. Recreate all edges
+            self.db.query(Edge).filter(Edge.mind_map_id == mind_map_id).delete(synchronize_session=False)
 
-            # --------------------------------------------------
-            # Step 3: Create new edges
-            # --------------------------------------------------
-
-            for edge_data in edges:
-                source_uuid = node_id_mapping[
-                    edge_data["source"]
-                ]
-
-                target_uuid = node_id_mapping[
-                    edge_data["target"]
-                ]
+            for edge_data in edges_data:
+                source_uuid = node_id_mapping[edge_data["source"]]
+                target_uuid = node_id_mapping[edge_data["target"]]
 
                 edge = Edge(
                     mind_map_id=mind_map_id,
@@ -226,15 +230,9 @@ class AIMindMapService:
                     type="default",
                     animated=False,
                 )
-
                 self.db.add(edge)
                 self.db.flush()
-
                 created_edges.append(edge)
-
-            # --------------------------------------------------
-            # Step 4: Commit replacement
-            # --------------------------------------------------
 
             self.db.commit()
 
@@ -244,10 +242,6 @@ class AIMindMapService:
             }
 
         except Exception:
-            # --------------------------------------------------
-            # Rollback deletion + insertion together
-            # --------------------------------------------------
-
             self.db.rollback()
             raise
 
