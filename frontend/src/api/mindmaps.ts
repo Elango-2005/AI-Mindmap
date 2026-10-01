@@ -122,3 +122,27 @@ export async function generateAIMindMap(
 
     return response.data;
 }
+
+
+export interface Snapshot {
+    id: string;
+    mind_map_id: string;
+    name: string;
+    graph_data: any;
+    created_at: string;
+}
+
+export async function getSnapshots(mindMapId: string): Promise<Snapshot[]> {
+    const response = await api.get<Snapshot[]>(`/mind-maps/${mindMapId}/snapshots`);
+    return response.data;
+}
+
+export async function createSnapshot(mindMapId: string, name: string): Promise<Snapshot> {
+    const response = await api.post<Snapshot>(`/mind-maps/${mindMapId}/snapshots`, { name });
+    return response.data;
+}
+
+export async function restoreSnapshot(mindMapId: string, snapshotId: string): Promise<{ status: string }> {
+    const response = await api.post<{ status: string }>(`/mind-maps/${mindMapId}/snapshots/${snapshotId}/restore`);
+    return response.data;
+}

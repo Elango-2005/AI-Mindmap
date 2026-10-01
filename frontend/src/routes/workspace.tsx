@@ -2,7 +2,6 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import {
   useEffect,
   useState,
-  useRef,
   type MouseEvent,
 } from "react";
 
@@ -12,9 +11,7 @@ import {
   Controls,
   MiniMap,
   applyNodeChanges,
-  applyEdgeChanges,
   type NodeChange,
-  type EdgeChange,
   type NodeDragHandler,
   type Node as FlowNode,
   type Edge as FlowEdge,
@@ -51,6 +48,7 @@ import {
 import { updateMindMap } from "@/api/mindmaps";
 
 import { AppSidebar } from "@/components/AppSidebar";
+import { HistoryDrawer } from "@/components/HistoryDrawer";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
 import { EditableEdge } from "@/components/EditableEdge";
@@ -261,6 +259,7 @@ function Workspace() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isMobileAIOpen, setIsMobileAIOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Undo / Redo History Stack
   const [history, setHistory] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] }[]>([]);
@@ -771,31 +770,6 @@ function Workspace() {
     broadcastNodesChange(changes);
   }
 
-  function handleEdgesChange(
-    changes: EdgeChange[],
-  ) {
-    setFlowEdges((currentEdges) =>
-      applyEdgeChanges(
-        changes,
-        currentEdges,
-      ),
-    );
-    broadcastEdgesChange(changes);
-  }
-
-  const lastMouseMove = useRef<number>(0);
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!rfInstance) return;
-    const now = Date.now();
-    if (now - lastMouseMove.current > 50) {
-      const position = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      broadcastCursorMove(position);
-      lastMouseMove.current = now;
-    }
-  };
-
-
   /*
    * Save the final node position to the backend
    * after the user finishes dragging the node.
@@ -1033,7 +1007,7 @@ function Workspace() {
   );
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-background" onPointerMove={onPointerMove}>
+    <div className="h-screen overflow-hidden flex flex-col bg-background">
       {/* Editor Header */}
       <header className="h-14 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 flex items-center justify-between shrink-0 z-50">
         {/* Left: Branding & Breadcrumbs */}
@@ -1112,6 +1086,14 @@ function Workspace() {
             <Icon name="redo" className="text-[18px]" />
           </button>
           
+          <button 
+            onClick={() => setIsHistoryOpen(true)}
+            className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" 
+            title="Version History"
+          >
+            <Icon name="history" className="text-[18px]" />
+          </button>
+
           <div className="w-px h-4 bg-outline-variant/50 mx-1" />
 
           {/* Import / Export Dropdown */}
@@ -1305,13 +1287,12 @@ function Workspace() {
             )}
 
             {Object.values(remoteUsers).map((user) => {
-              if (!user.cursor || !rfInstance) return null;
-              const screenPos = rfInstance.flowToScreenPosition(user.cursor);
+              if (!user.cursor) return null;
               return (
                 <div
                   key={user.userId}
                   className="fixed pointer-events-none z-[100] flex flex-col items-start transition-all duration-75"
-                  style={{ top: screenPos.y, left: screenPos.x }}
+                  style={{ top: user.cursor.y, left: user.cursor.x }}
                 >
                   <Icon name="near_me" className="text-primary text-xl" />
                   <div className="bg-primary text-on-primary text-[10px] px-1.5 py-0.5 rounded-sm shadow-md whitespace-nowrap -ml-2 -mt-1">
@@ -1334,7 +1315,6 @@ function Workspace() {
                 nodesConnectable={false}
                 elementsSelectable={true}
                 onNodesChange={handleNodesChange}
-                onEdgesChange={handleEdgesChange}
                 onNodeDragStop={handleNodeDragStop}
                 onNodeClick={handleNodeClick}
                 onPaneClick={handlePaneClick}
@@ -1475,6 +1455,12 @@ function Workspace() {
         </div>
       )}
       </div>
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        mindMapId={mindMapId || null}
+        onRestore={loadMindMap}
+      />
     </div>
   );
 }
