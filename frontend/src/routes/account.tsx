@@ -9,7 +9,7 @@ import { useRef } from "react";
 const TITLE = "Settings — MindVault AI";
 const DESCRIPTION = "Customize the theme, accent color, interface scaling, and your profile.";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
       { title: TITLE },

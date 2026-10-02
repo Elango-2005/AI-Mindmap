@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getProjects } from "@/api/projects";
 import { getProjectMindMaps, type MindMap } from "@/api/mindmaps";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppLayout } from "@/components/AppLayout";
+
 import { Icon } from "@/components/Icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -60,7 +61,7 @@ function HistoryComponent() {
   const handleCopyLink = (e: React.MouseEvent, mindMapId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/workspace?mindMapId=${mindMapId}`;
+    const url = `${window.location.origin}/workspace/${mindMapId}`;
     navigator.clipboard.writeText(url);
     toast.success("Mind map link copied to clipboard!");
   };
@@ -89,18 +90,8 @@ function HistoryComponent() {
   const GROUP_ORDER = ["Today", "Yesterday", "This Week", "Older"];
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar */}
-      <AppSidebar active="History" ctaVariant="muted" showBrand />
-
-      {/* Mobile Sidebar Sheet */}
-      <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
-        <SheetContent side="left" className="p-0 w-[280px] bg-surface border-r border-outline-variant/30">
-          <AppSidebar active="History" ctaVariant="primary" showBrand className="flex w-full border-r-0" />
-        </SheetContent>
-      </Sheet>
-
-      <main className="flex-1 flex flex-col overflow-hidden">
+    <AppLayout activeRoute="History">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <header className="px-4 sm:px-xl py-4 sm:py-lg border-b border-outline-variant/20 bg-surface shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
@@ -132,8 +123,8 @@ function HistoryComponent() {
             </div>
           </div>
         </header>
-
         <div className="flex-1 overflow-y-auto px-4 sm:px-xl py-4 sm:py-lg">
+
           {loading && (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-on-surface-variant">
               <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
@@ -243,9 +234,10 @@ function HistoryComponent() {
               </p>
             </div>
           )}
+        
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

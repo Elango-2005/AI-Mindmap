@@ -48,7 +48,6 @@ import {
 import { updateMindMap } from "@/api/mindmaps";
 
 import { AppSidebar } from "@/components/AppSidebar";
-import { HistoryDrawer } from "@/components/HistoryDrawer";
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
 import { EditableEdge } from "@/components/EditableEdge";
@@ -67,12 +66,9 @@ const TITLE = "Neural Networking 101 — MindVault AI Workspace";
 const DESCRIPTION =
   "Explore and expand the Neural Networking 101 mind map with AI-assisted node generation.";
 
-export const Route = createFileRoute("/workspace")({
+export const Route = createFileRoute("/workspace/$mindMapId")({
   validateSearch: (search: Record<string, unknown>) => ({
-    mindMapId:
-      typeof search.mindMapId === "string"
-        ? search.mindMapId
-        : undefined,
+    
     topic: 
       typeof search.topic === "string" 
         ? search.topic 
@@ -121,9 +117,8 @@ const edgeTypes = {
 };
 
 function Workspace() {
-  const { mindMapId, topic: initialTopic } = useSearch({
-    from: "/workspace",
-  });
+  const { mindMapId } = Route.useParams();
+  const { topic: initialTopic } = Route.useSearch() as any;
 
   const [flowNodes, setFlowNodes] = useState<FlowNode[]>([]);
   const [flowEdges, setFlowEdges] = useState<FlowEdge[]>([]);
@@ -259,7 +254,6 @@ function Workspace() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isMobileAIOpen, setIsMobileAIOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Undo / Redo History Stack
   const [history, setHistory] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] }[]>([]);
@@ -1086,14 +1080,6 @@ function Workspace() {
             <Icon name="redo" className="text-[18px]" />
           </button>
           
-          <button 
-            onClick={() => setIsHistoryOpen(true)}
-            className="p-1.5 hover:bg-surface-container-low rounded-lg text-on-surface-variant transition-colors" 
-            title="Version History"
-          >
-            <Icon name="history" className="text-[18px]" />
-          </button>
-
           <div className="w-px h-4 bg-outline-variant/50 mx-1" />
 
           {/* Import / Export Dropdown */}
@@ -1106,7 +1092,7 @@ function Workspace() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem asChild>
-                <Link to="/present" search={{ mindMapId }} className="flex items-center w-full cursor-pointer">
+                <Link to="/present/$mindMapId" params={{ mindMapId }} className="flex items-center w-full cursor-pointer">
                   <Icon name="play_circle" className="mr-2 text-[18px] text-primary" /> Present Mind Map
                 </Link>
               </DropdownMenuItem>
@@ -1455,12 +1441,6 @@ function Workspace() {
         </div>
       )}
       </div>
-      <HistoryDrawer
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        mindMapId={mindMapId || null}
-        onRestore={loadMindMap}
-      />
     </div>
   );
 }

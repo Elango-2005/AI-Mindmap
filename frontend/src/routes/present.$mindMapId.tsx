@@ -12,9 +12,9 @@ import { EditableEdge } from "@/components/EditableEdge";
 
 const TITLE = "Presentation Mode";
 
-export const Route = createFileRoute("/present")({
+export const Route = createFileRoute("/present/$mindMapId")({
   validateSearch: (search: Record<string, unknown>) => ({
-    mindMapId: typeof search.mindMapId === "string" ? search.mindMapId : undefined,
+    
   }),
   head: () => ({
     meta: [
@@ -36,7 +36,7 @@ function PresentWrapper() {
 }
 
 function Present() {
-  const { mindMapId } = useSearch({ from: "/present" });
+  const { mindMapId } = Route.useParams();
   const navigate = useNavigate();
   const { fitView, setCenter } = useReactFlow();
 
@@ -153,22 +153,6 @@ function Present() {
     return () => clearInterval(interval);
   }, [isPlaying, slides.length]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
-        setActive(prev => Math.min(slides.length - 1, prev + 1));
-      } else if (e.key === 'ArrowLeft') {
-        setActive(prev => Math.max(0, prev - 1));
-      } else if (e.key === 'Escape') {
-        navigate({ to: "/workspace", search: { mindMapId } as any });
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [slides.length, mindMapId, navigate]);
-
-
   // Compute presentation nodes/edges with dimming
   const presentationNodes = useMemo(() => {
     return nodes.map(n => ({
@@ -219,29 +203,14 @@ function Present() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
-              } else {
-                document.exitFullscreen().catch(() => {});
-              }
-            }}
-            className="p-2 hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-on-surface"
-            title="Toggle Fullscreen"
-          >
-            <Icon name="fullscreen" className="text-[20px]" />
-          </button>
-          <Link
-            to="/workspace"
-            search={{ mindMapId, topic: undefined }}
-            className="flex items-center gap-xs px-md py-sm rounded-lg hover:bg-surface-container transition-colors text-label-md text-on-surface-variant hover:text-on-surface group"
-          >
-            Exit
-            <Icon name="close" className="text-[18px] group-hover:text-error transition-colors" />
-          </Link>
-        </div>
+        <Link
+          to="/workspace/$mindMapId"
+          params={{ mindMapId }}
+          className="flex items-center gap-xs px-md py-sm rounded-lg hover:bg-surface-container transition-colors text-label-md text-on-surface-variant hover:text-on-surface group"
+        >
+          Exit
+          <Icon name="close" className="text-[18px] group-hover:text-error transition-colors" />
+        </Link>
       </header>
 
       <main className="flex-1 w-full relative">

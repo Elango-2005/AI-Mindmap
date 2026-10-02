@@ -147,3 +147,4 @@ export function HistoryDrawer({ isOpen, onClose, mindMapId, onRestore }: History
     </Sheet>
   );
 }
+

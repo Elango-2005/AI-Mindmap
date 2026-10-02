@@ -10,17 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as PresentRouteImport } from './routes/present'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as PresentMindMapIdRouteImport } from './routes/present.$mindMapId'
+import { Route as WorkspaceMindMapIdRouteImport } from './routes/workspace.$mindMapId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -38,9 +46,9 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PresentRoute = PresentRouteImport.update({
-  id: '/present',
-  path: '/present',
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -53,85 +61,116 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresentMindMapIdRoute = PresentMindMapIdRouteImport.update({
+  id: '/present/$mindMapId',
+  path: '/present/$mindMapId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceMindMapIdRoute = WorkspaceMindMapIdRouteImport.update({
+  id: '/workspace/$mindMapId',
+  path: '/workspace/$mindMapId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/present': typeof PresentRoute
+  '/projects': typeof ProjectsRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
-  '/workspace': typeof WorkspaceRoute
+  '/templates': typeof TemplatesRoute
+  '/present/$mindMapId': typeof PresentMindMapIdRoute
+  '/workspace/$mindMapId': typeof WorkspaceMindMapIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/present': typeof PresentRoute
+  '/projects': typeof ProjectsRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
-  '/workspace': typeof WorkspaceRoute
+  '/templates': typeof TemplatesRoute
+  '/present/$mindMapId': typeof PresentMindMapIdRoute
+  '/workspace/$mindMapId': typeof WorkspaceMindMapIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/present': typeof PresentRoute
+  '/projects': typeof ProjectsRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
-  '/workspace': typeof WorkspaceRoute
+  '/templates': typeof TemplatesRoute
+  '/present/$mindMapId': typeof PresentMindMapIdRoute
+  '/workspace/$mindMapId': typeof WorkspaceMindMapIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/dashboard'
     | '/history'
     | '/login'
-    | '/present'
+    | '/projects'
     | '/register'
     | '/settings'
-    | '/workspace'
+    | '/templates'
+    | '/present/$mindMapId'
+    | '/workspace/$mindMapId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/dashboard'
     | '/history'
     | '/login'
-    | '/present'
+    | '/projects'
     | '/register'
     | '/settings'
-    | '/workspace'
+    | '/templates'
+    | '/present/$mindMapId'
+    | '/workspace/$mindMapId'
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/dashboard'
     | '/history'
     | '/login'
-    | '/present'
+    | '/projects'
     | '/register'
     | '/settings'
-    | '/workspace'
+    | '/templates'
+    | '/present/$mindMapId'
+    | '/workspace/$mindMapId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   DashboardRoute: typeof DashboardRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
-  PresentRoute: typeof PresentRoute
+  ProjectsRoute: typeof ProjectsRoute
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
-  WorkspaceRoute: typeof WorkspaceRoute
+  TemplatesRoute: typeof TemplatesRoute
+  PresentMindMapIdRoute: typeof PresentMindMapIdRoute
+  WorkspaceMindMapIdRoute: typeof WorkspaceMindMapIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -164,11 +210,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/present': {
-      id: '/present'
-      path: '/present'
-      fullPath: '/present'
-      preLoaderRoute: typeof PresentRouteImport
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -185,11 +231,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceRouteImport
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/present/$mindMapId': {
+      id: '/present/$mindMapId'
+      path: '/present/$mindMapId'
+      fullPath: '/present/$mindMapId'
+      preLoaderRoute: typeof PresentMindMapIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace/$mindMapId': {
+      id: '/workspace/$mindMapId'
+      path: '/workspace/$mindMapId'
+      fullPath: '/workspace/$mindMapId'
+      preLoaderRoute: typeof WorkspaceMindMapIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -197,13 +257,16 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   DashboardRoute: DashboardRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
-  PresentRoute: PresentRoute,
+  ProjectsRoute: ProjectsRoute,
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
-  WorkspaceRoute: WorkspaceRoute,
+  TemplatesRoute: TemplatesRoute,
+  PresentMindMapIdRoute: PresentMindMapIdRoute,
+  WorkspaceMindMapIdRoute: WorkspaceMindMapIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

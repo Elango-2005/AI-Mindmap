@@ -18,10 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const TITLE = "Dashboard - MindVault AI";
+const TITLE = "Templates - MindVault AI";
 const DESCRIPTION = "Your recent mind maps, AI generation stats, and workspace shortcuts.";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/templates")({
   head: () => ({
     meta: [
       { title: TITLE },
