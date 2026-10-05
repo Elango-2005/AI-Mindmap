@@ -1,70 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
-import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/api/auth";
-import { updateProfile, uploadAvatar } from "@/api/users";
-import { useRef } from "react";
 
-const TITLE = "Settings — MindVault AI";
-const DESCRIPTION = "Customize the theme, accent color, interface scaling, and your profile.";
+const TITLE = "Account - MindVault AI";
+const DESCRIPTION = "Manage your account settings and preferences.";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: TITLE },
-      { property: "og:description", content: DESCRIPTION },
     ],
   }),
-  component: Settings,
+  component: Account,
 });
 
-const SECTIONS = [
-  { label: "Profile", icon: "person" },
-  { label: "Account", icon: "badge" },
-  { label: "Appearance", icon: "palette" },
-  { label: "Notifications", icon: "notifications" },
-  { label: "API Keys", icon: "key" },
-];
-
-
-
-function Toggle({ defaultChecked }: { defaultChecked?: boolean }) {
-  const [on, setOn] = useState(Boolean(defaultChecked));
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      onClick={() => setOn((v) => !v)}
-      className={cn(
-        "relative w-11 h-6 rounded-full transition-colors shrink-0",
-        on ? "bg-primary" : "bg-surface-variant",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-surface-container-lowest border border-outline-variant transition-transform",
-          on && "translate-x-full",
-        )}
-      />
-    </button>
-  );
-}
-
-function Settings() {
-  const [section, setSection] = useState("Appearance");
-  
-  // Theme state
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
-
-  // Profile state
+function Account() {
+  const navigate = useNavigate();
   const [user, setUser] = useState<{ full_name: string; email: string; profile_image?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     getCurrentUser()
@@ -73,287 +29,124 @@ function Settings() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Theme effect
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    if (theme === "Dark") {
-      document.documentElement.classList.add("dark");
-    } else if (theme === "Light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }, [theme]);
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside className="hidden md:flex w-[280px] h-full bg-surface border-r border-outline-variant/20 flex-col p-md gap-sm shrink-0">
-        <div className="px-md py-lg mb-4">
-          <Link
-            to="/workspace"
-            className="flex items-center gap-sm hover:opacity-80 transition-opacity"
-          >
-            <Icon name="arrow_back" className="text-on-surface-variant text-xl" />
-            <span className="text-label-md text-on-surface-variant">Back to Workspace</span>
-          </Link>
-          <h1 className="text-headline-lg text-on-surface mt-6">Settings</h1>
-        </div>
+    <AppLayout activeRoute="Account">
+      <div className="flex-1 overflow-y-auto w-full p-4 sm:p-xl">
+        <header className="mb-8 max-w-4xl mx-auto">
+          <h1 className="text-headline-md sm:text-headline-lg text-on-surface">Account Settings</h1>
+          <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">
+            Manage your personal information, security, and account preferences.
+          </p>
+        </header>
 
-        <nav className="flex flex-col gap-xs flex-grow">
-          {SECTIONS.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => setSection(item.label)}
-              className={cn(
-                "flex items-center gap-md px-md py-sm rounded-xl transition-all duration-200 text-left",
-                section === item.label
-                  ? "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-sm translate-x-1"
-                  : "text-on-surface-variant hover:bg-surface-container",
-              )}
-            >
-              <Icon name={item.icon} filled={section === item.label} />
-              <span className="text-label-md">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-auto pt-4 border-t border-outline-variant/20">
-          <a
-            href="#help"
-            className="text-on-surface-variant flex items-center gap-md px-md py-sm rounded-xl hover:bg-surface-container transition-all duration-200"
-          >
-            <Icon name="help_outline" />
-            <span className="text-label-md">Help Center</span>
-          </a>
-        </div>
-      </aside>
-
-      <main className="flex-grow overflow-y-auto bg-background p-lg md:p-xxl">
-        <div className="max-w-3xl mx-auto">
-          {section === "Profile" && (
-            <>
-              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
-                <h2 className="text-headline-md text-on-surface">Profile</h2>
-                <p className="text-body-md text-on-surface-variant mt-xs">
-                  Manage your public profile and personal details.
-                </p>
-              </header>
-              <div className="flex flex-col gap-xl">
-                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-                  <div className="mb-md flex justify-between items-center">
-                    <h3 className="text-label-md text-on-surface font-semibold">Personal Info</h3>
-                    {!isLoading && user && (
-                       <button
-                         onClick={async () => {
-                           if (isEditing) {
-                             try {
-                               setIsSaving(true);
-                               const updated = await updateProfile({ full_name: editName });
-                               setUser(updated);
-                               setIsEditing(false);
-                             } catch (e) {
-                               console.error(e);
-                               alert("Failed to update profile.");
-                             } finally {
-                               setIsSaving(false);
-                             }
-                           } else {
-                             setEditName(user.full_name);
-                             setIsEditing(true);
-                           }
-                         }}
-                         disabled={isSaving}
-                         className="text-primary hover:text-primary-fixed-dim text-label-sm font-bold transition-colors"
-                       >
-                         {isSaving ? "Saving..." : (isEditing ? "Save" : "Edit")}
-                       </button>
+        <div className="max-w-4xl mx-auto flex flex-col gap-8">
+          {/* Profile Section */}
+          <section className="bg-surface border border-outline-variant/30 rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-outline-variant/30 bg-surface-container-lowest">
+              <h2 className="text-title-lg font-bold text-on-surface">Profile Information</h2>
+              <p className="text-body-sm text-on-surface-variant mt-1">Your basic account details.</p>
+            </div>
+            
+            <div className="p-6">
+              {isLoading ? (
+                <div className="animate-pulse flex flex-col gap-4">
+                  <div className="h-10 bg-surface-container-high rounded w-full max-w-md"></div>
+                  <div className="h-10 bg-surface-container-high rounded w-full max-w-md"></div>
+                </div>
+              ) : user ? (
+                <div className="flex flex-col md:flex-row gap-8 items-start">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 text-primary flex items-center justify-center text-3xl font-bold shrink-0 border border-primary/20">
+                    {user.profile_image ? (
+                      <img src={user.profile_image} alt={user.full_name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      user.full_name.charAt(0).toUpperCase()
                     )}
                   </div>
-                  {isLoading ? (
-                    <div className="text-label-md text-on-surface-variant">Loading profile...</div>
-                  ) : user ? (
-                    <div className="flex flex-col gap-lg">
-                      <div className="flex items-center gap-lg">
-                        <img 
-                          src={user.profile_image ? `http://127.0.0.1:8000${user.profile_image}` : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.full_name)} 
-                          alt="Avatar" 
-                          className="w-24 h-24 rounded-full object-cover border-4 border-surface shadow-sm"
-                        />
-                        <div className="flex flex-col gap-2">
-                          <div className="text-body-md text-on-surface font-semibold">Profile Picture</div>
-                          <div className="text-body-sm text-on-surface-variant">Upload a new avatar (JPG, PNG).</div>
-                          
-                          <label className="cursor-pointer mt-1 bg-primary text-white hover:bg-primary-fixed-dim text-label-sm font-medium py-2 px-4 rounded-xl transition-colors inline-flex items-center gap-2 w-fit ai-glow shadow-sm">
-                            <Icon name="upload" className="text-[16px]" />
-                            Upload Image
-                            <input 
-                              type="file" 
-                              className="hidden" 
-                              accept="image/*" 
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                try {
-                                  // Optional: Add loading state here if needed
-                                  const updated = await uploadAvatar(file);
-                                  setUser(updated);
-                                } catch (err) {
-                                  console.error(err);
-                                  alert("Failed to upload avatar. Check console for details.");
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-outline-variant/30 pt-md">
-                        <label className="text-label-sm text-on-surface-variant">Full Name</label>
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="mt-1 w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-3 py-2 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          />
-                        ) : (
-                          <div className="text-body-lg text-on-surface font-medium mt-1">{user.full_name}</div>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="text-label-sm text-on-surface-variant">Email</label>
-                        <div className="text-body-lg text-on-surface font-medium mt-1 opacity-70">{user.email} <span className="text-[10px] ml-2 bg-surface-container-highest px-2 py-1 rounded-full uppercase tracking-wider">Read Only</span></div>
-                      </div>
+                  <div className="flex-1 flex flex-col gap-4 w-full">
+                    <div>
+                      <label className="text-label-md font-semibold text-on-surface-variant block mb-1">Full Name</label>
+                      <div className="text-body-lg text-on-surface bg-surface-container-lowest px-4 py-2 rounded-lg border border-outline-variant/30">{user.full_name}</div>
                     </div>
-                  ) : (
-                    <div className="text-label-md text-error">Failed to load profile.</div>
-                  )}
-                </section>
-              </div>
-            </>
-          )}
-
-          {section === "Appearance" && (
-            <>
-              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
-                <h2 className="text-headline-md text-on-surface">Appearance</h2>
-                <p className="text-body-md text-on-surface-variant mt-xs">
-                  Customize the look and feel of your workspace.
-                </p>
-              </header>
-
-              <div className="flex flex-col gap-xl">
-                {/* Theme */}
-                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm ai-glow">
-                  <div className="mb-md">
-                    <h3 className="text-label-md text-on-surface font-semibold">Theme Preference</h3>
-                    <p className="text-label-md text-on-surface-variant mt-1">
-                      Select your preferred color scheme.
-                    </p>
+                    <div>
+                      <label className="text-label-md font-semibold text-on-surface-variant block mb-1">Email Address</label>
+                      <div className="text-body-lg text-on-surface bg-surface-container-lowest px-4 py-2 rounded-lg border border-outline-variant/30">{user.email}</div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-md">
-                    {[
-                      { name: "Light", icon: "light_mode" },
-                      { name: "Dark", icon: "dark_mode" },
-                      { name: "System", icon: "contrast" },
-                    ].map((option) => (
-                      <button
-                        key={option.name}
-                        onClick={() => setTheme(option.name)}
-                        className={cn(
-                          "relative rounded-lg overflow-hidden p-1 bg-surface transition-colors",
-                          theme === option.name
-                            ? "border-2 border-primary shadow-sm"
-                            : "border border-outline-variant/30 opacity-70 hover:opacity-100",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "h-24 rounded flex items-center justify-center relative overflow-hidden border",
-                            option.name === "Dark"
-                              ? "bg-inverse-surface border-outline/20"
-                              : option.name === "System"
-                                ? "bg-surface-container-highest border-outline-variant/20"
-                                : "bg-surface-container-lowest border-outline-variant/20",
-                          )}
-                        >
-                          {option.name === "System" ? (
-                            <>
-                              <div className="w-1/2 h-full bg-surface-container-lowest" />
-                              <div className="w-1/2 h-full bg-inverse-surface" />
-                            </>
-                          ) : null}
-                          <Icon
-                            name={option.icon}
-                            filled={theme === option.name}
-                            className={cn(
-                              "absolute text-3xl",
-                              option.name === "Dark"
-                                ? "text-inverse-on-surface"
-                                : theme === option.name
-                                  ? "text-primary"
-                                  : "text-on-surface",
-                            )}
-                          />
-                        </div>
-                        <div
-                          className={cn(
-                            "text-center mt-2 pb-1 text-label-md",
-                            theme === option.name
-                              ? "font-bold text-primary"
-                              : "text-on-surface-variant",
-                          )}
-                        >
-                          {option.name}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Motion */}
-            <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-              <div className="flex justify-between items-center gap-md">
-                <div>
-                  <h3 className="text-label-md text-on-surface font-semibold">Reduced Motion</h3>
-                  <p className="text-label-md text-on-surface-variant mt-1">
-                    Minimize animations and transition effects.
-                  </p>
                 </div>
-                <Toggle />
-              </div>
-              <div className="flex justify-between items-center gap-md mt-md pt-md border-t border-outline-variant/20">
-                <div>
-                  <h3 className="text-label-md text-on-surface font-semibold">
-                    AI Intelligence Glow
-                  </h3>
-                  <p className="text-label-md text-on-surface-variant mt-1">
-                    Show subtle visual cues on AI-enhanced elements.
-                  </p>
-                </div>
-                <Toggle defaultChecked />
-              </div>
-            </section>
-              </div>
-            </>
-          )}
-
-          {section !== "Profile" && section !== "Appearance" && (
-            <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-              <Icon name="construction" className="text-[48px] text-on-surface-variant/50 mb-md" />
-              <h2 className="text-headline-md text-on-surface mb-2">{section} Settings</h2>
-              <p className="text-body-md text-on-surface-variant max-w-md">
-                This section is currently under construction. Check back soon for more customization options!
-              </p>
+              ) : (
+                <p className="text-error">Failed to load user profile.</p>
+              )}
             </div>
-          )}
+          </section>
+
+          {/* Security Section */}
+          <section className="bg-surface border border-outline-variant/30 rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-outline-variant/30 bg-surface-container-lowest">
+              <h2 className="text-title-lg font-bold text-on-surface">Security</h2>
+              <p className="text-body-sm text-on-surface-variant mt-1">Manage your password and authentication methods.</p>
+            </div>
+            <div className="p-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+              <div>
+                <h3 className="text-body-lg font-semibold text-on-surface">Password</h3>
+                <p className="text-body-sm text-on-surface-variant">Update your password to keep your account secure.</p>
+              </div>
+              <button 
+                onClick={() => alert("Password reset functionality coming soon.")}
+                className="px-4 py-2 bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors rounded-lg font-medium border border-outline-variant/30 shrink-0"
+              >
+                Change Password
+              </button>
+            </div>
+          </section>
+
+          {/* Danger Zone */}
+          <section className="bg-error/5 border border-error/20 rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-error/10 bg-error/10">
+              <h2 className="text-title-lg font-bold text-error">Danger Zone</h2>
+              <p className="text-body-sm text-error/80 mt-1">Irreversible account actions.</p>
+            </div>
+            
+            <div className="p-6 flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pb-6 border-b border-error/10">
+                <div>
+                  <h3 className="text-body-lg font-semibold text-on-surface">Log Out</h3>
+                  <p className="text-body-sm text-on-surface-variant">Sign out of your account on this device.</p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors rounded-lg font-medium border border-outline-variant/30 shrink-0 flex items-center gap-2"
+                >
+                  <Icon name="logout" className="text-[18px]" />
+                  Log Out
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <div>
+                  <h3 className="text-body-lg font-semibold text-error">Delete Account</h3>
+                  <p className="text-body-sm text-error/80">Permanently delete your account and all associated mind maps.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
+                      alert("Account deletion is disabled in this demo environment.");
+                    }
+                  }}
+                  className="px-4 py-2 bg-error text-on-error hover:bg-error/90 transition-colors rounded-lg font-medium shrink-0 flex items-center gap-2"
+                >
+                  <Icon name="delete_forever" className="text-[18px]" />
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
