@@ -21,7 +21,7 @@ class UserRepository:
         """
         return (
             self.db.query(User)
-            .filter(User.email == email)
+            .filter(User.email.ilike(email))
             .first()
         )
 
