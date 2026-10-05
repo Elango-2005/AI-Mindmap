@@ -145,194 +145,52 @@ function Dashboard() {
   }, [projects]);
 
   return (
-    <div className="h-screen flex flex-col md:flex-row overflow-hidden dot-matrix">
-      {/* Mobile top bar */}
-      <div className="md:hidden flex justify-between items-center w-full px-lg py-md bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 sticky top-0 z-50">
-        <div className="flex items-center gap-sm">
-          <img src={LOGO_URL} alt="MindVault AI logo" className="w-8 h-8 rounded-lg" />
-          <span className="text-headline-md font-bold text-primary tracking-tight">
-            MindVault AI
-          </span>
-        </div>
-        <button
-          aria-label="Open menu"
-          onClick={() => setIsMobileNavOpen(true)}
-          className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high/50 transition-all"
-        >
-          <Icon name="menu" />
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Sheet */}
-      <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
-        <SheetContent side="left" className="p-0 w-[280px] bg-surface border-r border-outline-variant/30">
-          <AppSidebar active="Projects" ctaVariant="primary" showBrand className="flex w-full border-r-0" />
-        </SheetContent>
-      </Sheet>
-
-      <AppSidebar active="Projects" />
-
-      <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="sticky top-0 z-30 px-lg py-md bg-background flex flex-col md:flex-row justify-between items-center gap-md border-b border-outline-variant/30">
-          <div className="relative w-full md:w-96">
-            <Icon
-              name="search"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]"
-            />
-            <input
-              type="text"
-              aria-label="Search mind maps"
-              placeholder="Search mind maps, nodes, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-2 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-sm w-full md:w-auto justify-between md:justify-end">
-            <button 
-              className="flex items-center gap-xs px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors text-label-sm"
-              onClick={() => alert("Advanced filters coming soon in Phase K")}
-            >
-              <Icon name="filter_list" className="text-[18px]" />
-              Filters
-            </button>
-            <div className="flex items-center gap-xs border-l border-outline-variant/50 pl-sm ml-sm">
-              <button
-                aria-label="Grid view"
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-surface-container text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
-              >
-                <Icon name="grid_view" className="text-[18px]" />
-              </button>
-              <button
-                aria-label="List view"
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-surface-container text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
-              >
-                <Icon name="view_list" className="text-[18px]" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-lg md:p-xxl max-w-[1400px] mx-auto w-full flex flex-col gap-xl">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
-            <div>
-              <p className="text-body-lg text-on-surface-variant mb-1">Welcome back, {user?.full_name?.split(" ")[0] || "there"}.</p>
-              <h1 className="text-headline-lg-mobile md:text-headline-lg text-on-surface">
-                Ready to map something new?
-              </h1>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsTemplatesOpen(true)}
-                className="bg-surface-container-high text-on-surface hover:bg-surface-container-highest text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 transition-all hover:-translate-y-0.5 border border-outline-variant/30"
-              >
-                <Icon name="auto_awesome_motion" />
-                Explore Templates
-              </button>
-              <button
-                onClick={() => handleCreateProject()}
-                disabled={isCreating}
-                className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 disabled:opacity-50"
-              >
-                <Icon name="add" />
-                {isCreating ? "Creating..." : "New Project"}
-              </button>
-            </div>
+      <AppLayout activeRoute="Dashboard">
+        <div className="flex-1 overflow-y-auto w-full p-4 sm:p-xl">
+          <header className="mb-8">
+            <h1 className="text-headline-md sm:text-headline-lg text-on-surface">Dashboard</h1>
+            <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">
+              Welcome back to your workspace.
+            </p>
           </header>
-
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-lg">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-lg flex flex-col justify-between h-32 hover:shadow-level-2 transition-shadow relative overflow-hidden group"
-              >
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-tertiary-container/10 rounded-full blur-xl group-hover:bg-tertiary-container/20 transition-all" />
-                <div className="flex justify-between items-start relative z-10">
-                  <span className="text-label-md text-on-surface-variant uppercase tracking-wider">
-                    {stat.label}
-                  </span>
-                  <Icon name={stat.icon} className={stat.tone} />
-                </div>
-                <div className="text-display text-on-surface relative z-10">
-                  {stat.value}
-                  {stat.suffix ? (
-                    <span className="text-headline-md text-on-surface-variant ml-1">
-                      {stat.suffix}
-                    </span>
-                  ) : null}
-                </div>
+          
+          <div className="flex flex-col gap-8">
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-title-lg font-bold text-on-surface">Quick Actions</h2>
               </div>
-            ))}
-          </section>
-
-          <section className="flex flex-col gap-md">
-            <h2 className="text-headline-md text-on-surface">Start with a Smart Template</h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x">
-              {[
-                { id: "sys-arch-001", title: "Cloud Architecture", icon: "cloud", bg: "bg-blue-100", text: "text-blue-700" },
-                { id: "prod-roadmap-001", title: "Product Strategy", icon: "map", bg: "bg-purple-100", text: "text-purple-700" },
-                { id: "ml-ai-001", title: "Machine Learning & AI", icon: "psychology", bg: "bg-indigo-100", text: "text-indigo-700" },
-                { id: "fullstack-001", title: "Modern Full-Stack", icon: "code", bg: "bg-green-100", text: "text-green-700" },
-                { id: "gtm-launch-001", title: "GTM Launch", icon: "rocket_launch", bg: "bg-orange-100", text: "text-orange-700" },
-              ].map(t => (
+              <div className="flex gap-4">
                 <button
-                  key={t.id}
-                  onClick={() => setIsTemplatesOpen(true)}
-                  className="snap-start shrink-0 w-[240px] p-5 rounded-2xl bg-surface border border-outline-variant/30 hover:border-primary/50 hover:shadow-level-1 transition-all text-left group"
+                  onClick={() => handleCreateProject()}
+                  disabled={isCreating}
+                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${t.bg} ${t.text}`}>
-                    <Icon name={t.icon} />
-                  </div>
-                  <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors">{t.title}</h3>
-                  <p className="text-body-sm text-on-surface-variant mt-1">Curated knowledge map</p>
+                  <Icon name="add" className="text-[20px]" />
+                  {isCreating ? "Creating..." : "New Mind Map"}
                 </button>
-              ))}
-              <button
-                onClick={() => setIsTemplatesOpen(true)}
-                className="snap-start shrink-0 w-[240px] p-5 rounded-2xl bg-surface-container-low border border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface transition-all flex flex-col items-center justify-center text-center gap-2 group"
-              >
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary group-hover:bg-primary/10 transition-colors">
-                  <Icon name="arrow_forward" />
-                </div>
-                <span className="text-body-md font-semibold text-on-surface-variant group-hover:text-primary">View all templates</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-md pb-xl">
-            <div className="flex justify-between items-center">
-              <h2 className="text-headline-md text-on-surface">Recent Projects</h2>
-            </div>
-
-            {filteredProjects.length === 0 ? (
-              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-xl flex flex-col items-center justify-center text-center gap-md py-xxl">
-                <Icon name="account_tree" className="text-[48px] text-outline mb-2" />
-                <div>
-                  <h3 className="text-headline-sm text-on-surface">No projects found</h3>
-                  <p className="text-body-md text-on-surface-variant mt-1 max-w-sm">
-                    {searchQuery ? "Try adjusting your search query." : "Create your first mind map manually or let AI generate one for you."}
-                  </p>
-                </div>
-                {!searchQuery && (
-                  <button
-                    onClick={() => handleCreateProject()}
-                    disabled={isCreating}
-                    className="bg-primary-container text-white text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 ai-glow transition-all hover:-translate-y-0.5 mt-sm disabled:opacity-50"
-                  >
-                    <Icon name="add" />
-                    {isCreating ? "Creating..." : "New Project"}
-                  </button>
-                )}
+                <Link
+                  to="/templates"
+                  className="bg-surface-container text-on-surface px-6 py-3 rounded-xl font-medium hover:bg-surface-container-high transition-colors flex items-center gap-2 border border-outline-variant/30"
+                >
+                  <Icon name="auto_awesome_motion" className="text-[20px]" />
+                  Explore Templates
+                </Link>
               </div>
-            ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                {filteredProjects.map((project, i) => (
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-title-lg font-bold text-on-surface">Recent Projects</h2>
+                <Link to="/projects" className="text-primary font-medium hover:underline flex items-center gap-1">
+                  View all <Icon name="arrow_forward" className="text-[16px]" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.slice(0, 3).map((project, i) => (
                   <Link
                     key={project.id}
-                    to="/workspace"
-                    search={{ mindMapId: project.mind_maps?.[0]?.id, topic: undefined }}
+                    to="/workspace/$mindMapId"
+                    params={{ mindMapId: project.mind_maps?.[0]?.id || "" }}
                     className="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden hover:shadow-level-2 transition-all group relative flex flex-col"
                   >
                     {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
@@ -353,64 +211,12 @@ function Dashboard() {
                           </span>
                         </div>
                       ) : null}
-                      
-                      {/* Overflow Menu positioned top-right over image */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                            <button className="bg-surface/90 backdrop-blur-sm p-1.5 rounded-lg border border-outline-variant/50 text-on-surface hover:bg-surface hover:text-primary transition-colors">
-                              <Icon name="more_vert" className="text-[18px]" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 z-50">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: "/workspace", search: { mindMapId: project.mind_maps?.[0]?.id, topic: undefined } }); }}>
-                              <Icon name="open_in_new" className="mr-2 text-[18px]" /> Open Workspace
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}>
-                              <Icon name="edit" className="mr-2 text-[18px]" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); alert("Duplication coming soon (Phase K)"); }}>
-                              <Icon name="content_copy" className="mr-2 text-[18px]" /> Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); alert("Sharing coming soon (Phase K)"); }}>
-                              <Icon name="share" className="mr-2 text-[18px]" /> Share
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-error focus:text-error focus:bg-error-container/30"
-                              onClick={(e) => handleDeleteProject(project.id, e as any)}
-                            >
-                              <Icon name="delete" className="mr-2 text-[18px]" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
                     </div>
                     
                     <div className="p-md flex flex-col flex-1">
-                      {isRenaming === project.id ? (
-                        <div 
-                          className="mb-2"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        >
-                          <form onSubmit={(e) => handleRenameSubmit(project.id, e)} className="flex items-center gap-2">
-                            <input
-                              autoFocus
-                              type="text"
-                              value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
-                              onBlur={(e) => handleRenameSubmit(project.id, e)}
-                              onKeyDown={(e) => { if (e.key === 'Escape') setIsRenaming(null); }}
-                              className="w-full bg-surface border border-primary rounded px-2 py-1 text-body-lg font-semibold focus:outline-none"
-                            />
-                          </form>
-                        </div>
-                      ) : (
-                        <h3 className="text-body-lg text-on-surface font-semibold mb-2 truncate" title={project.title}>
-                          {project.title}
-                        </h3>
-                      )}
-                      
+                      <h3 className="text-body-lg text-on-surface font-semibold mb-2 truncate" title={project.title}>
+                        {project.title}
+                      </h3>
                       <div className="flex items-center gap-4 text-label-sm text-on-surface-variant mt-auto">
                         <span className="flex items-center gap-1 shrink-0" title="Created on">
                           <Icon name="calendar_today" className="text-[14px]" /> {new Date(project.created_at).toLocaleDateString()}
@@ -423,97 +229,9 @@ function Dashboard() {
                   </Link>
                 ))}
               </div>
-            ) : (
-              <div className="flex flex-col border border-outline-variant/50 rounded-xl overflow-hidden bg-surface-container-lowest">
-                <div className="grid grid-cols-12 gap-4 p-md border-b border-outline-variant/50 bg-surface-container-low text-label-md font-semibold text-on-surface-variant">
-                  <div className="col-span-6 md:col-span-5">Project Name</div>
-                  <div className="col-span-3 hidden md:block">Type</div>
-                  <div className="col-span-3">Nodes</div>
-                  <div className="col-span-3 md:col-span-2 text-right">Created</div>
-                  <div className="col-span-3 md:col-span-2 text-right md:hidden">Actions</div>
-                </div>
-                {filteredProjects.map((project) => (
-                  <Link
-                    key={project.id}
-                    to="/workspace"
-                    search={{ mindMapId: project.mind_maps?.[0]?.id, topic: undefined }}
-                    className="grid grid-cols-12 gap-4 p-md items-center border-b border-outline-variant/30 last:border-0 hover:bg-surface-container-low/50 transition-colors group"
-                  >
-                    <div className="col-span-6 md:col-span-5 flex items-center gap-3 overflow-hidden">
-                      <div className="w-10 h-10 rounded-lg bg-surface-container border border-outline-variant/50 flex items-center justify-center shrink-0">
-                        <Icon name="schema" className="text-primary text-[20px]" />
-                      </div>
-                      {isRenaming === project.id ? (
-                        <form 
-                          onSubmit={(e) => handleRenameSubmit(project.id, e)} 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="flex-1 w-full mr-4"
-                        >
-                          <input
-                            autoFocus
-                            type="text"
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={(e) => handleRenameSubmit(project.id, e)}
-                            onKeyDown={(e) => { if (e.key === 'Escape') setIsRenaming(null); }}
-                            className="w-full bg-surface border border-primary rounded px-2 py-1 text-body-md font-semibold focus:outline-none"
-                          />
-                        </form>
-                      ) : (
-                        <span className="text-body-md font-semibold text-on-surface truncate">
-                          {project.title}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="col-span-3 hidden md:block">
-                      {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-violet/10 text-accent-violet text-label-sm">
-                          <Icon name="auto_awesome" className="text-[14px]" /> AI Gen
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-sm">
-                          <Icon name="edit" className="text-[14px]" /> Manual
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="col-span-3 text-label-sm text-on-surface-variant flex items-center gap-1">
-                      <Icon name="account_tree" className="text-[16px]" />
-                      {(project.mind_maps as any)?.[0]?.node_count || 1}
-                    </div>
-                    
-                    <div className="col-span-3 md:col-span-2 text-right text-label-sm text-on-surface-variant relative flex justify-end items-center">
-                      <span className="group-hover:opacity-0 transition-opacity">
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </span>
-                      
-                      {/* Hover Actions in List View */}
-                      <div className="absolute right-0 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity bg-surface-container-lowest md:bg-transparent">
-                        <button 
-                          className="p-1.5 text-on-surface-variant hover:text-primary rounded"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}
-                          title="Rename"
-                        >
-                          <Icon name="edit" className="text-[18px]" />
-                        </button>
-                        <button 
-                          className="p-1.5 text-on-surface-variant hover:text-error rounded"
-                          onClick={(e) => handleDeleteProject(project.id, e as any)}
-                          title="Delete"
-                        >
-                          <Icon name="delete" className="text-[18px]" />
-                        </button>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
+            </section>
+          </div>
         </div>
-      </main>
-      <TemplatesModal isOpen={isTemplatesOpen} onClose={() => setIsTemplatesOpen(false)} />
-    </div>
+      </AppLayout>
   );
 }
