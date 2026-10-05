@@ -102,6 +102,8 @@
   --color-surface-container-highest: #dce2f7;
   --color-on-surface: #141b2b;
   --color-on-surface-variant: #464555;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #141b2b;
   --color-primary: #3525cd;
   --color-on-primary: #ffffff;
   --color-primary-container: #4f46e5;
@@ -245,6 +247,8 @@
     --color-surface-container-highest: #34353c;
     --color-on-surface: #e2e2ec;
     --color-on-surface-variant: #c5c6d3;
+    --color-popover: #0a0b0f;
+    --color-popover-foreground: #e2e2ec;
     --color-primary: #bcc2ff;
     --color-on-primary: #190066;
     --color-primary-container: #3323cc;
