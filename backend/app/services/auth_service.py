@@ -20,8 +20,8 @@ class AuthService:
         """
         Register a new user.
         """
-        user_data.email = user_data.email.lower()
-        existing_user = self.repository.get_by_email(user_data.email)
+
+        existing_user = self.repository.get_by_email(user_data.email.lower().lower())
 
         if existing_user:
             raise ValueError("Email already registered.")
@@ -32,7 +32,7 @@ class AuthService:
         """
         Authenticate a user.
         """
-        login_data.email = login_data.email.lower()
+
         user = self.repository.get_by_email(login_data.email)
 
         if user is None:

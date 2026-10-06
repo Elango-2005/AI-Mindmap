@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
@@ -90,11 +91,12 @@ function Settings() {
   }, [theme]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <AppLayout activeRoute="Settings">
+      <div className="flex h-full w-full overflow-hidden">
       <aside className="hidden md:flex w-[280px] h-full bg-surface border-r border-outline-variant/20 flex-col p-md gap-sm shrink-0">
         <div className="px-md py-lg mb-4">
           <Link
-            to="/workspace"
+            to="/dashboard"
             className="flex items-center gap-sm hover:opacity-80 transition-opacity"
           >
             <Icon name="arrow_back" className="text-on-surface-variant text-xl" />
@@ -355,5 +357,6 @@ function Settings() {
         </div>
       </main>
     </div>
+    </AppLayout>
   );
 }
