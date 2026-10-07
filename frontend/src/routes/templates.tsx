@@ -77,7 +77,7 @@ function Dashboard() {
         graph_data: "{}",
         ai_prompt: prompt ? prompt : undefined
       });
-      navigate({ to: "/workspace", search: { mindMapId: mindMap.id, topic: prompt } });
+      navigate({ to: "/workspace/$mindMapId", params: { mindMapId: mindMap.id }, search: { topic: prompt } });
     } catch (e) {
       console.error(e);
       alert("Failed to create project");

@@ -171,8 +171,8 @@ function HistoryComponent() {
                         className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 sm:px-lg py-3 sm:py-md hover:shadow-level-1 hover:border-primary/40 transition-all"
                       >
                         <Link
-                          to="/workspace"
-                          search={{ mindMapId: entry.mindMap.id }}
+                          to="/workspace/$mindMapId"
+                          params={{ mindMapId: entry.mindMap.id }}
                           className="flex items-center gap-3 sm:gap-md flex-1 min-w-0"
                         >
                           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors text-primary">
@@ -200,8 +200,8 @@ function HistoryComponent() {
 
                           <div className="flex items-center gap-1">
                             <Link
-                              to="/present"
-                              search={{ mindMapId: entry.mindMap.id }}
+                              to="/present/$mindMapId"
+                              params={{ mindMapId: entry.mindMap.id }}
                               className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
                               title="Present Slideshow"
                             >
@@ -215,8 +215,8 @@ function HistoryComponent() {
                               <Icon name="link" className="text-[18px]" />
                             </button>
                             <Link
-                              to="/workspace"
-                              search={{ mindMapId: entry.mindMap.id }}
+                              to="/workspace/$mindMapId"
+                              params={{ mindMapId: entry.mindMap.id }}
                               className="p-2 rounded-lg text-outline group-hover:text-primary hover:bg-surface-container transition-colors"
                               title="Open in Workspace"
                             >

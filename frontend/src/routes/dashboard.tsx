@@ -1,33 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
-
 import { Icon } from "@/components/Icon";
-import { LOGO_URL, PROJECT_THUMBS } from "@/lib/assets";
-import { getProjects, createProject, deleteProject, updateProject, type Project } from "@/api/projects";
-import { createMindMap } from "@/api/mindmaps";
+import { PROJECT_THUMBS } from "@/lib/assets";
+import { getProjects, type Project } from "@/api/projects";
 import { getCurrentUser } from "@/api/auth";
-import { TemplatesModal } from "@/components/TemplatesModal";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const TITLE = "Dashboard - MindVault AI";
-const DESCRIPTION = "Your recent mind maps, AI generation stats, and workspace shortcuts.";
+const DESCRIPTION = "Your recent mind maps and workspace shortcuts.";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: TITLE },
-      { property: "og:description", content: DESCRIPTION },
     ],
   }),
   component: Dashboard,
@@ -37,201 +23,112 @@ function Dashboard() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [user, setUser] = useState<{ full_name: string } | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  
-  // Phase B States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [isRenaming, setIsRenaming] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
   useEffect(() => {
-    // Check auth
     if (!localStorage.getItem("access_token")) {
       navigate({ to: "/login" });
       return;
     }
-
-    // Load Data
     getCurrentUser().then(setUser).catch(console.error);
-    getProjects().then(data => {
-      setProjects(data);
-    }).catch(console.error);
-
-    // AI Funnel Interceptor
-    const pendingPrompt = localStorage.getItem("pending_ai_prompt");
-    if (pendingPrompt) {
-      localStorage.removeItem("pending_ai_prompt");
-      handleCreateProject("AI Generated Project", pendingPrompt);
-    }
+    getProjects().then(setProjects).catch(console.error);
   }, [navigate]);
 
-  const handleCreateProject = async (title = "Untitled Project", prompt?: string) => {
-    try {
-      setIsCreating(true);
-      const project = await createProject({ title, description: "Auto-generated project" });
-      const mindMap = await createMindMap(project.id, {
-        title,
-        graph_data: "{}",
-        ai_prompt: prompt ? prompt : undefined
-      });
-      navigate({ to: "/workspace", search: { mindMapId: mindMap.id, topic: prompt } });
-    } catch (e) {
-      console.error(e);
-      alert("Failed to create project");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
-    
-    try {
-      await deleteProject(projectId);
-      setProjects((prev) => prev.filter(p => p.id !== projectId));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete project");
-    }
-  };
-
-  const handleRenameSubmit = async (projectId: string, e: React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!renameValue.trim()) {
-      setIsRenaming(null);
-      return;
-    }
-    try {
-      const updated = await updateProject(projectId, { title: renameValue });
-      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, title: updated.title } : p));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to rename project");
-    } finally {
-      setIsRenaming(null);
-    }
-  };
-
-  // Phase B: Filter & Stats Logic
-  const filteredProjects = useMemo(() => {
-    return projects.filter(p => 
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [projects, searchQuery]);
-
-  const stats = useMemo(() => {
-    const totalMaps = projects.length;
-    let totalNodes = 0;
-    projects.forEach(p => {
-      // Safely count nodes if available in nested map data
-      if (p.mind_maps && p.mind_maps.length > 0) {
-        totalNodes += (p.mind_maps[0] as any).node_count || 1; 
-      }
-    });
-
-    return [
-      { label: "Total Maps", icon: "account_tree", value: String(totalMaps), tone: "text-secondary" },
-      { label: "Nodes Generated", icon: "auto_awesome", value: String(totalNodes || "1.2k"), tone: "text-tertiary" },
-      { label: "Hours Saved", icon: "timer", value: String(Math.max(1, Math.floor(totalMaps * 0.5))), suffix: "h", tone: "text-secondary" },
-    ];
-  }, [projects]);
-
   return (
-      <AppLayout activeRoute="Dashboard">
-        <div className="flex-1 overflow-y-auto w-full p-4 sm:p-xl">
-          <header className="mb-8">
-            <h1 className="text-headline-md sm:text-headline-lg text-on-surface">Dashboard</h1>
-            <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">
-              Welcome back to your workspace.
-            </p>
-          </header>
-          
-          <div className="flex flex-col gap-8">
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-title-lg font-bold text-on-surface">Quick Actions</h2>
-              </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => handleCreateProject()}
-                  disabled={isCreating}
-                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  <Icon name="add" className="text-[20px]" />
-                  {isCreating ? "Creating..." : "New Mind Map"}
-                </button>
-                <Link
-                  to="/templates"
-                  className="bg-surface-container text-on-surface px-6 py-3 rounded-xl font-medium hover:bg-surface-container-high transition-colors flex items-center gap-2 border border-outline-variant/30"
-                >
-                  <Icon name="auto_awesome_motion" className="text-[20px]" />
-                  Explore Templates
-                </Link>
-              </div>
-            </section>
+    <AppLayout activeRoute="Dashboard">
+      <div className="flex-1 overflow-y-auto w-full p-8 md:p-12 lg:p-16 max-w-7xl mx-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-semibold text-on-surface tracking-tight mb-2">
+            Welcome back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ""}
+          </h1>
+          <p className="text-lg text-on-surface-variant">
+            What would you like to map out today?
+          </p>
+        </header>
 
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-title-lg font-bold text-on-surface">Recent Projects</h2>
-                <Link to="/projects" className="text-primary font-medium hover:underline flex items-center gap-1">
-                  View all <Icon name="arrow_forward" className="text-[16px]" />
+        <section className="mb-16">
+          <div className="relative max-w-3xl">
+            <div className="relative flex items-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm focus-within:border-primary/50 focus-within:shadow-md transition-all overflow-hidden cursor-text" onClick={() => navigate({ to: "/projects/new" })}>
+              <div className="pl-6 pr-3 py-4 text-on-surface-variant">
+                <Icon name="auto_awesome" className="text-[24px]" />
+              </div>
+              <input
+                type="text"
+                readOnly
+                placeholder="Describe a topic to map out, or leave blank for an empty canvas..."
+                className="flex-1 bg-transparent border-none text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none py-5 pr-4 cursor-pointer"
+              />
+              <div className="pr-3 pl-2">
+                <Link
+                  to="/projects/new"
+                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+                >
+                  Create
                 </Link>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.slice(0, 3).map((project, i) => (
-                  <Link
-                    key={project.id}
-                    to="/workspace/$mindMapId"
-                    params={{ mindMapId: project.mind_maps?.[0]?.id || "" }}
-                    className="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden hover:shadow-level-2 transition-all group relative flex flex-col"
-                  >
-                    {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-violet z-10" />
-                    ) : null}
-                    <div className="h-40 bg-surface-container-low border-b border-outline-variant/30 relative overflow-hidden shrink-0">
-                      <div
-                        className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:scale-105 transition-transform duration-500"
-                        style={{ backgroundImage: `url('${PROJECT_THUMBS[i % PROJECT_THUMBS.length]}')` }}
-                        role="img"
-                        aria-label={`${project.title} mind map preview`}
-                      />
-                      {project.description?.includes("AI") || project.description?.includes("Auto-generated") ? (
-                        <div className="absolute top-2 left-2 bg-surface/90 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1.5 border border-outline-variant/50">
-                          <Icon name="auto_awesome" className="text-[14px] text-accent-violet" />
-                          <span className="text-[10px] font-semibold text-on-surface uppercase tracking-wider">
-                            AI Gen
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                    
-                    <div className="p-md flex flex-col flex-1">
-                      <h3 className="text-body-lg text-on-surface font-semibold mb-2 truncate" title={project.title}>
-                        {project.title}
-                      </h3>
-                      <div className="flex items-center gap-4 text-label-sm text-on-surface-variant mt-auto">
-                        <span className="flex items-center gap-1 shrink-0" title="Created on">
-                          <Icon name="calendar_today" className="text-[14px]" /> {new Date(project.created_at).toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center gap-1 shrink-0" title="Nodes inside">
-                          <Icon name="account_tree" className="text-[14px]" /> {(project.mind_maps as any)?.[0]?.node_count || 1} Nodes
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
+            </div>
+            <div className="mt-4 flex items-center gap-4 text-sm text-on-surface-variant">
+              <span>Or start with:</span>
+              <Link 
+                to="/projects/new"
+                className="hover:text-primary transition-colors flex items-center gap-1 font-medium"
+              >
+                <Icon name="add" className="text-[16px]" /> Blank Canvas
+              </Link>
+              <span className="text-outline-variant/50">•</span>
+              <Link to="/templates" className="hover:text-primary transition-colors flex items-center gap-1 font-medium">
+                <Icon name="auto_awesome_motion" className="text-[16px]" /> Templates
+              </Link>
+            </div>
           </div>
-        </div>
-      </AppLayout>
+        </section>
+
+        {projects.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-medium text-on-surface tracking-tight">Recent Projects</h2>
+              <Link to="/projects" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+                View all <Icon name="arrow_forward" className="text-[16px]" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {projects.slice(0, 3).map((project, i) => (
+                <Link
+                  key={project.id}
+                  to="/workspace/$mindMapId"
+                  params={{ mindMapId: project.mind_maps?.[0]?.id || "" }}
+                  className="group relative flex flex-col bg-transparent rounded-2xl transition-all"
+                >
+                  <div className="h-48 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 overflow-hidden relative mb-4 group-hover:border-primary/30 group-hover:shadow-sm transition-all">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                      style={{ backgroundImage: `url('${PROJECT_THUMBS[i % PROJECT_THUMBS.length]}')` }}
+                      role="img"
+                      aria-label={`${project.title} preview`}
+                    />
+                    {(project.description?.includes("AI") || project.description?.includes("Auto-generated")) && (
+                      <div className="absolute top-3 left-3 bg-surface/90 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 border border-outline-variant/20 shadow-sm">
+                        <Icon name="auto_awesome" className="text-[14px] text-accent-violet" />
+                        <span className="text-xs font-medium text-on-surface">AI Generated</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="px-1 flex flex-col">
+                    <h3 className="text-base text-on-surface font-medium mb-1 truncate group-hover:text-primary transition-colors" title={project.title}>
+                      {project.title}
+                    </h3>
+                    <div className="flex items-center gap-3 text-sm text-on-surface-variant">
+                      <span className="flex items-center gap-1">
+                        {new Date(project.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </AppLayout>
   );
 }

@@ -1288,6 +1288,76 @@ function Workspace() {
               );
             })}
 
+            {!isLoadingGraph && flowNodes.length === 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-between bg-surface-container-lowest z-10 pt-20">
+                {/* Center Greeting */}
+                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 animate-in fade-in duration-700">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                    <Icon name="auto_awesome" className="text-[28px] text-primary" />
+                  </div>
+                  <h2 className="text-display-sm md:text-display-md font-semibold text-on-surface mb-3 text-center tracking-tight">
+                    What do you want to map out?
+                  </h2>
+                  <p className="text-body-lg text-on-surface-variant text-center max-w-xl">
+                    Enter a concept, system, or idea, and I'll generate a comprehensive mind map to help you visualize it.
+                  </p>
+                </div>
+
+                {/* Bottom Chat Bar (ChatGPT / Gemini style) */}
+                <div className="w-full max-w-3xl px-4 pb-8 sm:pb-12 mt-auto animate-in slide-in-from-bottom-8 fade-in duration-500">
+                  <div className="relative flex flex-col bg-surface shadow-level-2 hover:shadow-level-3 border border-outline-variant/50 rounded-[28px] focus-within:border-primary/30 transition-all duration-300">
+                    <textarea
+                      autoFocus
+                      value={topic}
+                      onChange={(e) => {
+                        setTopic(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (topic.trim() && !isGenerating) {
+                            handleGenerateAI();
+                          }
+                        }
+                      }}
+                      placeholder="Ask MindVault to map something..."
+                      className="w-full bg-transparent resize-none text-body-lg text-on-surface p-4 pl-6 pr-16 outline-none rounded-[28px] placeholder:text-outline-variant/70 min-h-[60px] max-h-[200px]"
+                      rows={1}
+                      disabled={isGenerating}
+                    />
+                    <div className="absolute right-3 bottom-3 flex items-center">
+                      <button
+                        onClick={() => handleGenerateAI()}
+                        disabled={!topic.trim() || isGenerating}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          topic.trim() && !isGenerating
+                            ? 'bg-primary text-on-primary hover:bg-primary/90 shadow-md scale-100'
+                            : 'bg-surface-container-high text-outline disabled:opacity-50 scale-95'
+                        }`}
+                      >
+                        {isGenerating ? (
+                          <Icon name="sync" className="animate-spin text-[20px]" />
+                        ) : (
+                          <Icon name="arrow_upward" className="text-[20px]" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {generationError && (
+                    <p className="text-error text-body-sm mt-3 px-4 flex items-center justify-center gap-1.5">
+                      <Icon name="error" className="text-[16px]" />
+                      {generationError}
+                    </p>
+                  )}
+                  <div className="text-center mt-3 text-label-sm text-on-surface-variant/60">
+                    AI can make mistakes. Please verify important information.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {!isLoadingGraph && flowNodes.length > 0 && (
               <ReactFlow
                 nodes={flowNodes}

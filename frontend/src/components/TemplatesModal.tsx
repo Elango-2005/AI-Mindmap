@@ -104,8 +104,8 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
       toast.success(`Template loaded! Opening workspace...`);
       onClose();
       navigate({
-        to: "/workspace",
-        search: { mindMapId: result.mind_map_id, topic: undefined },
+        to: "/workspace/$mindMapId",
+        params: { mindMapId: result.mind_map_id },
       });
     } catch (err) {
       console.error("Failed to instantiate template:", err);

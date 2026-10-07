@@ -1,10 +1,7 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Icon } from "@/components/Icon";
 import { LOGO_URL } from "@/lib/assets";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { createProject } from "@/api/projects";
-import { createMindMap } from "@/api/mindmaps";
 
 type NavItem = { label: string; icon: string; to: string };
 
@@ -17,99 +14,54 @@ const NAV: NavItem[] = [
 ];
 
 export function AppSidebar({
-  active = "Projects",
+  active = "Dashboard",
   showBrand = true,
-  ctaVariant = "primary",
   className,
 }: {
   active?: string;
   showBrand?: boolean;
-  ctaVariant?: "primary" | "muted";
   className?: string;
 }) {
-  const navigate = useNavigate();
-  const [isCreating, setIsCreating] = useState(false);
-
-  const handleCreate = async () => {
-    try {
-      setIsCreating(true);
-      const project = await createProject({ title: "Untitled Project", description: "Auto-generated project" });
-      const mindMap = await createMindMap(project.id, { title: "Untitled Project", graph_data: "{}" });
-      navigate({ to: "/workspace/$mindMapId", params: { mindMapId: mindMap.id } });
-    } catch (e) {
-      console.error(e);
-      alert("Failed to create project");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   return (
-    <aside className={cn("w-[280px] shrink-0 flex flex-col h-full bg-surface border-r border-outline-variant/20 p-md gap-sm", className ?? "hidden md:flex")}>
-      {showBrand ? (
-        <div className="flex items-center gap-md px-md py-sm mb-lg">
-          <img alt="MindVault AI logo" className="w-10 h-10 rounded-lg" src={LOGO_URL} />
+    <aside className={cn("w-[260px] shrink-0 flex flex-col h-full bg-surface-container-lowest border-r border-outline-variant/30 py-6 px-4 gap-2", className ?? "hidden md:flex")}>
+      {showBrand && (
+        <div className="flex items-center gap-3 px-3 mb-6">
+          <img alt="MindVault AI logo" className="w-8 h-8 rounded-lg" src={LOGO_URL} />
           <div>
-            <h2 className="text-headline-md text-on-surface">Knowledge Hub</h2>
-            <p className="text-label-sm text-on-surface-variant">Premium AI Workspace</p>
+            <h2 className="text-title-md font-semibold text-on-surface">MindVault</h2>
           </div>
-        </div>
-      ) : (
-        <div className="mb-lg px-sm pt-sm">
-          <h2 className="text-headline-md text-on-surface">Knowledge Hub</h2>
-          <p className="text-label-sm text-on-surface-variant">Premium AI Workspace</p>
         </div>
       )}
 
-      {ctaVariant === "muted" ? (
-        <button 
-          onClick={handleCreate}
-          disabled={isCreating}
-          className="w-full bg-surface-container text-on-surface py-sm px-md rounded-lg mb-md flex items-center justify-center gap-sm text-label-md hover:bg-surface-container-highest transition-all disabled:opacity-50"
-        >
-          <Icon name="add" className="text-[18px]" />
-          {isCreating ? "Creating..." : "New MindMap"}
-        </button>
-      ) : null}
-
-      <nav className="flex-1 flex flex-col gap-xs">
+      <nav className="flex-1 flex flex-col gap-1">
         {NAV.map((item) => (
           <Link
             key={item.label}
             to={item.to}
             className={cn(
-              "flex items-center gap-md px-md py-sm rounded-xl transition-all duration-200 text-label-md",
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-body-md font-medium",
               active === item.label
-                ? "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-sm translate-x-1"
-                : "text-on-surface-variant hover:bg-surface-container-low",
+                ? "bg-surface-container text-on-surface"
+                : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
             )}
           >
-            <Icon name={item.icon} filled={active === item.label} />
+            <Icon name={item.icon} className="text-[20px]" filled={active === item.label} />
             <span>{item.label}</span>
           </Link>
         ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-sm">
-        {ctaVariant === "primary" ? (
-          <button 
-            onClick={handleCreate}
-            disabled={isCreating}
-            className="bg-primary-container text-white text-label-md rounded-xl py-sm px-md flex items-center justify-center gap-sm ai-glow transition-all mb-md disabled:opacity-50"
-          >
-            <Icon name="add" />
-            {isCreating ? "Creating..." : "New MindMap"}
-          </button>
-        ) : null}
-        
+      <div className="mt-auto flex flex-col gap-1">
         <Link
           to="/account"
           className={cn(
-            "text-on-surface-variant flex items-center gap-md px-md py-sm rounded-xl hover:bg-surface-container-low transition-all duration-200 text-label-md",
-            active === "Account" && "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-sm translate-x-1"
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-body-md font-medium",
+            active === "Account" 
+                ? "bg-surface-container text-on-surface"
+                : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
           )}
         >
-          <Icon name="person" filled={active === "Account"} />
+          <Icon name="person" className="text-[20px]" filled={active === "Account"} />
           <span>Account</span>
         </Link>
       </div>
