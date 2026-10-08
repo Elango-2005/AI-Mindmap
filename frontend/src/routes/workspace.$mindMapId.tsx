@@ -16,7 +16,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot } from "@/api/mindmaps";
+import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot, getSnapshots, type Snapshot } from "@/api/mindmaps";
 import { getMindMapNodes, updateNode, summarizeNode, expandNode, findConnectionsNode, deleteNode } from "@/api/nodes";
 import { getMindMapEdges, deleteEdge, createEdge, updateEdge } from "@/api/edges";
 import { addEdge, reconnectEdge, type Connection, type Edge as FlowEdge } from "@xyflow/react";
@@ -119,10 +119,43 @@ function Workspace() {
   const [isKeyboardHelpOpen, setIsKeyboardHelpOpen] = useState(false);
   
   // Right panel mode
-  const [rightPanelMode, setRightPanelMode] = useState<"ai" | "inspector">("ai");
+  const [rightPanelMode, setRightPanelMode] = useState<"ai" | "inspector" | "versions">("ai");
 
   const [aiPanelState, setAiPanelState] = useState<"collapsed" | "expanded" | "full">("collapsed");
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
 
+  useEffect(() => {
+    if (rightPanelMode === "versions" && mindMapId) {
+      loadSnapshots();
+    }
+  }, [rightPanelMode, mindMapId]);
+
+  async function loadSnapshots() {
+    if (!mindMapId) return;
+    setIsLoadingSnapshots(true);
+    try {
+      const data = await getSnapshots(mindMapId);
+      // sort descending by created_at
+      setSnapshots(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    } catch (e) {
+      console.error("Failed to load snapshots", e);
+    } finally {
+      setIsLoadingSnapshots(false);
+    }
+  }
+
+  async function handleRestoreSnapshot(snapshotId: string) {
+    if (!mindMapId) return;
+    try {
+      toast.info("Restoring version...");
+      await restoreSnapshot(mindMapId, snapshotId);
+      await loadGraph();
+      toast.success("Version restored successfully");
+    } catch (e) {
+      toast.error("Failed to restore version");
+    }
+  }
 
   const [history, setHistory] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] }[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
@@ -831,6 +864,9 @@ function Workspace() {
                   <button onClick={() => setRightPanelMode("inspector")} className={`px-3 py-1.5 rounded-md text-label-sm font-semibold transition-colors flex items-center gap-1 ${rightPanelMode === "inspector" ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
                      <Icon name="tune" className="text-[16px]" /> Inspector
                   </button>
+                  <button onClick={() => setRightPanelMode("versions")} className={`px-3 py-1.5 rounded-md text-label-sm font-semibold transition-colors flex items-center gap-1 ${rightPanelMode === "versions" ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
+                     <Icon name="history" className="text-[16px]" /> History
+                  </button>
                </div>
                <div className="flex items-center gap-1">
                   <button onClick={() => setAiPanelState(aiPanelState === "full" ? "expanded" : "full")} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title={aiPanelState === "full" ? "Collapse to Sidebar" : "Expand to Full"}>
@@ -939,6 +975,52 @@ function Workspace() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                </div>
+              ) : rightPanelMode === "versions" ? (
+                <div className="p-4 flex flex-col gap-4 h-full bg-surface-container-lowest">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-label-md font-bold text-on-surface">Version History</h3>
+                    <button onClick={loadSnapshots} className="p-1 text-on-surface-variant hover:bg-surface-container rounded-lg" title="Refresh history">
+                      <Icon name="refresh" className="text-[18px]" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto pr-2 pb-4">
+                    {isLoadingSnapshots ? (
+                      <div className="flex items-center justify-center p-8"><Icon name="sync" className="animate-spin text-primary text-[24px]" /></div>
+                    ) : snapshots.length === 0 ? (
+                       <div className="text-center text-on-surface-variant mt-10">
+                         <Icon name="history" className="text-[32px] opacity-40 mb-2" />
+                         <p className="text-body-sm">No versions saved yet.</p>
+                       </div>
+                    ) : (
+                       <div className="flex flex-col gap-3 relative pb-4">
+                          <div className="absolute left-[11px] top-4 bottom-4 w-px bg-outline-variant/50 z-0"></div>
+                          {snapshots.map((snap) => (
+                             <div key={snap.id} className="relative z-10 flex gap-3">
+                                <div className="mt-1 w-6 h-6 rounded-full bg-surface border-2 border-primary flex items-center justify-center shrink-0">
+                                   <div className="w-2 h-2 rounded-full bg-primary"></div>
+                                </div>
+                                <div className="flex-1 bg-surface border border-outline-variant/30 rounded-xl p-3 shadow-sm hover:border-primary/50 transition-colors">
+                                   <div className="flex justify-between items-start mb-1 gap-2">
+                                      <p className="text-label-sm font-bold text-on-surface line-clamp-2">
+                                         {snap.name || "Manual save"}
+                                      </p>
+                                      <span className="text-[10px] font-medium text-outline shrink-0 mt-0.5">
+                                         {new Date(snap.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                   </div>
+                                   <p className="text-[11px] text-on-surface-variant mb-3">
+                                      {new Date(snap.created_at).toLocaleDateString()}
+                                   </p>
+                                   <button onClick={() => handleRestoreSnapshot(snap.id)} className="w-full py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-label-xs font-bold rounded transition-colors flex items-center justify-center gap-1.5">
+                                      <Icon name="restore" className="text-[14px]" /> Restore Version
+                                   </button>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                    )}
                   </div>
                 </div>
               ) : (

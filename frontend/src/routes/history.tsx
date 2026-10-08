@@ -158,79 +158,105 @@ function HistoryComponent() {
             </div>
           )}
           {!loading && !error && filtered.length > 0 && (
-            <div className="flex flex-col gap-xl max-w-4xl">
+            <div className="flex flex-col max-w-4xl relative">
+              {/* Timeline continuous vertical line */}
+              <div className="absolute left-8 sm:left-10 top-4 bottom-8 w-px bg-outline-variant/30 hidden sm:block"></div>
+              
               {GROUP_ORDER.filter((g) => grouped[g]).map((groupLabel) => (
-                <section key={groupLabel}>
-                  <h2 className="text-label-md font-semibold text-on-surface-variant uppercase tracking-wider mb-md">
-                    {groupLabel}
-                  </h2>
+                <section key={groupLabel} className="mb-xl relative">
+                  <div className="flex items-center gap-3 mb-md">
+                    <div className="hidden sm:flex w-20 justify-end">
+                       {/* spacer for timeline */}
+                    </div>
+                    <div className="hidden sm:flex w-2 h-2 rounded-full bg-outline-variant relative -left-[4.5px] z-10 shrink-0 ring-4 ring-surface" />
+                    <h2 className="text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">
+                      {groupLabel}
+                    </h2>
+                  </div>
                   <div className="flex flex-col gap-sm">
-                    {grouped[groupLabel].map((entry) => (
-                      <div
-                        key={entry.mindMap.id}
-                        className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 sm:px-lg py-3 sm:py-md hover:shadow-level-1 hover:border-primary/40 transition-all"
-                      >
-                        <Link
-                          to="/workspace/$mindMapId"
-                          params={{ mindMapId: entry.mindMap.id }}
-                          className="flex items-center gap-3 sm:gap-md flex-1 min-w-0"
+                    {grouped[groupLabel].map((entry) => {
+                      const createdMs = new Date(entry.mindMap.created_at).getTime();
+                      const updatedMs = new Date(entry.mindMap.updated_at).getTime();
+                      const isCreation = Math.abs(updatedMs - createdMs) < 10000;
+                      const actionLabel = isCreation ? "Created map" : "Edited map";
+                      const actionIcon = isCreation ? "add_circle" : "edit";
+                      const actionColor = isCreation ? "text-primary bg-primary/10" : "text-tertiary bg-tertiary/10";
+                      
+                      return (
+                        <div
+                          key={entry.mindMap.id}
+                          className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 sm:px-lg py-3 sm:py-md hover:shadow-level-1 hover:border-primary/40 transition-all sm:ml-[4.5rem]"
                         >
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors text-primary">
-                            <Icon name="account_tree" className="text-[20px]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-body-md font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
-                              {entry.mindMap.title}
-                            </p>
-                            <p className="text-label-sm text-on-surface-variant mt-0.5 flex items-center gap-1 truncate">
-                              <Icon name="folder_open" className="text-[14px] text-outline" />
-                              {entry.projectTitle}
-                            </p>
-                          </div>
-                        </Link>
+                          <Link
+                            to="/workspace/$mindMapId"
+                            params={{ mindMapId: entry.mindMap.id }}
+                            className="flex items-center gap-3 sm:gap-md flex-1 min-w-0"
+                          >
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${actionColor} group-hover:bg-primary group-hover:text-on-primary transition-colors`}>
+                              <Icon name={actionIcon} className="text-[20px]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-label-sm font-medium text-on-surface-variant px-1.5 py-0.5 bg-surface-variant rounded-md">
+                                  {actionLabel}
+                                </span>
+                                <span className="text-label-sm text-outline hidden sm:inline">&bull;</span>
+                                <p className="text-label-sm text-on-surface-variant hidden sm:flex items-center gap-1 truncate">
+                                  <Icon name="folder_open" className="text-[14px] text-outline" />
+                                  {entry.projectTitle}
+                                </p>
+                              </div>
+                              <p className="text-body-md font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
+                                {entry.mindMap.title}
+                              </p>
+                              {/* Mobile project title */}
+                              <p className="text-label-sm text-on-surface-variant mt-1 flex sm:hidden items-center gap-1 truncate">
+                                <Icon name="folder_open" className="text-[14px] text-outline" />
+                                {entry.projectTitle}
+                              </p>
+                            </div>
+                          </Link>
 
-                        {/* Actions & Timestamps */}
-                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/10">
-                          <div className="text-left sm:text-right">
-                            <p className="text-label-sm text-on-surface-variant font-medium">{timeAgo(entry.mindMap.updated_at)}</p>
-                            <p className="text-label-xs text-outline mt-0.5">
-                              {new Date(entry.mindMap.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </p>
-                          </div>
+                          {/* Actions & Timestamps */}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/10">
+                            <div className="text-left sm:text-right">
+                              <p className="text-label-sm text-on-surface-variant font-medium">{timeAgo(entry.mindMap.updated_at)}</p>
+                            </div>
 
-                          <div className="flex items-center gap-1">
-                            <Link
-                              to="/present/$mindMapId"
-                              params={{ mindMapId: entry.mindMap.id }}
-                              className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
-                              title="Present Slideshow"
-                            >
-                              <Icon name="play_circle" className="text-[18px]" />
-                            </Link>
-                            <button
-                              onClick={(e) => handleCopyLink(e, entry.mindMap.id)}
-                              className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
-                              title="Copy Share Link"
-                            >
-                              <Icon name="link" className="text-[18px]" />
-                            </button>
-                            <Link
-                              to="/workspace/$mindMapId"
-                              params={{ mindMapId: entry.mindMap.id }}
-                              className="p-2 rounded-lg text-outline group-hover:text-primary hover:bg-surface-container transition-colors"
-                              title="Open in Workspace"
-                            >
-                              <Icon name="chevron_right" className="text-[18px]" />
-                            </Link>
+                            <div className="flex items-center gap-1">
+                              <Link
+                                to="/present/$mindMapId"
+                                params={{ mindMapId: entry.mindMap.id }}
+                                className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Present Slideshow"
+                              >
+                                <Icon name="play_circle" className="text-[18px]" />
+                              </Link>
+                              <button
+                                onClick={(e) => handleCopyLink(e, entry.mindMap.id)}
+                                className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Copy Share Link"
+                              >
+                                <Icon name="link" className="text-[18px]" />
+                              </button>
+                              <Link
+                                to="/workspace/$mindMapId"
+                                params={{ mindMapId: entry.mindMap.id }}
+                                className="p-2 rounded-lg text-outline group-hover:text-primary hover:bg-surface-container transition-colors"
+                                title="Open in Workspace"
+                              >
+                                <Icon name="chevron_right" className="text-[18px]" />
+                              </Link>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               ))}
-              <p className="text-label-sm text-outline text-center pb-lg">
-                Showing {filtered.length} mind map{filtered.length !== 1 ? "s" : ""}
+              <p className="text-label-sm text-outline text-center pb-lg sm:pl-[4.5rem]">
+                Showing {filtered.length} recent activit{filtered.length !== 1 ? "ies" : "y"}
               </p>
             </div>
           )}
