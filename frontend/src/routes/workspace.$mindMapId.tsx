@@ -18,7 +18,8 @@ import "@xyflow/react/dist/style.css";
 
 import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap } from "@/api/mindmaps";
 import { getMindMapNodes, updateNode, summarizeNode, expandNode, findConnectionsNode, deleteNode } from "@/api/nodes";
-import { getMindMapEdges } from "@/api/edges";
+import { getMindMapEdges, deleteEdge, createEdge, updateEdge } from "@/api/edges";
+import { addEdge, reconnectEdge, type Connection, type Edge as FlowEdge } from "@xyflow/react";
 import { exportMindMap, importMindMap } from "@/api/integrations";
 import { toPng } from "html-to-image";
 import {
@@ -110,6 +111,7 @@ function Workspace() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isKeyboardHelpOpen, setIsKeyboardHelpOpen] = useState(false);
   
   // Right panel mode
   const [rightPanelMode, setRightPanelMode] = useState<"ai" | "inspector">("ai");
@@ -295,7 +297,21 @@ function Workspace() {
           data: {
             label: node.label,
             mindMapId,
-            onDelete: () => setConfirmAction({ type: 'delete', nodeId: node.id, nodeLabel: node.label }),
+            onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+            onDelete: (id?: string) => {
+               if (id) {
+                   // From context menu, silent delete (managed by standard ReactFlow handlers via onNodesDelete)
+                   // wait, context menu calls onDelete(id). 
+                   // We actually just want to open the prompt OR just delete it.
+                   // User wants to be able to delete a node manually.
+                   // The safe AI regeneration rule means if they delete manually it shouldn't be terrifying, but the backend is safe.
+                   // Actually, if we pass id, let's just trigger the confirmAction for deletion to be safe, or just do it.
+                   // Standard React Flow selection + Backspace works. We will just use standard selection + backspace for quick delete.
+                   setConfirmAction({ type: 'delete', nodeId: id, nodeLabel: node.label });
+               } else {
+                   setConfirmAction({ type: 'delete', nodeId: node.id, nodeLabel: node.label });
+               }
+            },
             onRegenerate: () => setConfirmAction({ type: 'regenerate', nodeId: node.id, nodeLabel: node.label })
           },
           type: "editable",
@@ -411,16 +427,88 @@ function Workspace() {
     }
   }
 
+
+  const handleNodesDelete = async (deleted: FlowNode[]) => {
+    try {
+      await Promise.all(deleted.map(n => deleteNode(n.id)));
+      setFlowNodes(current => {
+        pushToHistory(current, flowEdges);
+        return current;
+      });
+    } catch(e) { console.error(e); }
+  };
+
+  const handleEdgesDelete = async (deleted: FlowEdge[]) => {
+    try {
+      await Promise.all(deleted.map(e => deleteEdge(e.id)));
+      setFlowEdges(current => {
+        pushToHistory(flowNodes, current);
+        return current;
+      });
+    } catch(e) { console.error(e); }
+  };
+
   function handleNodesChange(changes: NodeChange[]) {
+
     setFlowNodes(current => applyNodeChanges(changes, current));
     broadcastNodesChange(changes);
   }
 
+
+  
+  const onReconnect = async (oldEdge: FlowEdge, newConnection: Connection) => {
+    try {
+      await updateEdge(oldEdge.id, {
+        source: newConnection.source,
+        target: newConnection.target
+      });
+      setFlowEdges(eds => {
+        const next = reconnectEdge(oldEdge, newConnection, eds);
+        pushToHistory(flowNodes, next);
+        return next;
+      });
+      toast.success("Edge reconnected");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to reconnect edge");
+    }
+  };
+
+  const onConnect = async (connection: Connection) => {
+    if (!mindMapId) return;
+    try {
+      const newEdge = await createEdge(mindMapId, {
+        source: connection.source,
+        target: connection.target
+      });
+      const rfEdge: FlowEdge = {
+        id: newEdge.id,
+        source: newEdge.source,
+        target: newEdge.target,
+        type: "editable"
+      };
+      setFlowEdges(eds => {
+        const next = addEdge(rfEdge, eds);
+        pushToHistory(flowNodes, next);
+        return next;
+      });
+      toast.success("Connected nodes");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to connect nodes");
+    }
+  };
+
   const handleNodeDragStop: NodeDragHandler = async (_e, node) => {
     try {
       await updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+      setFlowNodes(current => {
+        pushToHistory(current, flowEdges);
+        return current;
+      });
     } catch (error) { console.error(error); }
   };
+
 
   const handleExport = async (format: "markdown" | "opml" | "xmind" | "freemind") => {
     if (!mindMapId) return;
@@ -529,6 +617,12 @@ function Workspace() {
             )}
           </div>
 
+          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
+
+          
+          <button onClick={() => setIsKeyboardHelpOpen(true)} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title="Keyboard Shortcuts">
+            <Icon name="keyboard" className="text-[20px]" />
+          </button>
           <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
 
           <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded disabled:opacity-30">
@@ -662,6 +756,13 @@ function Workspace() {
               fitView
               nodesDraggable={true}
               elementsSelectable={true}
+              nodesConnectable={true}
+              deleteKeyCode={['Backspace', 'Delete']}
+              onConnect={onConnect}
+              onReconnect={onReconnect}
+              edgesUpdatable={true}
+              onNodesDelete={handleNodesDelete}
+              onEdgesDelete={handleEdgesDelete}
               onNodesChange={handleNodesChange}
               onNodeDragStop={handleNodeDragStop}
               onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
@@ -820,6 +921,27 @@ function Workspace() {
           else handleExport(format as any);
         }}
       />
+
+      
+      {isKeyboardHelpOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-[32rem] p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-headline-sm font-bold text-on-surface flex items-center gap-2"><Icon name="keyboard" /> Keyboard Shortcuts</h2>
+              <button onClick={() => setIsKeyboardHelpOpen(false)} className="p-1.5 hover:bg-surface-container rounded-lg text-outline"><Icon name="close" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-body-sm text-on-surface-variant mb-6">
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Delete Node / Edge</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Del / Backspace</span></div>
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Edit Node</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Enter / Double Click</span></div>
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Cancel Edit</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Escape</span></div>
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Undo</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Ctrl + Z</span></div>
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Redo</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Ctrl + Y / Shift+Ctrl+Z</span></div>
+              <div className="flex justify-between border-b border-outline-variant/20 py-2"><span>Pan Canvas</span><span className="font-mono bg-surface-container px-1.5 py-0.5 rounded">Space + Drag</span></div>
+            </div>
+            <button onClick={() => setIsKeyboardHelpOpen(false)} className="self-end px-4 py-2 bg-primary text-on-primary rounded-full font-medium hover:bg-primary/90">Got it</button>
+          </div>
+        </div>
+      )}
 
       {confirmAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
