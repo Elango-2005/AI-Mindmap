@@ -7,9 +7,7 @@ import {
   MiniMap,
   applyNodeChanges,
   type NodeChange,
-  type NodeDragHandler,
   type Node as FlowNode,
-  type Edge as FlowEdge,
   type ReactFlowInstance,
   getNodesBounds,
   getViewportForBounds,
@@ -629,7 +627,7 @@ function Workspace() {
     }
   };
 
-  const handleNodeDragStop: NodeDragHandler = async (_e, node) => {
+  const handleNodeDragStop = async (_e: any, node: any) => {
     try {
       await updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
       setFlowNodes(current => {
@@ -1317,6 +1315,7 @@ function Workspace() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
