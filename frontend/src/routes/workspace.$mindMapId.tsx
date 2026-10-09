@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   ReactFlow,
   Background,
@@ -17,7 +17,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot, getSnapshots, type Snapshot } from "@/api/mindmaps";
-import { getMindMapNodes, updateNode, summarizeNode, expandNode, findConnectionsNode, deleteNode } from "@/api/nodes";
+import { getMindMapNodes, createNode, updateNode, summarizeNode, expandNode, findConnectionsNode, deleteNode } from "@/api/nodes";
 import { getMindMapEdges, deleteEdge, createEdge, updateEdge } from "@/api/edges";
 import { addEdge, reconnectEdge, type Connection, type Edge as FlowEdge } from "@xyflow/react";
 import { exportMindMap, importMindMap } from "@/api/integrations";
@@ -127,6 +127,42 @@ function Workspace() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
 
+  // Focus Mode
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+
+  // Command Palette
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const descendantsSet = useMemo(() => {
+    if (!focusedNodeId) return null;
+    const set = new Set<string>();
+    const queue = [focusedNodeId];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      set.add(current);
+      const children = flowEdges.filter(e => e.source === current).map(e => e.target);
+      queue.push(...children);
+    }
+    return set;
+  }, [focusedNodeId, flowEdges]);
+
+  const visibleNodes = useMemo(() => {
+    if (!descendantsSet) return flowNodes;
+    return flowNodes.map(n => ({
+      ...n,
+      hidden: !descendantsSet.has(n.id)
+    }));
+  }, [flowNodes, descendantsSet]);
+
+  const visibleEdges = useMemo(() => {
+    if (!descendantsSet) return flowEdges;
+    return flowEdges.map(e => ({
+      ...e,
+      hidden: !descendantsSet.has(e.source) || !descendantsSet.has(e.target)
+    }));
+  }, [flowEdges, descendantsSet]);
+
   useEffect(() => {
     if (rightPanelMode === "versions" && mindMapId) {
       loadSnapshots();
@@ -204,6 +240,9 @@ function Workspace() {
       ) {
         e.preventDefault();
         handleRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -409,6 +448,46 @@ function Workspace() {
           setRightPanelMode("inspector");
       }
   }, [selectedNodeId]);
+
+  const handleExpandNode = async (nodeId: string) => {
+    toast.info("Expanding node...");
+    try {
+      await expandNode(nodeId);
+      await loadGraph();
+      toast.success("Node expanded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to expand node");
+    }
+  };
+
+  const handleSummarizeNode = async (nodeId: string) => {
+    toast.info("Summarizing node...");
+    try {
+      const { summary } = await summarizeNode(nodeId);
+      setFlowNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, label: summary } } : n));
+      toast.success("Node summarized");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to summarize node");
+    }
+  };
+
+  const handleFindConnections = async (nodeId: string) => {
+    toast.info("Analyzing relationships...");
+    try {
+      const connections = await findConnectionsNode(nodeId);
+      if (connections.length > 0) {
+        toast.success(`Found ${connections.length} possible connection(s).`);
+        await loadGraph();
+      } else {
+        toast.info("No missing connections found.");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to find connections");
+    }
+  };
 
   async function handleGenerateAI(fallbackTopic?: string) {
     const rootNode = flowNodes.find(node => !flowEdges.some(edge => edge.target === node.id)) || flowNodes[0];
@@ -829,8 +908,8 @@ function Workspace() {
             </div>
           ) : (
             <ReactFlow
-              nodes={flowNodes}
-              edges={flowEdges}
+              nodes={visibleNodes}
+              edges={visibleEdges}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               onInit={setRfInstance}
@@ -858,6 +937,14 @@ function Workspace() {
           {/* 4. FLOATING CANVAS CONTROLS */}
           {flowNodes.length > 0 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-full shadow-level-3 flex items-center p-1.5 gap-1 z-10">
+              {focusedNodeId && (
+                 <>
+                   <button onClick={() => setFocusedNodeId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors text-label-sm font-semibold" title="Exit Focus Mode">
+                     <Icon name="center_focus_weak" className="text-[18px]" /> Exit Focus
+                   </button>
+                   <div className="w-px h-6 bg-outline-variant/50 mx-1" />
+                 </>
+              )}
               <button onClick={() => setShowMiniMap(!showMiniMap)} className="p-2 text-on-surface hover:bg-surface-container rounded-full" title="Toggle MiniMap">
                 <Icon name="map" className="text-[20px]" />
               </button>
@@ -966,8 +1053,12 @@ function Workspace() {
                          </>
                       ) : (
                          <>
-                            <button onClick={() => handleSendChat("Improve map structure")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface">Improve structure</button>
-                            <button onClick={() => handleSendChat("Summarize entire map")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface">Summarize map</button>
+                            <button onClick={() => handleSendChat("Improve map structure")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Improve structure</button>
+                            <button onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Analyze map</button>
+                            <button onClick={() => handleSendChat("Identify gaps and missing concepts")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Identify gaps</button>
+                            <button onClick={() => handleSendChat("Summarize entire map")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Summarize map</button>
+                            <button onClick={() => handleSendChat("Convert to study guide")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Create study guide</button>
+                            <button onClick={() => handleSendChat("Convert to project plan")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Create project plan</button>
                          </>
                       )}
                     </div>
@@ -1079,17 +1170,49 @@ function Workspace() {
                       </div>
                       <div className="h-px bg-outline-variant/30" />
                       <div>
-                         <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">Quick Actions</label>
-                         <div className="flex flex-col gap-2">
-                            <button onClick={() => setConfirmAction({ type: 'regenerate', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex items-center gap-3 p-2 hover:bg-surface-container-low rounded-lg text-left text-body-sm">
-                               <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary"><Icon name="auto_awesome" /></div>
-                               <div><div className="font-semibold text-on-surface">AI Regenerate</div><div className="text-on-surface-variant text-[11px]">Replace descendants</div></div>
+                         <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">AI Node Actions</label>
+                         <div className="grid grid-cols-2 gap-2 mb-4">
+                            <button onClick={() => handleExpandNode(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
+                               <Icon name="account_tree" className="text-primary text-[20px]" />
+                               <span className="font-semibold text-on-surface text-label-sm mt-1">Expand</span>
                             </button>
-                            <button onClick={() => setConfirmAction({ type: 'delete', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex items-center gap-3 p-2 hover:bg-error-container/30 rounded-lg text-left text-body-sm text-error">
-                               <div className="w-8 h-8 rounded bg-error/10 flex items-center justify-center text-error"><Icon name="delete" /></div>
-                               <div><div className="font-semibold">Delete Node</div><div className="opacity-70 text-[11px]">Remove node & children</div></div>
+                            <button onClick={() => handleSummarizeNode(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
+                               <Icon name="short_text" className="text-primary text-[20px]" />
+                               <span className="font-semibold text-on-surface text-label-sm mt-1">Summarize</span>
+                            </button>
+                            <button onClick={() => handleFindConnections(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
+                               <Icon name="hub" className="text-primary text-[20px]" />
+                               <span className="font-semibold text-on-surface text-label-sm mt-1">Connections</span>
+                            </button>
+                            <button onClick={() => setConfirmAction({ type: 'regenerate', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
+                               <Icon name="auto_awesome" className="text-primary text-[20px]" />
+                               <span className="font-semibold text-on-surface text-label-sm mt-1">Regenerate</span>
+                            </button>
+                            <button onClick={() => {
+                               setFocusedNodeId(selectedNode.id);
+                               if (rfInstance) {
+                                 const targetNode = flowNodes.find((n) => n.id === selectedNode.id);
+                                 if (targetNode) {
+                                   rfInstance.setCenter(targetNode.position.x, targetNode.position.y, { zoom: 1.2, duration: 600 });
+                                 }
+                               }
+                            }} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
+                               <Icon name="center_focus_strong" className="text-primary text-[20px]" />
+                               <span className="font-semibold text-on-surface text-label-sm mt-1">Focus Branch</span>
                             </button>
                          </div>
+                         <div className="h-px bg-outline-variant/30 mb-4" />
+                         <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">Metadata (Coming Soon)</label>
+                         <div className="flex gap-2 opacity-50 pointer-events-none mb-4">
+                           <span className="px-2 py-1 bg-surface-container rounded text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="sell" className="text-[12px]"/> Tags</span>
+                           <span className="px-2 py-1 bg-surface-container rounded text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="link" className="text-[12px]"/> Source</span>
+                         </div>
+                         <div className="h-px bg-outline-variant/30 mb-4" />
+                         <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">Danger Zone</label>
+                         <button onClick={() => setConfirmAction({ type: 'delete', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex items-center gap-3 w-full p-2 hover:bg-error-container/30 rounded-lg text-left text-body-sm text-error transition-colors">
+                            <div className="w-8 h-8 rounded bg-error/10 flex items-center justify-center text-error"><Icon name="delete" /></div>
+                            <div><div className="font-semibold">Delete Node</div><div className="opacity-70 text-[11px]">Remove node & children</div></div>
+                         </button>
                       </div>
                     </>
                   )}
@@ -1147,6 +1270,49 @@ function Workspace() {
                 {isConfirming && <Icon name="sync" className="animate-spin text-[16px]" />}
                 {confirmAction.type === 'delete' ? 'Delete' : 'Regenerate'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCommandPaletteOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-background/80 backdrop-blur-sm pt-[15vh] p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsCommandPaletteOpen(false); }}>
+          <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-[36rem] flex flex-col animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-outline-variant/30">
+              <Icon name="search" className="text-[24px] text-outline" />
+              <input 
+                autoFocus
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search nodes... (e.g. API)"
+                className="flex-1 bg-transparent border-none outline-none text-body-lg text-on-surface placeholder:text-outline-variant"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setIsCommandPaletteOpen(false);
+                }}
+              />
+              <button onClick={() => setIsCommandPaletteOpen(false)} className="text-outline-variant hover:text-on-surface text-label-sm font-semibold bg-surface-container px-2 py-1 rounded">ESC</button>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto p-2">
+              {flowNodes.filter(n => (n.data.label as string).toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 15).map(node => (
+                <button
+                  key={node.id}
+                  onClick={() => {
+                    setSelectedNodeId(node.id);
+                    if (rfInstance) {
+                      rfInstance.setCenter(node.position.x, node.position.y, { zoom: 1.2, duration: 600 });
+                    }
+                    setIsCommandPaletteOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className="w-full text-left p-3 hover:bg-surface-container rounded-xl flex flex-col gap-1 transition-colors"
+                >
+                  <span className="text-body-md font-semibold text-on-surface">{node.data.label as string}</span>
+                </button>
+              ))}
+              {flowNodes.filter(n => (n.data.label as string).toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                <div className="p-4 text-center text-on-surface-variant text-body-sm">No results found.</div>
+              )}
             </div>
           </div>
         </div>

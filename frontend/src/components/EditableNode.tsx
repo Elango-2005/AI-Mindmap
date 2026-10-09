@@ -41,6 +41,25 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    if (!selected || isEditing) return;
+    
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        handleAddChild();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleAddSibling();
+      }
+    };
+    
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [selected, isEditing, data.mindMapId, id, depth, theme, positionAbsoluteX, positionAbsoluteY]);
+
+
   const pushSnapshot = () => {
     // Delay slightly so setNodes/setEdges can finish applying
     setTimeout(() => {
@@ -86,7 +105,7 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
     }
   }
 
-  const handleAddChild = async () => {
+  async function handleAddChild() {
     if (!data.mindMapId) {
       toast.error("Missing mind map ID");
       return;
@@ -102,10 +121,11 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         target: newNode.id
       });
       
-      setNodes((nds) => [...nds, {
+      setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), {
         id: newNode.id,
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
+        selected: true,
         data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth + 1, theme: theme, isNew: true, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
       }]);
       setEdges((eds) => [...eds, {
@@ -119,9 +139,9 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       console.error(e);
       toast.error("Failed to add child node.");
     }
-  };
+  }
 
-  const handleAddSibling = async () => {
+  async function handleAddSibling() {
     if (!data.mindMapId) return;
     const edges = getEdges();
     const parentEdge = edges.find(e => e.target === id);
@@ -140,10 +160,11 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         target: newNode.id
       });
       
-      setNodes((nds) => [...nds, {
+      setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), {
         id: newNode.id,
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
+        selected: true,
         data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: true, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
       }]);
       setEdges((eds) => [...eds, {
@@ -157,7 +178,7 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       console.error(e);
       toast.error("Failed to add sibling node.");
     }
-  };
+  }
 
   const handleDelete = async () => {
     if (data.onDelete) {
