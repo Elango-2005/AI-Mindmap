@@ -53,15 +53,15 @@ export function AppSidebar({
 
       <div className="mt-auto flex flex-col gap-1">
         <Link
-          to="/account"
+          to="/settings"
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-body-md font-medium",
-            active === "Account" 
+            active === "Settings" 
                 ? "bg-surface-container text-on-surface"
                 : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
           )}
         >
-          <Icon name="person" className="text-[20px]" filled={active === "Account"} />
+          <Icon name="person" className="text-[20px]" filled={active === "Settings"} />
           <span>Account</span>
         </Link>
       </div>

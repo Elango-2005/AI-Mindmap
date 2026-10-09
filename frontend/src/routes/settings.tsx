@@ -24,30 +24,29 @@ export const Route = createFileRoute("/settings")({
 
 const SECTIONS = [
   { label: "Profile", icon: "person" },
-  { label: "Account", icon: "badge" },
+  { label: "Account", icon: "shield" },
   { label: "Appearance", icon: "palette" },
   { label: "Notifications", icon: "notifications" },
-  { label: "API Keys", icon: "key" },
+  { label: "API / Integrations", icon: "integration_instructions" },
 ];
 
 
 
-function Toggle({ defaultChecked }: { defaultChecked?: boolean }) {
-  const [on, setOn] = useState(Boolean(defaultChecked));
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
   return (
     <button
       role="switch"
-      aria-checked={on}
-      onClick={() => setOn((v) => !v)}
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
       className={cn(
         "relative w-11 h-6 rounded-full transition-colors shrink-0",
-        on ? "bg-primary" : "bg-surface-variant",
+        checked ? "bg-primary" : "bg-surface-variant",
       )}
     >
       <span
         className={cn(
           "absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-surface-container-lowest border border-outline-variant transition-transform",
-          on && "translate-x-full",
+          checked && "translate-x-full",
         )}
       />
     </button>
@@ -59,6 +58,7 @@ function Settings() {
   
   // Theme state
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
+  const [reducedMotion, setReducedMotion] = useState(localStorage.getItem("reducedMotion") === "true");
 
   // Profile state
   const [user, setUser] = useState<{ full_name: string; email: string; profile_image?: string } | null>(null);
@@ -89,6 +89,16 @@ function Settings() {
       }
     }
   }, [theme]);
+
+  // Reduced motion effect
+  useEffect(() => {
+    localStorage.setItem("reducedMotion", reducedMotion.toString());
+    if (reducedMotion) {
+      document.documentElement.classList.add("reduced-motion");
+    } else {
+      document.documentElement.classList.remove("reduced-motion");
+    }
+  }, [reducedMotion]);
 
   return (
     <AppLayout activeRoute="Settings">
@@ -327,9 +337,9 @@ function Settings() {
                     Minimize animations and transition effects.
                   </p>
                 </div>
-                <Toggle />
+                <Toggle checked={reducedMotion} onChange={setReducedMotion} />
               </div>
-              <div className="flex justify-between items-center gap-md mt-md pt-md border-t border-outline-variant/20">
+              <div className="flex justify-between items-center gap-md mt-md pt-md border-t border-outline-variant/20 hidden">
                 <div>
                   <h3 className="text-label-md text-on-surface font-semibold">
                     AI Intelligence Glow
@@ -338,14 +348,78 @@ function Settings() {
                     Show subtle visual cues on AI-enhanced elements.
                   </p>
                 </div>
-                <Toggle defaultChecked />
+                <Toggle checked={true} onChange={() => {}} />
               </div>
             </section>
               </div>
             </>
           )}
 
-          {section !== "Profile" && section !== "Appearance" && (
+          {section === "Account" && (
+            <>
+              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
+                <h2 className="text-headline-md text-on-surface">Account</h2>
+                <p className="text-body-md text-on-surface-variant mt-xs">
+                  Manage your account security and data.
+                </p>
+              </header>
+
+              <div className="flex flex-col gap-xl">
+                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                  <h3 className="text-label-md text-on-surface font-semibold mb-4">Security</h3>
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                      <div className="text-body-md text-on-surface font-medium">Password</div>
+                      <div className="text-body-sm text-on-surface-variant mt-1">Update your password to keep your account secure.</div>
+                    </div>
+                    <button className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface font-medium rounded-lg transition-colors border border-outline-variant/30 whitespace-nowrap">
+                      Change Password
+                    </button>
+                  </div>
+                </section>
+
+                <section className="bg-error/5 rounded-xl border border-error/20 overflow-hidden">
+                  <div className="p-4 border-b border-error/10 bg-error/10">
+                    <h3 className="text-label-md text-error font-bold flex items-center gap-2">
+                      <Icon name="warning" className="text-[18px]" /> Danger Zone
+                    </h3>
+                  </div>
+                  <div className="p-6 flex flex-col gap-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pb-6 border-b border-error/10">
+                      <div>
+                        <div className="text-body-md text-on-surface font-medium">Log Out</div>
+                        <div className="text-body-sm text-on-surface-variant mt-1">Sign out of your account on this device.</div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          localStorage.removeItem("access_token");
+                          window.location.href = "/login";
+                        }}
+                        className="px-4 py-2 bg-surface hover:bg-surface-container-low text-on-surface font-medium rounded-lg transition-colors border border-outline-variant/30 flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <Icon name="logout" className="text-[18px]" /> Log Out
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                      <div>
+                        <div className="text-body-md text-error font-semibold">Delete Account</div>
+                        <div className="text-body-sm text-error/80 mt-1">Permanently delete your account and all data.</div>
+                      </div>
+                      <button 
+                        onClick={() => alert("Account deletion disabled in demo.")}
+                        className="px-4 py-2 bg-error hover:bg-error/90 text-on-error font-bold rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
+                      >
+                        <Icon name="delete_forever" className="text-[18px]" /> Delete Account
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </>
+          )}
+
+          {section !== "Profile" && section !== "Appearance" && section !== "Account" && (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center">
               <Icon name="construction" className="text-[48px] text-on-surface-variant/50 mb-md" />
               <h2 className="text-headline-md text-on-surface mb-2">{section} Settings</h2>

@@ -10,6 +10,9 @@ const TITLE = "New Project - MindVault AI";
 const DESCRIPTION = "Create a new knowledge map with AI or from a template.";
 
 export const Route = createFileRoute("/projects/new")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    prompt: typeof search.prompt === "string" ? search.prompt : undefined,
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -46,7 +49,8 @@ const GENERATION_STATES = [
 
 function NewProject() {
   const navigate = useNavigate();
-  const [prompt, setPrompt] = useState("");
+  const search = Route.useSearch();
+  const [prompt, setPrompt] = useState(search.prompt || "");
   
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);

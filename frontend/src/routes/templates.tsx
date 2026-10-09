@@ -1,185 +1,116 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-
 import { Icon } from "@/components/Icon";
-import { LOGO_URL, PROJECT_THUMBS } from "@/lib/assets";
-import { getProjects, createProject, deleteProject, updateProject, type Project } from "@/api/projects";
-import { createMindMap } from "@/api/mindmaps";
-import { getCurrentUser } from "@/api/auth";
-import { TemplatesModal } from "@/components/TemplatesModal";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const TITLE = "Templates - MindVault AI";
-const DESCRIPTION = "Your recent mind maps, AI generation stats, and workspace shortcuts.";
+const DESCRIPTION = "Start faster with pre-built knowledge map templates.";
 
 export const Route = createFileRoute("/templates")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: TITLE },
-      { property: "og:description", content: DESCRIPTION },
     ],
   }),
-  component: Dashboard,
+  component: TemplatesPage,
 });
 
-function Dashboard() {
+const CATEGORIES = [
+  "All",
+  "Brainstorm",
+  "Study",
+  "Research",
+  "Project",
+  "Product",
+  "Engineering",
+  "Business",
+  "Meeting"
+];
+
+const TEMPLATES = [
+  { id: "brainstorm-idea", category: "Brainstorm", name: "Idea Generation", description: "Quickly map out ideas and connect concepts.", thumb: "/templates/brainstorming.png", prompt: "Create a brainstorming mind map for: " },
+  { id: "study-guide", category: "Study", name: "Exam Study Guide", description: "Structure your syllabus and key learning points.", thumb: "/templates/meeting_notes.png", prompt: "Create a comprehensive study guide for: " },
+  { id: "research-paper", category: "Research", name: "Research Outline", description: "Break down a research paper or topic into structured findings.", thumb: "/templates/architecture.png", prompt: "Outline research findings for: " },
+  { id: "project-plan", category: "Project", name: "Project Plan", description: "Map out tasks, milestones, and deliverables.", thumb: "/templates/project_planning.png", prompt: "Create a project plan for: " },
+  { id: "product-strategy", category: "Product", name: "Product Strategy", description: "Define vision, features, and target audience.", thumb: "/templates/swot_analysis.png", prompt: "Outline a product strategy for: " },
+  { id: "system-arch", category: "Engineering", name: "System Architecture", description: "Visualize components, databases, and APIs.", thumb: "/templates/architecture.png", prompt: "Map out the system architecture for: " },
+  { id: "swot-analysis", category: "Business", name: "SWOT Analysis", description: "Analyze strengths, weaknesses, opportunities, and threats.", thumb: "/templates/swot_analysis.png", prompt: "Perform a SWOT analysis on: " },
+  { id: "meeting-notes", category: "Meeting", name: "Meeting Notes", description: "Structure discussions, decisions, and action items.", thumb: "/templates/meeting_notes.png", prompt: "Structure meeting notes for: " },
+];
+
+function TemplatesPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [user, setUser] = useState<{ full_name: string } | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  
-  // Phase B States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [isRenaming, setIsRenaming] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("All");
 
-  useEffect(() => {
-    // Check auth
-    if (!localStorage.getItem("access_token")) {
-      navigate({ to: "/login" });
-      return;
-    }
+  const filteredTemplates = activeCategory === "All" 
+    ? TEMPLATES 
+    : TEMPLATES.filter(t => t.category === activeCategory);
 
-    // Load Data
-    getCurrentUser().then(setUser).catch(console.error);
-    getProjects().then(data => {
-      setProjects(data);
-    }).catch(console.error);
-
-    // AI Funnel Interceptor
-    const pendingPrompt = localStorage.getItem("pending_ai_prompt");
-    if (pendingPrompt) {
-      localStorage.removeItem("pending_ai_prompt");
-      handleCreateProject("AI Generated Project", pendingPrompt);
-    }
-  }, [navigate]);
-
-  const handleCreateProject = async (title = "Untitled Project", prompt?: string) => {
-    try {
-      setIsCreating(true);
-      const project = await createProject({ title, description: "Auto-generated project" });
-      const mindMap = await createMindMap(project.id, {
-        title,
-        graph_data: "{}",
-        ai_prompt: prompt ? prompt : undefined
-      });
-      navigate({ to: "/workspace/$mindMapId", params: { mindMapId: mindMap.id }, search: { topic: prompt } });
-    } catch (e) {
-      console.error(e);
-      alert("Failed to create project");
-    } finally {
-      setIsCreating(false);
-    }
+  const handleUseTemplate = (prompt: string) => {
+    navigate({ to: "/projects/new", search: { prompt } });
   };
-
-  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
-    
-    try {
-      await deleteProject(projectId);
-      setProjects((prev) => prev.filter(p => p.id !== projectId));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete project");
-    }
-  };
-
-  const handleRenameSubmit = async (projectId: string, e: React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!renameValue.trim()) {
-      setIsRenaming(null);
-      return;
-    }
-    try {
-      const updated = await updateProject(projectId, { title: renameValue });
-      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, title: updated.title } : p));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to rename project");
-    } finally {
-      setIsRenaming(null);
-    }
-  };
-
-  // Phase B: Filter & Stats Logic
-  const filteredProjects = useMemo(() => {
-    return projects.filter(p => 
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [projects, searchQuery]);
-
-  const stats = useMemo(() => {
-    const totalMaps = projects.length;
-    let totalNodes = 0;
-    projects.forEach(p => {
-      // Safely count nodes if available in nested map data
-      if (p.mind_maps && p.mind_maps.length > 0) {
-        totalNodes += (p.mind_maps[0] as any).node_count || 1; 
-      }
-    });
-
-    return [
-      { label: "Total Maps", icon: "account_tree", value: String(totalMaps), tone: "text-secondary" },
-      { label: "Nodes Generated", icon: "auto_awesome", value: String(totalNodes || "1.2k"), tone: "text-tertiary" },
-      { label: "Hours Saved", icon: "timer", value: String(Math.max(1, Math.floor(totalMaps * 0.5))), suffix: "h", tone: "text-secondary" },
-    ];
-  }, [projects]);
 
   return (
-      <AppLayout activeRoute="Templates">
-        <div className="flex-1 overflow-y-auto w-full p-4 sm:p-xl">
-          <header className="mb-8">
-            <h1 className="text-headline-md sm:text-headline-lg text-on-surface">Template Gallery</h1>
-            <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">
-              Choose a template below to instantly generate a complete, structured mind map.
+    <AppLayout activeRoute="Templates">
+      <div className="flex-1 overflow-y-auto w-full bg-background p-6 md:p-10">
+        <div className="max-w-6xl mx-auto flex flex-col gap-8">
+          
+          <header className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold text-on-surface tracking-tight">Start faster.</h1>
+            <p className="text-on-surface-variant text-body-lg">
+              Choose a template to jumpstart your knowledge map.
             </p>
           </header>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-slide-up">
-            {[
-              { id: "brainstorm", title: "Brainstorming", desc: "Free-form ideation and concept mapping.", icon: "lightbulb", bg: "bg-blue-500/10", text: "text-blue-500" },
-              { id: "planning", title: "Project Planning", desc: "Break down tasks, milestones, and deliverables.", icon: "task", bg: "bg-purple-500/10", text: "text-purple-500" },
-              { id: "arch", title: "Architecture", desc: "System design and component relationships.", icon: "architecture", bg: "bg-emerald-500/10", text: "text-emerald-500" },
-              { id: "meeting", title: "Meeting Notes", desc: "Structured agendas and action items.", icon: "groups", bg: "bg-orange-500/10", text: "text-orange-500" },
-              { id: "org", title: "Org Chart", desc: "Team structure and reporting lines.", icon: "account_tree", bg: "bg-pink-500/10", text: "text-pink-500" },
-              { id: "swot", title: "SWOT Analysis", desc: "Strengths, weaknesses, opportunities, threats.", icon: "analytics", bg: "bg-cyan-500/10", text: "text-cyan-500" },
-            ].map(t => (
-              <div key={t.id} className="bg-surface border border-outline-variant/30 rounded-2xl p-6 hover:border-primary/50 hover:shadow-level-1 transition-all flex flex-col group">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${t.bg} ${t.text}`}>
-                  <Icon name={t.icon} className="text-[24px]" />
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeCategory === cat 
+                    ? "bg-primary text-on-primary" 
+                    : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
+            {filteredTemplates.map((template) => (
+              <div 
+                key={template.id} 
+                className="flex flex-col bg-surface border border-outline-variant/30 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-level-1 transition-all group"
+              >
+                <div className="h-40 w-full bg-surface-container-lowest overflow-hidden relative border-b border-outline-variant/20">
+                  <img 
+                    src={template.thumb} 
+                    alt={template.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
                 </div>
-                <h3 className="text-title-lg font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">{t.title}</h3>
-                <p className="text-body-sm text-on-surface-variant mb-6 flex-1">{t.desc}</p>
-                <button
-                  onClick={() => setIsTemplatesOpen(true)}
-                  className="w-full bg-surface-container hover:bg-primary/10 text-primary font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  Use Template <Icon name="arrow_forward" className="text-[18px]" />
-                </button>
+                <div className="p-5 flex flex-col flex-1 gap-2">
+                  <div className="text-xs font-bold text-primary uppercase tracking-wider">{template.category}</div>
+                  <h3 className="text-title-md font-semibold text-on-surface">{template.name}</h3>
+                  <p className="text-body-sm text-on-surface-variant flex-1 line-clamp-2">
+                    {template.description}
+                  </p>
+                  <button 
+                    onClick={() => handleUseTemplate(template.prompt)}
+                    className="mt-4 w-full py-2 bg-surface-container-high hover:bg-primary hover:text-on-primary text-on-surface font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    Use template <Icon name="arrow_forward" className="text-[18px]" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+
         </div>
-        <TemplatesModal isOpen={isTemplatesOpen} onClose={() => setIsTemplatesOpen(false)} />
-      </AppLayout>
+      </div>
+    </AppLayout>
   );
 }

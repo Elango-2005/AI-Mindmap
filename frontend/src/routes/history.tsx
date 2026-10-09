@@ -95,14 +95,6 @@ function HistoryComponent() {
         <header className="px-4 sm:px-xl py-4 sm:py-lg border-b border-outline-variant/20 bg-surface shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
-              {/* Mobile Hamburger Toggle */}
-              <button
-                onClick={() => setIsMobileNavOpen(true)}
-                className="md:hidden p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors shrink-0"
-                title="Open Navigation"
-              >
-                <Icon name="menu" className="text-[22px]" />
-              </button>
               <div>
                 <h1 className="text-headline-md sm:text-headline-lg text-on-surface font-bold">History</h1>
                 <p className="text-body-sm sm:text-body-md text-on-surface-variant mt-0.5">
