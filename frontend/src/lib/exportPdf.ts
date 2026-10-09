@@ -24,7 +24,7 @@ export async function exportMindMapToPdf({ nodes, title }: ExportPdfOptions): Pr
     return;
   }
 
-  const toastId = toast.loading("Generating PDF document...");
+  const toastId = toast.loading("Preparing export...");
 
   try {
     const nodesBounds = getNodesBounds(nodes);
@@ -143,10 +143,10 @@ export async function exportMindMapToPdf({ nodes, title }: ExportPdfOptions): Pr
     const filename = `${cleanTitle.replace(/\s+/g, "_")}.pdf`;
     doc.save(filename);
 
-    toast.success("PDF Document exported successfully!", { id: toastId });
+    toast.success("Export ready.", { id: toastId });
   } catch (error) {
     console.error("Failed to export PDF:", error);
-    toast.error("Failed to generate PDF document. Please try again.", { id: toastId });
+    toast.error("Failed to generate PDF document.", { id: toastId });
   }
 }
 

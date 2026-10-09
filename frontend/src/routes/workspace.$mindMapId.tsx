@@ -28,6 +28,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 import { Icon } from "@/components/Icon";
@@ -559,8 +561,9 @@ function Workspace() {
   };
 
 
-  const handleExport = async (format: "markdown" | "opml" | "xmind" | "freemind") => {
+  const handleExport = async (format: "markdown" | "opml" | "xmind" | "freemind" | "html") => {
     if (!mindMapId) return;
+    const toastId = toast.loading("Preparing export...");
     try {
       const blob = await exportMindMap(mindMapId, format);
       const url = window.URL.createObjectURL(blob);
@@ -572,19 +575,23 @@ function Workspace() {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-      toast.success(`Exported ${extension.toUpperCase()} successfully!`);
+      toast.success("Export ready.", { id: toastId });
     } catch (e) {
-      toast.error("Export failed");
+      toast.error("Export failed", { id: toastId });
     }
   };
 
   const handleExportImage = () => {
+    const toastId = toast.loading("Preparing export...");
     const nodesBounds = getNodesBounds(flowNodes);
     const imageWidth = nodesBounds.width + 100;
     const imageHeight = nodesBounds.height + 100;
     const transform = getViewportForBounds(nodesBounds, imageWidth, imageHeight, 0.5, 2, 0.1);
     const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!viewportEl) return;
+    if (!viewportEl) {
+      toast.error("Viewport not found", { id: toastId });
+      return;
+    }
     toPng(viewportEl, {
       backgroundColor: document.documentElement.classList.contains('dark') ? '#111318' : '#f8f9ff',
       width: imageWidth,
@@ -595,7 +602,8 @@ function Workspace() {
       a.href = dataUrl;
       a.download = `${mindMapTitle.replace(/\s+/g, '_')}.png`;
       a.click();
-    }).catch(() => toast.error("Failed to export image"));
+      toast.success("Export ready.", { id: toastId });
+    }).catch(() => toast.error("Failed to export image", { id: toastId }));
   };
 
   const handleExportPDF = () => exportMindMapToPdf({ nodes: flowNodes, title: mindMapTitle });
@@ -687,18 +695,42 @@ function Workspace() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 text-on-surface-variant hover:bg-surface-container text-label-sm font-semibold rounded-lg transition-colors">
+                <Icon name="download" className="text-[16px]" /> Export
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Image & PDF</DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleExportImage} className="cursor-pointer"><Icon name="image" className="mr-2 text-[16px]" /> Export as PNG</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer"><Icon name="picture_as_pdf" className="mr-2 text-[16px]" /> Export as PDF</DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Text</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("markdown")} className="cursor-pointer"><Icon name="description" className="mr-2 text-[16px]" /> Export as Markdown</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("html")} className="cursor-pointer"><Icon name="code" className="mr-2 text-[16px]" /> Export as HTML</DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Project Data</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("xmind")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as XMind</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("freemind")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as FreeMind</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("opml")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as OPML</DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title="More Options">
                 <Icon name="more_vert" className="text-[20px]" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleExportImage}>Export as PNG</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("markdown")}>Export as Markdown</DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <label className="cursor-pointer flex items-center w-full">
-                  Import Map
+                  <Icon name="upload_file" className="mr-2 text-[16px]" /> Import Map
                   <input type="file" className="hidden" accept=".md,.opml,.mm,.xmind" onChange={handleImport} />
                 </label>
               </DropdownMenuItem>
@@ -1071,11 +1103,6 @@ function Workspace() {
         onClose={() => setIsShareModalOpen(false)}
         mindMapTitle={mindMapTitle}
         remoteUsers={remoteUsers}
-        onExport={(format) => {
-          if (format === "png") handleExportImage();
-          else if (format === "pdf") handleExportPDF();
-          else handleExport(format as any);
-        }}
       />
 
       

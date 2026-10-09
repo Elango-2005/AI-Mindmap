@@ -14,7 +14,6 @@ interface ShareModalProps {
   onClose: () => void;
   mindMapTitle: string;
   remoteUsers?: Record<string, { userId: string; userName: string; color: string }>;
-  onExport?: (format: "markdown" | "opml" | "png" | "pdf" | "html" | "xmind" | "freemind") => void;
 }
 
 export function ShareModal({
@@ -22,10 +21,12 @@ export function ShareModal({
   onClose,
   mindMapTitle,
   remoteUsers = {},
-  onExport,
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
-  const [accessLevel, setAccessLevel] = useState<"edit" | "view">("edit");
+  
+  // Hardcoded to edit since backend does not currently support granular permissions
+  const accessLevel = "edit";
+  
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const handleCopy = () => {
@@ -40,169 +41,125 @@ export function ShareModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[30rem] bg-surface border border-outline-variant/30 text-on-surface shadow-level-3 p-5 sm:p-6 rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[32rem] bg-surface border border-outline-variant/30 text-on-surface shadow-level-3 p-6 rounded-2xl">
+        <DialogHeader className="mb-2">
           <div className="flex items-center gap-2 text-primary mb-1">
-            <Icon name="group_add" className="text-[24px]" />
+            <Icon name="share" className="text-[24px]" />
             <DialogTitle className="text-headline-sm font-bold text-on-surface">
               Share "{mindMapTitle}"
             </DialogTitle>
           </div>
           <DialogDescription className="text-body-sm text-on-surface-variant">
-            Anyone with this link can collaborate and view this mind map in real-time.
+            Invite others to view and collaborate on this mind map.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="w-full min-w-0 space-y-4 py-2">
-          {/* Shareable Link Input with Copy Button */}
-          <div className="w-full min-w-0 flex items-center gap-2">
-            <div className="relative flex-1 min-w-0">
-              <input
-                type="text"
-                readOnly
-                value={shareUrl}
-                className="w-full min-w-0 pl-3 pr-8 py-2 bg-surface-container-low border border-outline-variant/50 rounded-xl text-body-sm text-on-surface font-mono select-all focus:outline-none"
-              />
-              <Icon
-                name="link"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]"
-              />
-            </div>
-            <button
-              onClick={handleCopy}
-              className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-label-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
-                copied
-                  ? "bg-primary text-on-primary"
-                  : "bg-primary-container text-on-primary-container hover:bg-primary-container/80"
-              }`}
-            >
-              <Icon name={copied ? "check" : "content_copy"} className="text-[16px]" />
-              <span>{copied ? "Copied!" : "Copy"}</span>
-            </button>
-          </div>
-
-          {/* Access Permissions Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/20 gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <div className="space-y-6">
+          {/* Share Link Section */}
+          <section>
+            <h4 className="text-label-sm font-bold text-outline uppercase tracking-wider mb-3">
+              Share Link
+            </h4>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareUrl}
+                  className="w-full pl-3 pr-8 py-2.5 bg-surface-container-low border border-outline-variant/50 rounded-xl text-body-sm text-on-surface font-mono select-all focus:outline-none focus:border-primary/50 transition-colors"
+                />
                 <Icon
-                  name={accessLevel === "edit" ? "edit" : "visibility"}
-                  className="text-[18px]"
+                  name="link"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[16px]"
                 />
               </div>
-              <div className="min-w-0">
-                <p className="text-label-sm font-semibold text-on-surface">General Access</p>
-                <p className="text-label-xs text-on-surface-variant truncate">
-                  {accessLevel === "edit"
-                    ? "Anyone with the link can edit nodes in real-time"
-                    : "Anyone with the link can view without editing"}
-                </p>
-              </div>
+              <button
+                onClick={handleCopy}
+                className={`shrink-0 px-4 py-2.5 rounded-xl text-label-sm font-semibold flex items-center gap-2 transition-all shadow-sm ${
+                  copied
+                    ? "bg-primary text-on-primary"
+                    : "bg-primary-container text-on-primary-container hover:bg-primary-container/80"
+                }`}
+              >
+                <Icon name={copied ? "check" : "content_copy"} className="text-[18px]" />
+                <span>{copied ? "Copied" : "Copy link"}</span>
+              </button>
             </div>
-            <select
-              value={accessLevel}
-              onChange={(e) => setAccessLevel(e.target.value as "edit" | "view")}
-              className="bg-surface-container border border-outline-variant/40 text-on-surface rounded-lg text-label-xs px-2.5 py-1.5 focus:outline-none cursor-pointer shrink-0 self-start sm:self-auto"
-            >
-              <option value="edit">Can Edit</option>
-              <option value="view">Can View</option>
-            </select>
-          </div>
+          </section>
 
-          {/* Live Collaborators Section */}
-          <div className="pt-1">
-            <h4 className="text-label-xs font-semibold uppercase text-outline tracking-wider mb-2">
-              Active Collaborators ({activeUserList.length + 1})
+          {/* Permissions Section */}
+          <section>
+            <h4 className="text-label-sm font-bold text-outline uppercase tracking-wider mb-3">
+              Permission
             </h4>
-            <div className="space-y-2">
-              {/* Current User */}
-              <div className="flex items-center justify-between py-1 px-2 rounded-lg hover:bg-surface-container-low transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-label-xs font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Icon name="edit" className="text-[20px]" />
+                </div>
+                <div>
+                  <p className="text-label-md font-bold text-on-surface">Anyone with the link</p>
+                  <p className="text-body-sm text-on-surface-variant mt-0.5">
+                    Can edit nodes and collaborate in real-time
+                  </p>
+                </div>
+              </div>
+              <select
+                disabled
+                value={accessLevel}
+                className="bg-surface-container border border-outline-variant/40 text-on-surface rounded-lg text-label-sm px-3 py-2 font-medium opacity-70 cursor-not-allowed shrink-0"
+              >
+                <option value="edit">Editor</option>
+                <option value="view">Viewer</option>
+              </select>
+            </div>
+            <p className="text-label-xs text-outline mt-2 px-1">
+              * Granular permissions (Viewer/Editor) are currently unsupported by the backend. All shared links provide Edit access.
+            </p>
+          </section>
+
+          {/* People Section */}
+          <section>
+            <h4 className="text-label-sm font-bold text-outline uppercase tracking-wider mb-3">
+              People ({activeUserList.length + 1} Active)
+            </h4>
+            <div className="space-y-1 border border-outline-variant/20 rounded-xl overflow-hidden bg-surface-container-lowest">
+              <div className="flex items-center justify-between p-3 hover:bg-surface-container-low transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-label-sm font-bold">
                     You
                   </div>
                   <div>
-                    <span className="text-body-sm font-medium text-on-surface">You</span>
-                    <span className="text-label-xs text-outline ml-1.5">(Owner)</span>
+                    <p className="text-label-md font-medium text-on-surface">You (Owner)</p>
                   </div>
                 </div>
-                <span className="text-label-xs text-primary font-medium">Active now</span>
+                <span className="text-label-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">
+                  Active
+                </span>
               </div>
 
-              {/* Remote Users */}
               {activeUserList.map((user) => (
                 <div
                   key={user.userId}
-                  className="flex items-center justify-between py-1 px-2 rounded-lg hover:bg-surface-container-low transition-colors"
+                  className="flex items-center justify-between p-3 border-t border-outline-variant/10 hover:bg-surface-container-low transition-colors"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-label-xs font-bold text-white shadow-sm"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-label-sm font-bold text-white shadow-sm"
                       style={{ backgroundColor: user.color || "#0284c7" }}
                     >
                       {user.userName?.charAt(0).toUpperCase() || "U"}
                     </div>
-                    <span className="text-body-sm text-on-surface">{user.userName}</span>
+                    <p className="text-label-md font-medium text-on-surface">{user.userName}</p>
                   </div>
-                  <span className="text-label-xs text-emerald-500 font-medium flex items-center gap-1">
+                  <span className="text-label-xs font-bold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-md flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
                   </span>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Quick Export Shortcuts */}
-          {onExport && (
-            <div className="pt-2 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-label-xs text-outline font-medium">Quick Export:</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  onClick={() => onExport("png")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="image" className="text-[14px]" /> PNG
-                </button>
-                <button
-                  onClick={() => onExport("pdf")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="picture_as_pdf" className="text-[14px] text-error" /> PDF
-                </button>
-                <button
-                  onClick={() => onExport("html")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="language" className="text-[14px] text-primary" /> HTML
-                </button>
-                <button
-                  onClick={() => onExport("xmind")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="hub" className="text-[14px] text-indigo-500" /> XMind
-                </button>
-                <button
-                  onClick={() => onExport("freemind")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="account_tree" className="text-[14px] text-amber-500" /> FreeMind
-                </button>
-                <button
-                  onClick={() => onExport("markdown")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="article" className="text-[14px]" /> Markdown
-                </button>
-                <button
-                  onClick={() => onExport("opml")}
-                  className="text-label-xs px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-1"
-                >
-                  <Icon name="list" className="text-[14px]" /> OPML
-                </button>
-              </div>
-            </div>
-          )}
+          </section>
         </div>
       </DialogContent>
     </Dialog>
