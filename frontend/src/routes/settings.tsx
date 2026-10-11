@@ -80,8 +80,12 @@ function Settings() {
   const [section, setSection] = useState("Profile");
   
   // Theme state
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
-  const [reducedMotion, setReducedMotion] = useState(localStorage.getItem("reducedMotion") === "true");
+  const [theme, setTheme] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem("theme") || "System" : "System"
+  );
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem("reducedMotion") === "true" : false
+  );
 
   // Profile state
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -240,11 +244,11 @@ function Settings() {
                 <div className="flex flex-col gap-6">
                   {/* 1. Profile Identity Header Card */}
                   <section className="bg-surface border border-outline-variant/30 rounded-2xl p-6 sm:p-7 shadow-sm">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                      <div className="flex items-center gap-5">
-                        {/* Large Avatar (88-96px) with edit badge */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 sm:gap-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 min-w-0">
+                        {/* Circular Avatar (approx 80-96px) with attached camera button */}
                         <div className="relative group shrink-0">
-                          <div className="w-22 h-22 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-surface shadow-sm bg-surface-container flex items-center justify-center">
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-outline-variant/20 shadow-sm bg-surface-container flex items-center justify-center">
                             {user.profile_image && !avatarError ? (
                               <img
                                 src={user.profile_image.startsWith("http") ? user.profile_image : `http://127.0.0.1:8000${user.profile_image}`}
@@ -263,35 +267,32 @@ function Settings() {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploadingAvatar}
-                            className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-on-primary shadow-sm hover:bg-primary/90 transition-all border-2 border-surface flex items-center justify-center cursor-pointer disabled:opacity-50"
-                            title="Change photo"
-                            aria-label="Change photo"
+                            className="absolute bottom-0 right-0 w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-full bg-primary text-on-primary shadow-sm hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all border-2 border-surface flex items-center justify-center cursor-pointer disabled:opacity-50"
+                            title="Change profile photo"
+                            aria-label="Change profile photo"
                           >
-                            <Icon name={isUploadingAvatar ? "sync" : "photo_camera"} className={cn("text-[15px]", isUploadingAvatar && "animate-spin")} />
+                            <Icon name={isUploadingAvatar ? "sync" : "photo_camera"} className={cn("text-[14px]", isUploadingAvatar && "animate-spin")} />
                           </button>
                         </div>
 
-                        {/* Name and Identity Details */}
+                        {/* Name, Badge, Email */}
                         <div className="flex flex-col gap-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight truncate">
-                              {user.full_name}
-                            </h3>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
+                          <h3 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight">
+                            {user.full_name}
+                          </h3>
+                          <div>
+                            <span className="inline-flex items-center text-[11px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
                               Personal profile
                             </span>
                           </div>
                           <p className="text-body-sm text-on-surface-variant truncate">
                             {user.email}
                           </p>
-                          <p className="text-label-xs text-outline mt-0.5">
-                            JPG, PNG, or WebP. Max 5 MB.
-                          </p>
                         </div>
                       </div>
 
-                      {/* Header Action Buttons */}
-                      <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-end shrink-0">
+                      {/* Header Action: Edit profile as primary */}
+                      <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -299,15 +300,6 @@ function Settings() {
                           accept="image/png, image/jpeg, image/webp"
                           onChange={handleAvatarUpload}
                         />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUploadingAvatar}
-                          className="px-3.5 py-2 text-label-md font-medium text-on-surface hover:bg-surface-container border border-outline-variant/40 rounded-xl transition-colors flex items-center gap-1.5"
-                        >
-                          <Icon name="upload" className="text-[17px] text-on-surface-variant" />
-                          {isUploadingAvatar ? "Uploading..." : "Change photo"}
-                        </button>
                         {!isEditing && (
                           <button
                             type="button"
@@ -315,7 +307,7 @@ function Settings() {
                               setEditName(user.full_name);
                               setIsEditing(true);
                             }}
-                            className="px-4 py-2 text-label-md font-medium bg-primary text-on-primary hover:bg-primary/90 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
+                            className="w-full sm:w-auto px-4 py-2 text-label-md font-medium bg-primary text-on-primary hover:bg-primary/90 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
                             <Icon name="edit" className="text-[17px]" />
                             Edit profile
