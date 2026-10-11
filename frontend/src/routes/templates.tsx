@@ -29,19 +29,84 @@ const CATEGORIES = [
 ];
 
 const TEMPLATES = [
-  { id: "brainstorm-idea", category: "Brainstorm", name: "Idea Generation", description: "Quickly map out ideas and connect concepts.", thumb: "/templates/brainstorming.png", prompt: "Create a brainstorming mind map for: " },
-  { id: "study-guide", category: "Study", name: "Exam Study Guide", description: "Structure your syllabus and key learning points.", thumb: "/templates/meeting_notes.png", prompt: "Create a comprehensive study guide for: " },
-  { id: "research-paper", category: "Research", name: "Research Outline", description: "Break down a research paper or topic into structured findings.", thumb: "/templates/architecture.png", prompt: "Outline research findings for: " },
-  { id: "project-plan", category: "Project", name: "Project Plan", description: "Map out tasks, milestones, and deliverables.", thumb: "/templates/project_planning.png", prompt: "Create a project plan for: " },
-  { id: "product-strategy", category: "Product", name: "Product Strategy", description: "Define vision, features, and target audience.", thumb: "/templates/swot_analysis.png", prompt: "Outline a product strategy for: " },
-  { id: "system-arch", category: "Engineering", name: "System Architecture", description: "Visualize components, databases, and APIs.", thumb: "/templates/architecture.png", prompt: "Map out the system architecture for: " },
-  { id: "swot-analysis", category: "Business", name: "SWOT Analysis", description: "Analyze strengths, weaknesses, opportunities, and threats.", thumb: "/templates/swot_analysis.png", prompt: "Perform a SWOT analysis on: " },
-  { id: "meeting-notes", category: "Meeting", name: "Meeting Notes", description: "Structure discussions, decisions, and action items.", thumb: "/templates/meeting_notes.png", prompt: "Structure meeting notes for: " },
+  { 
+    id: "brainstorm-idea", 
+    category: "Brainstorm", 
+    name: "Idea Generation", 
+    description: "Quickly map out ideas and connect concepts.", 
+    thumb: "/templates/idea-generation.webp", 
+    alt: "Idea generation mind map illustration",
+    prompt: "Create a brainstorming mind map for: " 
+  },
+  { 
+    id: "study-guide", 
+    category: "Study", 
+    name: "Exam Study Guide", 
+    description: "Structure your syllabus and key learning points.", 
+    thumb: "/templates/exam-study-guide.webp", 
+    alt: "Exam study guide knowledge map illustration",
+    prompt: "Create a comprehensive study guide for: " 
+  },
+  { 
+    id: "research-paper", 
+    category: "Research", 
+    name: "Research Outline", 
+    description: "Break down a research paper or topic into structured findings.", 
+    thumb: "/templates/research-outline.webp", 
+    alt: "Research outline hierarchy illustration",
+    prompt: "Outline research findings for: " 
+  },
+  { 
+    id: "project-plan", 
+    category: "Project", 
+    name: "Project Plan", 
+    description: "Map out tasks, milestones, and deliverables.", 
+    thumb: "/templates/project-plan.webp", 
+    alt: "Project planning workflow and milestones illustration",
+    prompt: "Create a project plan for: " 
+  },
+  { 
+    id: "product-strategy", 
+    category: "Product", 
+    name: "Product Strategy", 
+    description: "Define vision, features, and target audience.", 
+    thumb: "/templates/product-strategy.webp", 
+    alt: "Product strategy and roadmap illustration",
+    prompt: "Outline a product strategy for: " 
+  },
+  { 
+    id: "system-arch", 
+    category: "Engineering", 
+    name: "System Architecture", 
+    description: "Visualize components, databases, and APIs.", 
+    thumb: "/templates/system-architecture.webp", 
+    alt: "System architecture technical diagram illustration",
+    prompt: "Map out the system architecture for: " 
+  },
+  { 
+    id: "swot-analysis", 
+    category: "Business", 
+    name: "SWOT Analysis", 
+    description: "Analyze strengths, weaknesses, opportunities, and threats.", 
+    thumb: "/templates/swot-analysis.webp", 
+    alt: "SWOT analysis strategic matrix illustration",
+    prompt: "Perform a SWOT analysis on: " 
+  },
+  { 
+    id: "meeting-notes", 
+    category: "Meeting", 
+    name: "Meeting Notes", 
+    description: "Structure discussions, decisions, and action items.", 
+    thumb: "/templates/meeting-notes.webp", 
+    alt: "Meeting notes and collaboration illustration",
+    prompt: "Structure meeting notes for: " 
+  },
 ];
 
 function TemplatesPage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("All");
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const filteredTemplates = activeCategory === "All" 
     ? TEMPLATES 
@@ -85,12 +150,20 @@ function TemplatesPage() {
                 key={template.id} 
                 className="flex flex-col bg-surface border border-outline-variant/30 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-level-1 transition-all group"
               >
-                <div className="h-40 w-full bg-surface-container-lowest overflow-hidden relative border-b border-outline-variant/20">
-                  <img 
-                    src={template.thumb} 
-                    alt={template.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  />
+                <div className="h-40 w-full bg-surface-container-lowest overflow-hidden relative border-b border-outline-variant/20 flex items-center justify-center">
+                  {!failedImages[template.id] ? (
+                    <img 
+                      src={template.thumb} 
+                      alt={template.alt}
+                      onError={() => setFailedImages(prev => ({ ...prev, [template.id]: true }))}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-surface-container text-on-surface-variant/60 gap-1.5 p-4 text-center">
+                      <Icon name="auto_awesome" className="text-[28px] text-primary/40" />
+                      <span className="text-label-xs font-medium text-outline">{template.name}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-5 flex flex-col flex-1 gap-2">
                   <div className="text-xs font-bold text-primary uppercase tracking-wider">{template.category}</div>
