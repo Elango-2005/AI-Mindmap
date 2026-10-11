@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/api/auth";
 import { updateProfile, uploadAvatar } from "@/api/users";
-import { useRef } from "react";
+import { getProjects, type Project } from "@/api/projects";
+import { toast } from "sonner";
 
 const TITLE = "Settings — MindVault AI";
 const DESCRIPTION = "Customize the theme, accent color, interface scaling, and your profile.";
@@ -30,7 +31,29 @@ const SECTIONS = [
   { label: "API / Integrations", icon: "integration_instructions" },
 ];
 
+interface UserProfile {
+  id?: string;
+  full_name: string;
+  email: string;
+  profile_image?: string | null;
+  created_at?: string;
+}
 
+function getInitials(name: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "Recently";
+  try {
+    return new Date(dateStr).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  } catch {
+    return "Recently";
+  }
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
   return (
@@ -54,25 +77,78 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
 }
 
 function Settings() {
-  const [section, setSection] = useState("Appearance");
+  const [section, setSection] = useState("Profile");
   
   // Theme state
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "System");
   const [reducedMotion, setReducedMotion] = useState(localStorage.getItem("reducedMotion") === "true");
 
   // Profile state
-  const [user, setUser] = useState<{ full_name: string; email: string; profile_image?: string } | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getCurrentUser()
-      .then(setUser)
-      .catch(console.error)
+    Promise.all([
+      getCurrentUser().then(setUser),
+      getProjects().then(setProjects).catch(() => [])
+    ])
+      .catch((err) => {
+        console.error(err);
+      })
       .finally(() => setIsLoading(false));
   }, []);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeds 5 MB. Please select a smaller image.");
+      return;
+    }
+
+    try {
+      setIsUploadingAvatar(true);
+      const updated = await uploadAvatar(file);
+      setUser(updated);
+      setAvatarError(false);
+      toast.success("Profile photo updated");
+    } catch (err) {
+      console.error(err);
+      toast.error("Unable to upload photo. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      toast.error("Full name cannot be empty");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const updated = await updateProfile({ full_name: editName.trim() });
+      setUser(updated);
+      setIsEditing(false);
+      toast.success("Changes saved");
+    } catch (e) {
+      console.error(e);
+      toast.error("Unable to save your profile. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Theme effect
   useEffect(() => {
@@ -147,107 +223,247 @@ function Settings() {
       <main className="flex-grow overflow-y-auto bg-background p-lg md:p-xxl">
         <div className="max-w-3xl mx-auto">
           {section === "Profile" && (
-            <>
-              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
-                <h2 className="text-headline-md text-on-surface">Profile</h2>
-                <p className="text-body-md text-on-surface-variant mt-xs">
-                  Manage your public profile and personal details.
+            <div className="flex flex-col gap-8 max-w-2xl">
+              <header className="border-b border-outline-variant/30 pb-4">
+                <h2 className="text-2xl font-bold text-on-surface tracking-tight">Profile</h2>
+                <p className="text-body-md text-on-surface-variant mt-1">
+                  Manage your identity, personal information, and workspace presence.
                 </p>
               </header>
-              <div className="flex flex-col gap-xl">
-                <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
-                  <div className="mb-md flex justify-between items-center">
-                    <h3 className="text-label-md text-on-surface font-semibold">Personal Info</h3>
-                    {!isLoading && user && (
-                       <button
-                         onClick={async () => {
-                           if (isEditing) {
-                             try {
-                               setIsSaving(true);
-                               const updated = await updateProfile({ full_name: editName });
-                               setUser(updated);
-                               setIsEditing(false);
-                             } catch (e) {
-                               console.error(e);
-                               alert("Failed to update profile.");
-                             } finally {
-                               setIsSaving(false);
-                             }
-                           } else {
-                             setEditName(user.full_name);
-                             setIsEditing(true);
-                           }
-                         }}
-                         disabled={isSaving}
-                         className="text-primary hover:text-primary-fixed-dim text-label-sm font-bold transition-colors"
-                       >
-                         {isSaving ? "Saving..." : (isEditing ? "Save" : "Edit")}
-                       </button>
-                    )}
-                  </div>
-                  {isLoading ? (
-                    <div className="text-label-md text-on-surface-variant">Loading profile...</div>
-                  ) : user ? (
-                    <div className="flex flex-col gap-lg">
-                      <div className="flex items-center gap-lg">
-                        <img 
-                          src={user.profile_image ? `http://127.0.0.1:8000${user.profile_image}` : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.full_name)} 
-                          alt="Avatar" 
-                          className="w-24 h-24 rounded-full object-cover border-4 border-surface shadow-sm"
-                        />
-                        <div className="flex flex-col gap-2">
-                          <div className="text-body-md text-on-surface font-semibold">Profile Picture</div>
-                          <div className="text-body-sm text-on-surface-variant">Upload a new avatar (JPG, PNG).</div>
-                          
-                          <label className="cursor-pointer mt-1 bg-primary text-white hover:bg-primary-fixed-dim text-label-sm font-medium py-2 px-4 rounded-xl transition-colors inline-flex items-center gap-2 w-fit ai-glow shadow-sm">
-                            <Icon name="upload" className="text-[16px]" />
-                            Upload Image
-                            <input 
-                              type="file" 
-                              className="hidden" 
-                              accept="image/*" 
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                try {
-                                  // Optional: Add loading state here if needed
-                                  const updated = await uploadAvatar(file);
-                                  setUser(updated);
-                                } catch (err) {
-                                  console.error(err);
-                                  alert("Failed to upload avatar. Check console for details.");
-                                }
-                              }}
-                            />
-                          </label>
+
+              {isLoading ? (
+                <div className="flex items-center gap-3 py-16 justify-center text-on-surface-variant text-body-md">
+                  <Icon name="sync" className="animate-spin text-primary text-[22px]" />
+                  <span>Loading profile...</span>
+                </div>
+              ) : user ? (
+                <div className="flex flex-col gap-6">
+                  {/* 1. Profile Identity Header Card */}
+                  <section className="bg-surface border border-outline-variant/30 rounded-2xl p-6 sm:p-7 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                      <div className="flex items-center gap-5">
+                        {/* Large Avatar (88-96px) with edit badge */}
+                        <div className="relative group shrink-0">
+                          <div className="w-22 h-22 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-surface shadow-sm bg-surface-container flex items-center justify-center">
+                            {user.profile_image && !avatarError ? (
+                              <img
+                                src={user.profile_image.startsWith("http") ? user.profile_image : `http://127.0.0.1:8000${user.profile_image}`}
+                                alt={`${user.full_name}'s avatar`}
+                                onError={() => setAvatarError(true)}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-title-lg sm:text-headline-sm font-bold text-primary select-none">
+                                {getInitials(user.full_name)}
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-on-primary shadow-sm hover:bg-primary/90 transition-all border-2 border-surface flex items-center justify-center cursor-pointer disabled:opacity-50"
+                            title="Change photo"
+                            aria-label="Change photo"
+                          >
+                            <Icon name={isUploadingAvatar ? "sync" : "photo_camera"} className={cn("text-[15px]", isUploadingAvatar && "animate-spin")} />
+                          </button>
+                        </div>
+
+                        {/* Name and Identity Details */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight truncate">
+                              {user.full_name}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
+                              Personal profile
+                            </span>
+                          </div>
+                          <p className="text-body-sm text-on-surface-variant truncate">
+                            {user.email}
+                          </p>
+                          <p className="text-label-xs text-outline mt-0.5">
+                            JPG, PNG, or WebP. Max 5 MB.
+                          </p>
                         </div>
                       </div>
 
-                      <div className="border-t border-outline-variant/30 pt-md">
-                        <label className="text-label-sm text-on-surface-variant">Full Name</label>
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="mt-1 w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-3 py-2 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          />
-                        ) : (
-                          <div className="text-body-lg text-on-surface font-medium mt-1">{user.full_name}</div>
+                      {/* Header Action Buttons */}
+                      <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-end shrink-0">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          className="hidden"
+                          accept="image/png, image/jpeg, image/webp"
+                          onChange={handleAvatarUpload}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                          className="px-3.5 py-2 text-label-md font-medium text-on-surface hover:bg-surface-container border border-outline-variant/40 rounded-xl transition-colors flex items-center gap-1.5"
+                        >
+                          <Icon name="upload" className="text-[17px] text-on-surface-variant" />
+                          {isUploadingAvatar ? "Uploading..." : "Change photo"}
+                        </button>
+                        {!isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditName(user.full_name);
+                              setIsEditing(true);
+                            }}
+                            className="px-4 py-2 text-label-md font-medium bg-primary text-on-primary hover:bg-primary/90 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Icon name="edit" className="text-[17px]" />
+                            Edit profile
+                          </button>
                         )}
                       </div>
-                      
+                    </div>
+                  </section>
+
+                  {/* 2. Personal Information Section */}
+                  <section className="bg-surface border border-outline-variant/30 rounded-2xl p-6 sm:p-7 shadow-sm flex flex-col gap-6">
+                    <div className="flex justify-between items-start gap-4 border-b border-outline-variant/20 pb-4">
                       <div>
-                        <label className="text-label-sm text-on-surface-variant">Email</label>
-                        <div className="text-body-lg text-on-surface font-medium mt-1 opacity-70">{user.email} <span className="text-[10px] ml-2 bg-surface-container-highest px-2 py-1 rounded-full uppercase tracking-wider">Read Only</span></div>
+                        <h3 className="text-title-md font-semibold text-on-surface">Personal information</h3>
+                        <p className="text-body-sm text-on-surface-variant mt-0.5">
+                          Update the information associated with your MindVault profile.
+                        </p>
+                      </div>
+                      {!isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditName(user.full_name);
+                            setIsEditing(true);
+                          }}
+                          className="text-label-sm font-semibold text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Icon name="edit" className="text-[15px]" /> Edit
+                        </button>
+                      )}
+                    </div>
+
+                    <form onSubmit={handleProfileSave} className="flex flex-col gap-5">
+                      {/* Full Name */}
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor="full_name" className="text-label-sm font-medium text-on-surface">
+                          Full name
+                        </label>
+                        {isEditing ? (
+                          <input
+                            id="full_name"
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Enter your full name"
+                            autoFocus
+                            disabled={isSaving}
+                            className="w-full bg-surface-container-lowest border border-primary/60 rounded-xl px-3.5 py-2.5 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-inner"
+                          />
+                        ) : (
+                          <div className="text-body-md text-on-surface font-medium py-1">
+                            {user.full_name}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Email Address */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label htmlFor="email" className="text-label-sm font-medium text-on-surface">
+                            Email address
+                          </label>
+                          <span className="text-[11px] font-semibold text-outline uppercase tracking-wider bg-surface-container-high px-2 py-0.5 rounded">
+                            Read only
+                          </span>
+                        </div>
+                        {isEditing ? (
+                          <input
+                            id="email"
+                            type="email"
+                            value={user.email}
+                            readOnly
+                            disabled
+                            className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-3.5 py-2.5 text-body-md text-on-surface-variant/80 cursor-not-allowed select-none"
+                          />
+                        ) : (
+                          <div className="text-body-md text-on-surface-variant font-medium py-1">
+                            {user.email}
+                          </div>
+                        )}
+                        <p className="text-label-xs text-outline mt-0.5">
+                          Your email address is managed through your authentication provider and cannot be changed here.
+                        </p>
+                      </div>
+
+                      {/* Editing Actions */}
+                      {isEditing && (
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-outline-variant/20">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditName(user.full_name);
+                              setIsEditing(false);
+                            }}
+                            disabled={isSaving}
+                            className="px-4 py-2 text-label-md font-medium text-on-surface-variant hover:bg-surface-container rounded-xl transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSaving || !editName.trim()}
+                            className="px-5 py-2 text-label-md font-medium bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+                          >
+                            {isSaving && <Icon name="sync" className="animate-spin text-[16px]" />}
+                            {isSaving ? "Saving..." : "Save changes"}
+                          </button>
+                        </div>
+                      )}
+                    </form>
+                  </section>
+
+                  {/* 3. Account Overview / Workspace Activity */}
+                  <section className="bg-surface border border-outline-variant/30 rounded-2xl p-6 sm:p-7 shadow-sm flex flex-col gap-5">
+                    <div className="border-b border-outline-variant/20 pb-4">
+                      <h3 className="text-title-md font-semibold text-on-surface">Account overview</h3>
+                      <p className="text-body-sm text-on-surface-variant mt-0.5">
+                        Summary of your knowledge workspace and activity.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 flex flex-col gap-1">
+                        <span className="text-label-xs font-semibold text-outline uppercase tracking-wider">Projects</span>
+                        <span className="text-2xl font-bold text-on-surface">{projects.length}</span>
+                        <span className="text-[12px] text-on-surface-variant/70">Active workspaces</span>
+                      </div>
+                      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 flex flex-col gap-1">
+                        <span className="text-label-xs font-semibold text-outline uppercase tracking-wider">Mind Maps</span>
+                        <span className="text-2xl font-bold text-on-surface">
+                          {projects.reduce((acc, p) => acc + (p.mind_maps?.length || 0), 0)}
+                        </span>
+                        <span className="text-[12px] text-on-surface-variant/70">Created maps</span>
+                      </div>
+                      <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 flex flex-col gap-1">
+                        <span className="text-label-xs font-semibold text-outline uppercase tracking-wider">Member Since</span>
+                        <span className="text-2xl font-bold text-on-surface">{formatDate(user.created_at)}</span>
+                        <span className="text-[12px] text-on-surface-variant/70">Account active</span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-label-md text-error">Failed to load profile.</div>
-                  )}
-                </section>
-              </div>
-            </>
+                  </section>
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-surface border border-error/30 rounded-2xl text-error text-body-md">
+                  Unable to load profile. Please refresh or check your connection.
+                </div>
+              )}
+            </div>
           )}
 
           {section === "Appearance" && (
