@@ -3,7 +3,6 @@ import { useEffect, useState, useMemo } from "react";
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   applyNodeChanges,
   type NodeChange,
@@ -29,6 +28,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { Icon } from "@/components/Icon";
 import { EditableNode } from "@/components/EditableNode";
@@ -113,6 +118,10 @@ function Workspace() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>("vibrant");
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [activeTool, setActiveTool] = useState<"select" | "add_node" | "connect">("select");
+  const [connectSourceNodeId, setConnectSourceNodeId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -241,11 +250,157 @@ function Workspace() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setIsCommandPaletteOpen(true);
+      } else if (e.key === "Escape") {
+        if (activeTool !== "select") {
+          setActiveTool("select");
+          setConnectSourceNodeId(null);
+          toast.info("Returned to select tool");
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [historyIndex, history]);
+  }, [historyIndex, history, activeTool]);
+
+  const handleToolbarAddNode = async () => {
+    if (!mindMapId) return;
+    if (selectedNodeId) {
+      const parentNode = flowNodes.find((n) => n.id === selectedNodeId);
+      const parentPos = parentNode ? parentNode.position : { x: 200, y: 200 };
+      try {
+        const newNode = await createNode(mindMapId, {
+          label: "New Node",
+          position_x: parentPos.x + 220,
+          position_y: parentPos.y + 40,
+        });
+        const newEdge = await createEdge(mindMapId, {
+          source: selectedNodeId,
+          target: newNode.id,
+        });
+        const rfNode: FlowNode = {
+          id: newNode.id,
+          type: "editable",
+          position: { x: newNode.position_x, y: newNode.position_y },
+          selected: true,
+          data: {
+            label: newNode.label,
+            mindMapId,
+            depth: ((parentNode?.data?.depth as number) || 1) + 1,
+            theme: currentTheme,
+            isNew: true,
+            onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+            onDelete: (id?: string) =>
+              setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+            onRegenerate: () =>
+              setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+          },
+        };
+        const rfEdge: FlowEdge = {
+          id: newEdge.id,
+          source: selectedNodeId,
+          target: newNode.id,
+          type: "editable",
+        };
+        const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+        const nextEdges = [...flowEdges, rfEdge];
+        setFlowNodes(nextNodes);
+        setFlowEdges(nextEdges);
+        setSelectedNodeId(newNode.id);
+        pushToHistory(nextNodes, nextEdges);
+        toast.success("Child node added");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to add child node");
+      }
+    } else {
+      setActiveTool("add_node");
+      toast.info("Click anywhere on the canvas to place a new node.", { duration: 3000 });
+    }
+  };
+
+  const handleCanvasClick = async (event: React.MouseEvent) => {
+    if (activeTool === "add_node" && mindMapId && rfInstance) {
+      const position = rfInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      try {
+        const newNode = await createNode(mindMapId, {
+          label: "New Node",
+          position_x: Math.round(position.x),
+          position_y: Math.round(position.y),
+        });
+        const rfNode: FlowNode = {
+          id: newNode.id,
+          type: "editable",
+          position: { x: newNode.position_x, y: newNode.position_y },
+          selected: true,
+          data: {
+            label: newNode.label,
+            mindMapId,
+            depth: 1,
+            theme: currentTheme,
+            isNew: true,
+            onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+            onDelete: (id?: string) =>
+              setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+            onRegenerate: () =>
+              setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+          },
+        };
+        const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+        setFlowNodes(nextNodes);
+        setSelectedNodeId(newNode.id);
+        pushToHistory(nextNodes, flowEdges);
+        setActiveTool("select");
+        toast.success("Node placed on canvas");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to create node");
+      }
+    } else {
+      setSelectedNodeId(null);
+      if (activeTool === "connect") {
+        setConnectSourceNodeId(null);
+      }
+    }
+  };
+
+  const handleNodeClick = async (_e: React.MouseEvent, node: FlowNode) => {
+    if (activeTool === "connect" && mindMapId) {
+      if (!connectSourceNodeId) {
+        setConnectSourceNodeId(node.id);
+        setSelectedNodeId(node.id);
+        toast.info(`Source: "${node.data.label}". Click target node to connect.`);
+      } else if (connectSourceNodeId === node.id) {
+        toast.info("Source and target cannot be the same node.");
+      } else {
+        try {
+          const newEdge = await createEdge(mindMapId, {
+            source: connectSourceNodeId,
+            target: node.id,
+          });
+          const rfEdge: FlowEdge = {
+            id: newEdge.id,
+            source: newEdge.source,
+            target: newEdge.target,
+            type: "editable",
+          };
+          const nextEdges = addEdge(rfEdge, flowEdges);
+          setFlowEdges(nextEdges);
+          pushToHistory(flowNodes, nextEdges);
+          toast.success("Nodes connected successfully");
+          setConnectSourceNodeId(null);
+          setActiveTool("select");
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to connect nodes");
+        }
+      }
+    } else {
+      setSelectedNodeId(node.id);
+    }
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -773,7 +928,7 @@ function Workspace() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 px-3 py-1.5 text-on-surface-variant hover:bg-surface-container text-label-sm font-semibold rounded-lg transition-colors">
-                <Icon name="download" className="text-[16px]" /> Export
+                <Icon name="ios_share" className="text-[16px]" /> Export
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -819,46 +974,232 @@ function Workspace() {
       {/* WORKSPACE BODY */}
       <div className="flex-1 flex flex-row overflow-hidden relative">
         
-        {/* 2. LEFT TOOL RAIL */}
-        <div className="w-14 bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col items-center py-4 gap-4 z-20 shrink-0">
-          <button
-            onClick={() => setIsOutlineOpen(!isOutlineOpen)}
-            className={`p-2 rounded-xl transition-colors ${isOutlineOpen ? 'bg-primary/20 text-primary' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}
-            title="Toggle Outline"
-          >
-            <Icon name="list_alt" className="text-[22px]" />
-          </button>
-          
-          <div className="w-8 h-px bg-outline-variant/30" />
+        {/* 2. LEFT TOOL RAIL - 7 TOOLS */}
+        <TooltipProvider delayDuration={150}>
+          <div className="w-14 bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col items-center py-3 gap-1.5 z-20 shrink-0 select-none">
+            {/* Tool 1: Select */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    setActiveTool("select");
+                    setConnectSourceNodeId(null);
+                  }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    activeTool === "select"
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Select mode"
+                >
+                  <Icon name="near_me" className="text-[20px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Select (Pan & Select)
+              </TooltipContent>
+            </Tooltip>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" title="Layout Options">
-                <Icon name="account_tree" className="text-[22px]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" className="ml-2 w-48">
-              <DropdownMenuItem onClick={() => handleApplyLayout("balanced")}>Balanced Radial</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleApplyLayout("horizontal")}>Horizontal</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleApplyLayout("vertical")}>Vertical</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Tool 2: Add Node */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleToolbarAddNode}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    activeTool === "add_node"
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Add Node"
+                >
+                  <Icon name="add_box" className="text-[20px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {selectedNodeId ? "Add Child Node (Tab)" : "Add Node (Click canvas)"}
+              </TooltipContent>
+            </Tooltip>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" title="Theme Options">
-                <Icon name="palette" className="text-[22px]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" className="ml-2 w-48">
-              {Object.values(THEME_PALETTES).map(t => (
-                <DropdownMenuItem key={t.id} onClick={() => handleSelectTheme(t.id)}>
-                  {t.name}
+            {/* Tool 3: Connect */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    if (activeTool === "connect") {
+                      setActiveTool("select");
+                      setConnectSourceNodeId(null);
+                    } else {
+                      setActiveTool("connect");
+                      if (selectedNodeId) {
+                        setConnectSourceNodeId(selectedNodeId);
+                        toast.info("Selected source node. Now click another node to connect.");
+                      } else {
+                        setConnectSourceNodeId(null);
+                        toast.info("Click the first node to start connecting.");
+                      }
+                    }
+                  }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    activeTool === "connect"
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Connect Nodes"
+                >
+                  <Icon name="cable" className="text-[20px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Connect Nodes
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Tool 4: Text / Note */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  disabled
+                  className="w-10 h-10 rounded-xl flex items-center justify-center opacity-40 cursor-not-allowed text-on-surface-variant transition-colors"
+                  aria-label="Text or Note"
+                >
+                  <Icon name="notes" className="text-[20px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Text / Note (Coming soon)
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="w-6 h-px bg-outline-variant/30 my-0.5" />
+
+            {/* Tool 5: AI */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    if (aiPanelState === "collapsed") {
+                      setAiPanelState("expanded");
+                      setRightPanelMode("ai");
+                    } else {
+                      setAiPanelState("collapsed");
+                    }
+                  }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    aiPanelState !== "collapsed"
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="AI Assistant"
+                >
+                  <Icon name="auto_awesome" className="text-[20px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                AI Assistant
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Tool 6: Layout */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
+                      aria-label="Layout Options"
+                    >
+                      <Icon name="account_tree" className="text-[20px]" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Layout Options
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent side="right" className="ml-2 w-52">
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Auto Layout</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleApplyLayout("balanced")} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="bubble_chart" className="mr-2 text-[16px]" /> Balanced Radial</span>
+                  {currentLayout === "balanced" && <Icon name="check" className="text-[16px] text-primary" />}
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                <DropdownMenuItem onClick={() => handleApplyLayout("horizontal")} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="align_horizontal_left" className="mr-2 text-[16px]" /> Horizontal</span>
+                  {currentLayout === "horizontal" && <Icon name="check" className="text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleApplyLayout("vertical")} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="align_vertical_top" className="mr-2 text-[16px]" /> Vertical</span>
+                  {currentLayout === "vertical" && <Icon name="check" className="text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })} className="cursor-pointer">
+                  <Icon name="crop_free" className="mr-2 text-[16px]" /> Fit Map to View
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Tool 7: View */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
+                      aria-label="View & Canvas Options"
+                    >
+                      <Icon name="visibility" className="text-[20px]" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  View & Canvas
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent side="right" className="ml-2 w-56">
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Canvas View</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setShowMiniMap(!showMiniMap)} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="map" className="mr-2 text-[16px]" /> MiniMap</span>
+                  {showMiniMap && <Icon name="check" className="text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsOutlineOpen(!isOutlineOpen)} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="list_alt" className="mr-2 text-[16px]" /> Outline Panel</span>
+                  {isOutlineOpen && <Icon name="check" className="text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowGrid(!showGrid)} className="cursor-pointer flex items-center justify-between">
+                  <span className="flex items-center"><Icon name="grid_view" className="mr-2 text-[16px]" /> Canvas Grid</span>
+                  {showGrid && <Icon name="check" className="text-[16px] text-primary" />}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Focus & Zoom</DropdownMenuLabel>
+                {focusedNodeId ? (
+                  <DropdownMenuItem onClick={() => setFocusedNodeId(null)} className="cursor-pointer">
+                    <Icon name="center_focus_weak" className="mr-2 text-[16px]" /> Exit Focus Mode
+                  </DropdownMenuItem>
+                ) : selectedNodeId ? (
+                  <DropdownMenuItem onClick={() => setFocusedNodeId(selectedNodeId)} className="cursor-pointer">
+                    <Icon name="center_focus_strong" className="mr-2 text-[16px]" /> Focus on Selected Node
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })} className="cursor-pointer">
+                  <Icon name="crop_free" className="mr-2 text-[16px]" /> Fit to View
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rfInstance?.zoomTo(1, { duration: 250 })} className="cursor-pointer">
+                  <Icon name="search" className="mr-2 text-[16px]" /> Reset Zoom (100%)
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Color Theme</DropdownMenuLabel>
+                {Object.values(THEME_PALETTES).map(t => (
+                  <DropdownMenuItem key={t.id} onClick={() => handleSelectTheme(t.id)} className="cursor-pointer flex items-center justify-between">
+                    <span>{t.name}</span>
+                    {currentTheme === t.id && <Icon name="check" className="text-[16px] text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+          </div>
+        </TooltipProvider>
 
         {/* OUTLINE PANEL */}
         {isOutlineOpen && (
@@ -923,38 +1264,102 @@ function Workspace() {
               onEdgesDelete={handleEdgesDelete}
               onNodesChange={handleNodesChange}
               onNodeDragStop={handleNodeDragStop}
-              onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
-              onPaneClick={() => setSelectedNodeId(null)}
+              onNodeClick={handleNodeClick}
+              onPaneClick={handleCanvasClick}
+              onMove={(_e, viewport) => setZoomLevel(Math.round(viewport.zoom * 100))}
             >
-              <Background color="var(--color-outline-variant)" gap={24} size={2} />
-              <Controls showInteractive={false} className="!left-4 !bottom-4 !right-auto" />
-              {showMiniMap && <MiniMap className="!bg-surface-container-lowest !border-outline-variant/30 !bottom-16 !left-4 !right-auto" />}
+              {showGrid && <Background color="var(--color-outline-variant)" gap={24} size={2} />}
+              {showMiniMap && (
+                <MiniMap
+                  className="!bg-surface-container-lowest !border-outline-variant/30 !bottom-4 !left-4 !right-auto rounded-xl shadow-level-1 overflow-hidden"
+                />
+              )}
             </ReactFlow>
+          )}
+
+          {/* Mode indicator banner for Connect and Add Node modes */}
+          {activeTool === "connect" && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-surface/95 backdrop-blur-md border border-primary/40 text-primary px-3.5 py-1.5 rounded-full shadow-level-2 text-label-sm font-semibold flex items-center gap-2 z-10 animate-in fade-in">
+              <Icon name="cable" className="text-[16px] animate-pulse" />
+              <span>{connectSourceNodeId ? "Click target node to connect" : "Click source node to start connecting"}</span>
+              <button
+                onClick={() => {
+                  setActiveTool("select");
+                  setConnectSourceNodeId(null);
+                }}
+                className="ml-1 text-on-surface-variant hover:text-on-surface p-0.5 rounded-full hover:bg-surface-container"
+                title="Cancel (Esc)"
+              >
+                <Icon name="close" className="text-[14px]" />
+              </button>
+            </div>
+          )}
+          {activeTool === "add_node" && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-surface/95 backdrop-blur-md border border-primary/40 text-primary px-3.5 py-1.5 rounded-full shadow-level-2 text-label-sm font-semibold flex items-center gap-2 z-10 animate-in fade-in">
+              <Icon name="add_box" className="text-[16px] animate-pulse" />
+              <span>Click anywhere on canvas to place node</span>
+              <button
+                onClick={() => setActiveTool("select")}
+                className="ml-1 text-on-surface-variant hover:text-on-surface p-0.5 rounded-full hover:bg-surface-container"
+                title="Cancel (Esc)"
+              >
+                <Icon name="close" className="text-[14px]" />
+              </button>
+            </div>
           )}
 
           {/* 4. FLOATING CANVAS CONTROLS */}
           {flowNodes.length > 0 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-full shadow-level-3 flex items-center p-1.5 gap-1 z-10">
               {focusedNodeId && (
-                 <>
-                   <button onClick={() => setFocusedNodeId(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors text-label-sm font-semibold" title="Exit Focus Mode">
-                     <Icon name="center_focus_weak" className="text-[18px]" /> Exit Focus
-                   </button>
-                   <div className="w-px h-6 bg-outline-variant/50 mx-1" />
-                 </>
+                <>
+                  <button
+                    onClick={() => setFocusedNodeId(null)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors text-label-sm font-semibold"
+                    title="Exit Focus Mode"
+                  >
+                    <Icon name="center_focus_weak" className="text-[18px]" /> Exit Focus
+                  </button>
+                  <div className="w-px h-6 bg-outline-variant/50 mx-1" />
+                </>
               )}
-              <button onClick={() => setShowMiniMap(!showMiniMap)} className="p-2 text-on-surface hover:bg-surface-container rounded-full" title="Toggle MiniMap">
+              <button
+                onClick={() => setShowMiniMap(!showMiniMap)}
+                className={`p-2 rounded-full transition-colors ${
+                  showMiniMap ? "text-primary bg-primary/10" : "text-on-surface hover:bg-surface-container"
+                }`}
+                title="Toggle MiniMap"
+              >
                 <Icon name="map" className="text-[20px]" />
               </button>
               <div className="w-px h-6 bg-outline-variant/50 mx-1" />
-              <button onClick={() => rfInstance?.fitView({ duration: 500 })} className="p-2 text-on-surface hover:bg-surface-container rounded-full" title="Fit View">
+              <button
+                onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })}
+                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
+                title="Fit View"
+              >
                 <Icon name="crop_free" className="text-[20px]" />
               </button>
-              <button onClick={() => rfInstance?.zoomIn({ duration: 250 })} className="p-2 text-on-surface hover:bg-surface-container rounded-full" title="Zoom In">
-                <Icon name="add" className="text-[20px]" />
-              </button>
-              <button onClick={() => rfInstance?.zoomOut({ duration: 250 })} className="p-2 text-on-surface hover:bg-surface-container rounded-full" title="Zoom Out">
+              <button
+                onClick={() => rfInstance?.zoomOut({ duration: 250 })}
+                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
+                title="Zoom Out"
+              >
                 <Icon name="remove" className="text-[20px]" />
+              </button>
+              <button
+                onClick={() => rfInstance?.zoomTo(1, { duration: 250 })}
+                className="px-2.5 py-1 text-label-sm font-semibold text-on-surface hover:bg-surface-container rounded-full transition-colors min-w-[54px] text-center"
+                title="Click to reset zoom to 100%"
+              >
+                {zoomLevel}%
+              </button>
+              <button
+                onClick={() => rfInstance?.zoomIn({ duration: 250 })}
+                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
+                title="Zoom In"
+              >
+                <Icon name="add" className="text-[20px]" />
               </button>
             </div>
           )}
