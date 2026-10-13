@@ -1470,28 +1470,6 @@ function Workspace() {
               </TooltipContent>
             </Tooltip>
 
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* Bottom Tool: AI Assistant */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => handleToggleAiPanel()}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-                    !isAiPanelCollapsed
-                      ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 ring-1 ring-purple-500/30"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                  }`}
-                  aria-label={isAiPanelCollapsed ? "Open AI Assistant (Ctrl+Shift+A)" : "Close AI Assistant (Ctrl+Shift+A)"}
-                >
-                  <Icon name="auto_awesome" className="text-[19px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                AI Assistant (Ctrl+Shift+A)
-              </TooltipContent>
-            </Tooltip>
           </div>
         </TooltipProvider>
 
@@ -1756,19 +1734,8 @@ function Workspace() {
               </div>
             </div>
 
-            {/* Subtle VS Code Controls: Toggle Width and Close */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                onClick={() => {
-                  const nextWidth = aiPanelWidth >= 520 ? 380 : 580;
-                  handleAiPanelResize(nextWidth);
-                }}
-                className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md transition-colors"
-                title={aiPanelWidth >= 520 ? "Collapse width (380px)" : "Expand width (580px)"}
-                aria-label="Toggle panel width"
-              >
-                <Icon name={aiPanelWidth >= 520 ? "vertical_align_center" : "open_in_full"} className="text-[16px]" />
-              </button>
+            {/* Header Action: Close */}
+            <div className="flex items-center shrink-0">
               <button
                 onClick={() => handleToggleAiPanel(false)}
                 className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md transition-colors"
