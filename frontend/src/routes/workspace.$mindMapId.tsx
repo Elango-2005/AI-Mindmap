@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -100,7 +100,17 @@ function Workspace() {
     role: 'user' | 'ai';
     content: string;
     mapChanges?: { nodesAdded: number; nodesDeleted: number; snapshotId?: string; isUndone?: boolean };
+    isError?: boolean;
+    failedPrompt?: string;
   }[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (chatMessages.length > 0 || isChatting) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, isChatting]);
 
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [titleEditValue, setTitleEditValue] = useState("");
@@ -595,12 +605,12 @@ function Workspace() {
 
   useEffect(() => { loadGraph(); }, [mindMapId]);
   
-  // Set selected node and automatically switch to Inspector mode if desired
+  // When a node is selected, keep AI Assistant active if in AI mode, or stay in inspector if in inspector mode
   useEffect(() => {
-      if (selectedNodeId) {
-          setRightPanelMode("inspector");
-      }
-  }, [selectedNodeId]);
+    if (selectedNodeId && rightPanelMode === "inspector") {
+      setRightPanelMode("inspector");
+    }
+  }, [selectedNodeId, rightPanelMode]);
 
   const handleExpandNode = async (nodeId: string) => {
     toast.info("Expanding node...");
@@ -703,7 +713,16 @@ function Workspace() {
       await loadGraph(); // fully reload the graph based on new backend state
     } catch (error) {
       console.error(error);
-      setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "ai", content: "Error modifying the map." }]);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: "Something went wrong while updating your map.",
+          isError: true,
+          failedPrompt: userMessage
+        }
+      ]);
     } finally {
       setIsChatting(false);
     }
@@ -1376,132 +1395,429 @@ function Workspace() {
         )}
 
         {flowNodes.length > 0 && aiPanelState !== "collapsed" && (
-          <aside className={`${aiPanelState === "full" ? "w-[600px] absolute right-0 bottom-0 top-0 shadow-2xl" : "w-[360px]"} bg-surface border-l border-outline-variant/30 flex flex-col z-20 shrink-0 transition-all duration-300`}>
+          <aside className={`${aiPanelState === "full" ? "w-[560px] md:w-[600px] absolute right-0 bottom-0 top-0 shadow-2xl" : "w-[380px]"} bg-surface border-l border-outline-variant/30 flex flex-col z-20 shrink-0 transition-all duration-200 overflow-hidden`}>
             {/* Panel Header */}
-            <div className="flex items-center justify-between p-3 border-b border-outline-variant/30 bg-surface-container-lowest">
-               <div className="flex items-center p-1 bg-surface-container-low rounded-lg gap-1">
-                  <button onClick={() => setRightPanelMode("ai")} className={`px-3 py-1.5 rounded-md text-label-sm font-semibold transition-colors flex items-center gap-1 ${rightPanelMode === "ai" ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
-                     <Icon name="auto_awesome" className="text-[16px]" /> AI Copilot
-                  </button>
-                  <button onClick={() => setRightPanelMode("inspector")} className={`px-3 py-1.5 rounded-md text-label-sm font-semibold transition-colors flex items-center gap-1 ${rightPanelMode === "inspector" ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
-                     <Icon name="tune" className="text-[16px]" /> Inspector
-                  </button>
-                  <button onClick={() => setRightPanelMode("versions")} className={`px-3 py-1.5 rounded-md text-label-sm font-semibold transition-colors flex items-center gap-1 ${rightPanelMode === "versions" ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
-                     <Icon name="history" className="text-[16px]" /> History
-                  </button>
-               </div>
-               <div className="flex items-center gap-1">
-                  <button onClick={() => setAiPanelState(aiPanelState === "full" ? "expanded" : "full")} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title={aiPanelState === "full" ? "Collapse to Sidebar" : "Expand to Full"}>
-                     <Icon name={aiPanelState === "full" ? "close_fullscreen" : "open_in_full"} className="text-[18px]" />
-                  </button>
-                  <button onClick={() => setAiPanelState("collapsed")} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title="Hide AI Panel">
-                     <Icon name="close" className="text-[18px]" />
-                  </button>
-               </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/30 bg-surface select-none">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Icon name={rightPanelMode === "ai" ? "auto_awesome" : rightPanelMode === "inspector" ? "tune" : "history"} className="text-[18px]" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-title-sm font-semibold text-on-surface truncate">
+                      {rightPanelMode === "ai" ? "AI Assistant" : rightPanelMode === "inspector" ? "Node Inspector" : "Version History"}
+                    </h3>
+                    
+                    {/* View Switcher Menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-on-surface-variant hover:text-on-surface p-0.5 rounded hover:bg-surface-container flex items-center transition-colors" title="Switch panel view">
+                          <Icon name="expand_more" className="text-[16px]" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem onClick={() => setRightPanelMode("ai")} className="cursor-pointer font-medium">
+                          <Icon name="auto_awesome" className="mr-2 text-[16px] text-primary" /> AI Assistant
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setRightPanelMode("inspector")} className="cursor-pointer">
+                          <Icon name="tune" className="mr-2 text-[16px]" /> Node Inspector
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setRightPanelMode("versions")} className="cursor-pointer">
+                          <Icon name="history" className="mr-2 text-[16px]" /> Version History
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Subtle Contextual Line */}
+                  <span className="text-[11px] text-on-surface-variant truncate">
+                    Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setAiPanelState(aiPanelState === "full" ? "expanded" : "full")}
+                  className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg transition-colors"
+                  title={aiPanelState === "full" ? "Collapse to Sidebar" : "Expand to Full"}
+                >
+                  <Icon name={aiPanelState === "full" ? "close_fullscreen" : "open_in_full"} className="text-[18px]" />
+                </button>
+                <button
+                  onClick={() => setAiPanelState("collapsed")}
+                  className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg transition-colors"
+                  title="Close AI Assistant"
+                >
+                  <Icon name="close" className="text-[18px]" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            {/* Panel Body */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-container-lowest">
               {rightPanelMode === "ai" ? (
-                <div className="flex flex-col h-full bg-surface-container-lowest">
+                <div className="flex-1 flex flex-col min-h-0 relative">
                   
-                  {/* Chat History */}
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                    {chatMessages.length === 0 && (
-                      <div className="text-center mt-10 p-4">
-                        <Icon name="forum" className="text-[32px] text-primary/40 mb-2" />
-                        <h4 className="text-label-lg font-semibold">Ready to transform your map?</h4>
-                        <p className="text-body-sm text-on-surface-variant mt-2">I can organize ideas, expand branches, and summarize concepts.</p>
-                      </div>
-                    )}
-                    {chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                        <div className={`p-3 rounded-2xl text-body-sm ${msg.role === "user" ? "bg-primary text-on-primary max-w-[85%] rounded-br-sm" : "bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[90%] rounded-bl-sm"}`}>
-                          {msg.content}
+                  {/* Messages / Intro Area */}
+                  <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+                    {chatMessages.length === 0 ? (
+                      /* Empty State matching Reference Image */
+                      <div className="flex flex-col gap-2.5 my-auto py-1">
+                        {/* 1. Greeting Card */}
+                        <div className="bg-surface border border-outline-variant/30 rounded-2xl p-3.5 shadow-xs">
+                          <h4 className="text-title-sm font-semibold text-on-surface">Hi! I can help you work with your map.</h4>
+                          <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+                            You can ask me to improve, analyze, or summarize your ideas.
+                          </p>
                         </div>
-                        {msg.mapChanges && !msg.mapChanges.isUndone && (
-                           <div className="mt-2 bg-surface border border-outline-variant/40 rounded-xl p-2.5 flex items-center justify-between w-full max-w-[90%] shadow-sm">
-                              <div className="flex items-center gap-3 text-label-xs font-semibold">
-                                 {msg.mapChanges.nodesAdded > 0 && <span className="text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded">+{msg.mapChanges.nodesAdded} nodes</span>}
-                                 {msg.mapChanges.nodesDeleted > 0 && <span className="text-error bg-error/10 px-2 py-0.5 rounded">-{msg.mapChanges.nodesDeleted} nodes</span>}
+
+                        {/* 2. Context-Aware Quick Actions Grid (2x2) */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedNode ? (
+                            <>
+                              {/* Selected Node Actions */}
+                              <button
+                                onClick={() => handleSendChat(`Expand node "${selectedNode.data.label}" with detailed subtopics and child concepts`)}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="account_tree" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Expand node</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat(`Explain "${selectedNode.data.label}" clearly in context of this mind map`)}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="description" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Explain concept</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat(`Rewrite and make "${selectedNode.data.label}" concise`)}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="edit_note" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Rewrite / Simplify</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat(`Find connections between "${selectedNode.data.label}" and other parts of this mind map`)}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="hub" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Find connections</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Entire Map Actions */}
+                              <button
+                                onClick={() => handleSendChat("Improve map structure")}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="schema" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Improve map structure</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat("Summarize entire map")}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="description" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Summarize map</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat("Identify gaps and missing concepts")}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="lightbulb" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Find gaps & suggestions</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")}
+                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                                  <Icon name="bar_chart" className="text-[17px]" />
+                                </div>
+                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Analyze map</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Optional More Actions Dropdown */}
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="text-[11px] text-on-surface-variant hover:text-on-surface flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-surface-container transition-colors font-medium">
+                                <span>More actions</span>
+                                <Icon name="expand_more" className="text-[14px]" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuItem onClick={() => handleSendChat("Convert this map into a comprehensive exam study guide")}>
+                                <Icon name="school" className="mr-2 text-[16px]" /> Create study guide
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an actionable project plan with milestones")}>
+                                <Icon name="task_alt" className="mr-2 text-[16px]" /> Create project plan
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendChat("Conduct a SWOT analysis based on this mind map")}>
+                                <Icon name="grid_view" className="mr-2 text-[16px]" /> Generate SWOT analysis
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* 3. Divider */}
+                        <div className="flex items-center gap-3 my-0.5">
+                          <div className="flex-1 h-px bg-outline-variant/30" />
+                          <span className="text-[10px] font-medium text-outline uppercase tracking-wider">or</span>
+                          <div className="flex-1 h-px bg-outline-variant/30" />
+                        </div>
+                      </div>
+                    ) : (
+                      /* Chat Messages View */
+                      <>
+                        {chatMessages.map((msg) => (
+                          <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} gap-1.5`}>
+                            {msg.role === "ai" && (
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary pl-1">
+                                <Icon name="auto_awesome" className="text-[13px]" />
+                                <span>MindVault AI</span>
                               </div>
-                              {msg.mapChanges.snapshotId && (
-                                <button onClick={() => handleUndoAIChat(msg.id, msg.mapChanges!.snapshotId!)} className="text-primary hover:bg-primary/10 px-3 py-1 rounded text-label-xs font-bold transition-colors">
-                                   Undo
-                                </button>
-                              )}
-                           </div>
+                            )}
+
+                            <div
+                              className={`text-body-sm leading-relaxed break-words ${
+                                msg.role === "user"
+                                  ? "px-3.5 py-2 rounded-2xl rounded-tr-xs bg-primary text-on-primary max-w-[85%] shadow-xs"
+                                  : "px-3.5 py-2.5 rounded-2xl rounded-tl-xs bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[92%]"
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
+
+                            {/* Map Change Summary Card */}
+                            {msg.mapChanges && !msg.mapChanges.isUndone && (
+                              <div className="bg-surface border border-outline-variant/40 rounded-xl p-2.5 flex items-center justify-between w-full max-w-[92%] shadow-xs text-label-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-on-surface">Map updated</span>
+                                  {msg.mapChanges.nodesAdded > 0 && (
+                                    <span className="text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded font-medium">
+                                      +{msg.mapChanges.nodesAdded} nodes
+                                    </span>
+                                  )}
+                                  {msg.mapChanges.nodesDeleted > 0 && (
+                                    <span className="text-error bg-error/10 px-2 py-0.5 rounded font-medium">
+                                      -{msg.mapChanges.nodesDeleted} nodes
+                                    </span>
+                                  )}
+                                </div>
+                                {msg.mapChanges.snapshotId && (
+                                  <button
+                                    onClick={() => handleUndoAIChat(msg.id, msg.mapChanges!.snapshotId!)}
+                                    className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded font-bold transition-colors flex items-center gap-1"
+                                  >
+                                    <Icon name="undo" className="text-[13px]" /> Undo
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {msg.mapChanges?.isUndone && (
+                              <div className="text-label-xs text-on-surface-variant flex items-center gap-1 pl-1">
+                                <Icon name="undo" className="text-[12px]" /> AI changes reverted
+                              </div>
+                            )}
+
+                            {msg.isError && msg.failedPrompt && (
+                              <button
+                                onClick={() => handleSendChat(msg.failedPrompt)}
+                                className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded text-label-xs font-semibold flex items-center gap-1 border border-primary/20 transition-colors ml-1"
+                              >
+                                <Icon name="refresh" className="text-[13px]" /> Try again
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Real Loading Indicator */}
+                        {isChatting && (
+                          <div className="flex flex-col items-start gap-1.5 animate-in fade-in duration-200">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary pl-1">
+                              <Icon name="auto_awesome" className="text-[13px]" />
+                              <span>MindVault AI</span>
+                            </div>
+                            <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-xs bg-surface-container-low text-on-surface-variant border border-outline-variant/30 text-body-sm flex items-center gap-2">
+                              <Icon name="sync" className="animate-spin text-primary text-[16px]" />
+                              <span>AI is updating your map…</span>
+                            </div>
+                          </div>
                         )}
-                        {msg.mapChanges?.isUndone && (
-                           <div className="mt-1 text-label-xs text-outline-variant flex items-center gap-1">
-                              <Icon name="undo" className="text-[12px]" /> AI changes reverted
-                           </div>
-                        )}
-                      </div>
-                    ))}
-                    {isChatting && (
-                      <div className="p-3 rounded-2xl bg-surface-container-low flex items-center gap-2 text-label-sm self-start text-on-surface-variant">
-                        <Icon name="sync" className="animate-spin text-primary" /> <span>Analyzing and modifying map...</span>
-                      </div>
+
+                        <div ref={messagesEndRef} />
+                      </>
                     )}
                   </div>
 
-                  {/* Quick Actions (only if empty input) */}
-                  {!chatInput && !isChatting && (
-                    <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar snap-x">
+                  {/* Contextual Action Chips in Chat Mode (Max 3, wraps naturally, NO overflow-x) */}
+                  {chatMessages.length > 0 && !chatInput && !isChatting && (
+                    <div className="px-4 py-2 border-t border-outline-variant/15 bg-surface/50 flex flex-wrap items-center gap-1.5">
                       {selectedNode ? (
-                         <>
-                            <button onClick={() => handleSendChat("Expand this branch in detail")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface">Expand branch</button>
-                            <button onClick={() => handleSendChat("Simplify this branch")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface">Simplify</button>
-                            <button onClick={() => handleSendChat("Find missing related concepts")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface">Find related</button>
-                         </>
+                        <>
+                          <button
+                            onClick={() => handleSendChat(`Expand node "${selectedNode.data.label}" with child concepts`)}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Expand node
+                          </button>
+                          <button
+                            onClick={() => handleSendChat(`Explain "${selectedNode.data.label}" clearly`)}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Explain
+                          </button>
+                          <button
+                            onClick={() => handleSendChat(`Rewrite and simplify "${selectedNode.data.label}"`)}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Rewrite
+                          </button>
+                        </>
                       ) : (
-                         <>
-                            <button onClick={() => handleSendChat("Improve map structure")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Improve structure</button>
-                            <button onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Analyze map</button>
-                            <button onClick={() => handleSendChat("Identify gaps and missing concepts")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Identify gaps</button>
-                            <button onClick={() => handleSendChat("Summarize entire map")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Summarize map</button>
-                            <button onClick={() => handleSendChat("Convert to study guide")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Create study guide</button>
-                            <button onClick={() => handleSendChat("Convert to project plan")} className="snap-start shrink-0 text-label-xs font-medium border border-outline-variant/50 hover:bg-surface-container rounded-full px-3 py-1.5 transition-colors text-on-surface whitespace-nowrap">Create project plan</button>
-                         </>
+                        <>
+                          <button
+                            onClick={() => handleSendChat("Improve map structure")}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Improve structure
+                          </button>
+                          <button
+                            onClick={() => handleSendChat("Summarize entire map")}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Summarize map
+                          </button>
+                          <button
+                            onClick={() => handleSendChat("Identify gaps and missing concepts")}
+                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                          >
+                            Find gaps
+                          </button>
+                        </>
                       )}
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="text-[11px] font-medium text-on-surface-variant hover:text-on-surface px-2 py-1 rounded-full hover:bg-surface-container flex items-center gap-0.5 transition-colors">
+                            More <Icon name="expand_more" className="text-[12px]" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")}>
+                            <Icon name="bar_chart" className="mr-2 text-[16px]" /> Analyze map
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an exam study guide")}>
+                            <Icon name="school" className="mr-2 text-[16px]" /> Create study guide
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an actionable project plan")}>
+                            <Icon name="task_alt" className="mr-2 text-[16px]" /> Create project plan
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
 
-                  {/* AI Composer */}
-                  <div className="p-3 border-t border-outline-variant/20 bg-surface">
-                    <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-2 flex flex-col focus-within:border-primary focus-within:shadow-sm transition-all">
+                  {/* 3. Clean Composer (Single rounded container sticky at bottom) */}
+                  <div className="p-3 border-t border-outline-variant/20 bg-surface shrink-0">
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-2.5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10 transition-all shadow-xs">
                       
-                      {/* Context Chip */}
-                      <div className="flex items-center gap-2 mb-2 px-2 pt-1 text-label-xs font-semibold text-primary">
-                         <Icon name={selectedNode ? "my_location" : "public"} className="text-[14px]" />
-                         <span className="truncate max-w-[250px]">
-                            {selectedNode ? `Targeting: ${selectedNode.data.label}` : 'Scope: Entire Map'}
-                         </span>
+                      {/* Compact Context Target */}
+                      <div className="flex items-center justify-between mb-1.5 px-1">
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-on-surface-variant">
+                          <Icon name={selectedNode ? "adjust" : "public"} className="text-[13px] text-primary" />
+                          <span className="truncate max-w-[220px]">
+                            {selectedNode ? (selectedNode.data.label as string) : "Entire Map"}
+                          </span>
+                        </div>
+                        {selectedNode && (
+                          <button
+                            onClick={() => setSelectedNodeId(null)}
+                            className="text-[10px] text-outline hover:text-on-surface px-1.5 py-0.5 rounded hover:bg-surface-container flex items-center gap-0.5 transition-colors"
+                            title="Clear selection to target entire map"
+                          >
+                            Clear <Icon name="close" className="text-[12px]" />
+                          </button>
+                        )}
                       </div>
-                      
+
+                      {/* Textarea */}
                       <textarea
+                        ref={composerTextareaRef}
                         value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
-                        placeholder="Ask AI to modify..."
-                        className="w-full bg-transparent resize-none text-body-md outline-none min-h-[44px] px-2 text-on-surface placeholder:text-outline-variant"
+                        onChange={(e) => {
+                          setChatInput(e.target.value);
+                          e.target.style.height = "auto";
+                          e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            if (chatInput.trim() && !isChatting) {
+                              handleSendChat();
+                            }
+                          }
+                        }}
+                        placeholder={selectedNode ? `Ask about "${selectedNode.data.label}"...` : "Ask anything about your map..."}
+                        rows={1}
+                        className="w-full bg-transparent resize-none text-body-sm outline-none px-1 text-on-surface placeholder:text-outline-variant max-h-[120px] leading-relaxed"
                         disabled={isChatting}
                       />
-                      
-                      <div className="flex justify-between items-center mt-1">
-                        <div className="flex gap-1 ml-1 text-outline">
-                           <button className="p-1.5 hover:bg-surface-container rounded-lg transition-colors tooltip-trigger" title="Attach file (Coming soon)" disabled><Icon name="attach_file" className="text-[18px]" /></button>
+
+                      {/* Composer Actions */}
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-outline-variant/15">
+                        <div className="flex items-center gap-1 text-outline">
+                          <button
+                            type="button"
+                            disabled
+                            className="p-1.5 text-on-surface-variant/50 hover:text-on-surface rounded-lg transition-colors cursor-not-allowed"
+                            title="Attach file (Coming soon)"
+                          >
+                            <Icon name="attach_file" className="text-[18px]" />
+                          </button>
                         </div>
                         <button
                           onClick={() => handleSendChat()}
                           disabled={!chatInput.trim() || isChatting}
-                          className="p-1.5 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:bg-surface-container-high disabled:text-outline transition-colors"
+                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-30 disabled:bg-surface-container-high disabled:text-outline disabled:cursor-not-allowed shadow-xs"
+                          aria-label="Send message"
+                          title="Send message (Enter)"
                         >
-                          <Icon name="arrow_upward" className="text-[20px]" />
+                          <Icon name="arrow_upward" className="text-[18px]" />
                         </button>
                       </div>
+
                     </div>
                   </div>
+
                 </div>
               ) : rightPanelMode === "versions" ? (
                 <div className="p-4 flex flex-col gap-4 h-full bg-surface-container-lowest">
