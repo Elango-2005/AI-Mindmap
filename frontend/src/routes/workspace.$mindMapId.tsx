@@ -41,6 +41,8 @@ import { EditableEdge } from "@/components/EditableEdge";
 import { THEME_PALETTES, type ThemeKey, applyColorsToGraph } from "@/lib/graphColoring";
 import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
 import { OutlinePanel } from "@/components/OutlinePanel";
+import { ResizablePanel } from "@/components/ResizablePanel";
+import { LeftToolPanel, type LeftToolView } from "@/components/LeftToolPanel";
 import { ShareModal } from "@/components/ShareModal";
 import { exportMindMapToPdf } from "@/lib/exportPdf";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -140,7 +142,123 @@ function Workspace() {
   // Right panel mode
   const [rightPanelMode, setRightPanelMode] = useState<"ai" | "inspector" | "versions">("ai");
 
-  const [aiPanelState, setAiPanelState] = useState<"collapsed" | "expanded" | "full">("collapsed");
+  // Resizable Right AI Assistant Panel state (persistent)
+  const [aiPanelWidth, setAiPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 380;
+    const saved = localStorage.getItem("mindvault_ai_panel_width");
+    const num = saved ? parseInt(saved, 10) : 380;
+    return isNaN(num) ? 380 : Math.max(280, Math.min(600, num));
+  });
+
+  const [isAiPanelCollapsed, setIsAiPanelCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = localStorage.getItem("mindvault_ai_panel_collapsed");
+    return saved === "true";
+  });
+
+  // Resizable Left Tool Panel state (persistent)
+  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 300;
+    const saved = localStorage.getItem("mindvault_left_panel_width");
+    const num = saved ? parseInt(saved, 10) : 300;
+    return isNaN(num) ? 300 : Math.max(220, Math.min(500, num));
+  });
+
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("mindvault_left_panel_collapsed");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const [activeLeftView, setActiveLeftView] = useState<LeftToolView>(() => {
+    if (typeof window === "undefined") return "outline";
+    const saved = localStorage.getItem("mindvault_active_tool");
+    if (saved === "outline" || saved === "add_node" || saved === "layout" || saved === "view") {
+      return saved;
+    }
+    return "outline";
+  });
+
+  const handleAiPanelResize = (newWidth: number) => {
+    setAiPanelWidth(newWidth);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mindvault_ai_panel_width", String(newWidth));
+    }
+  };
+
+  const handleToggleAiPanel = (open?: boolean) => {
+    setIsAiPanelCollapsed((prev) => {
+      const next = open !== undefined ? !open : !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mindvault_ai_panel_collapsed", String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleLeftPanelResize = (newWidth: number) => {
+    setLeftPanelWidth(newWidth);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mindvault_left_panel_width", String(newWidth));
+    }
+  };
+
+  const handleToggleLeftPanel = (open?: boolean) => {
+    setIsLeftPanelCollapsed((prev) => {
+      const next = open !== undefined ? !open : !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mindvault_left_panel_collapsed", String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleSelectLeftTool = (view: LeftToolView) => {
+    if (!isLeftPanelCollapsed && activeLeftView === view) {
+      handleToggleLeftPanel(false);
+    } else {
+      setActiveLeftView(view);
+      setIsLeftPanelCollapsed(false);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mindvault_left_panel_collapsed", "false");
+        localStorage.setItem("mindvault_active_tool", view);
+      }
+    }
+  };
+
+  // Restore persisted panel dimensions and collapse state on client mount (SSR hydration safe)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedAiWidth = localStorage.getItem("mindvault_ai_panel_width");
+      if (savedAiWidth) {
+        const num = parseInt(savedAiWidth, 10);
+        if (!isNaN(num)) setAiPanelWidth(Math.max(280, Math.min(600, num)));
+      }
+      const savedAiCollapsed = localStorage.getItem("mindvault_ai_panel_collapsed");
+      if (savedAiCollapsed !== null) {
+        setIsAiPanelCollapsed(savedAiCollapsed === "true");
+      }
+
+      const savedLeftWidth = localStorage.getItem("mindvault_left_panel_width");
+      if (savedLeftWidth) {
+        const num = parseInt(savedLeftWidth, 10);
+        if (!isNaN(num)) setLeftPanelWidth(Math.max(220, Math.min(500, num)));
+      }
+      const savedLeftCollapsed = localStorage.getItem("mindvault_left_panel_collapsed");
+      if (savedLeftCollapsed !== null) {
+        setIsLeftPanelCollapsed(savedLeftCollapsed === "true");
+      }
+
+      const savedTool = localStorage.getItem("mindvault_active_tool");
+      if (savedTool === "outline" || savedTool === "add_node" || savedTool === "layout" || savedTool === "view") {
+        setActiveLeftView(savedTool as LeftToolView);
+      }
+    } catch (e) {
+      console.warn("Failed to load panel state from localStorage", e);
+    }
+  }, []);
+
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
 
@@ -260,6 +378,12 @@ function Workspace() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setIsCommandPaletteOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        handleToggleAiPanel();
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        handleToggleLeftPanel();
       } else if (e.key === "Escape") {
         if (activeTool !== "select") {
           setActiveTool("select");
@@ -270,7 +394,218 @@ function Workspace() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [historyIndex, history, activeTool]);
+  }, [historyIndex, history, activeTool, isAiPanelCollapsed, isLeftPanelCollapsed]);
+
+  const handleAddChildNode = async () => {
+    if (!mindMapId) return;
+    const parentId = selectedNodeId || flowNodes[0]?.id;
+    if (!parentId) {
+      handleAddRootNode();
+      return;
+    }
+    const parentNode = flowNodes.find((n) => n.id === parentId);
+    const parentPos = parentNode ? parentNode.position : { x: 200, y: 200 };
+    try {
+      const newNode = await createNode(mindMapId, {
+        label: "New Idea",
+        position_x: parentPos.x + 220,
+        position_y: parentPos.y + 40,
+      });
+      const newEdge = await createEdge(mindMapId, {
+        source: parentId,
+        target: newNode.id,
+      });
+      const rfNode: FlowNode = {
+        id: newNode.id,
+        type: "editable",
+        position: { x: newNode.position_x, y: newNode.position_y },
+        selected: true,
+        data: {
+          label: newNode.label,
+          mindMapId,
+          depth: ((parentNode?.data?.depth as number) || 1) + 1,
+          theme: currentTheme,
+          isNew: true,
+          onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+          onDelete: (id?: string) =>
+            setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+          onRegenerate: () =>
+            setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+        },
+      };
+      const rfEdge: FlowEdge = {
+        id: newEdge.id,
+        source: parentId,
+        target: newNode.id,
+        type: "editable",
+      };
+      const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+      const nextEdges = [...flowEdges, rfEdge];
+      setFlowNodes(nextNodes);
+      setFlowEdges(nextEdges);
+      setSelectedNodeId(newNode.id);
+      pushToHistory(nextNodes, nextEdges);
+      toast.success("Child node added");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add child node");
+    }
+  };
+
+  const handleAddSiblingNode = async () => {
+    if (!mindMapId) return;
+    if (!selectedNodeId) {
+      handleAddChildNode();
+      return;
+    }
+    const incomingEdge = flowEdges.find((e) => e.target === selectedNodeId);
+    const parentId = incomingEdge ? incomingEdge.source : null;
+    const currentNode = flowNodes.find((n) => n.id === selectedNodeId);
+    const currentPos = currentNode ? currentNode.position : { x: 200, y: 200 };
+
+    try {
+      const newNode = await createNode(mindMapId, {
+        label: "New Sibling",
+        position_x: currentPos.x,
+        position_y: currentPos.y + 90,
+      });
+
+      let nextEdges = [...flowEdges];
+      if (parentId) {
+        const newEdge = await createEdge(mindMapId, {
+          source: parentId,
+          target: newNode.id,
+        });
+        nextEdges.push({
+          id: newEdge.id,
+          source: parentId,
+          target: newNode.id,
+          type: "editable",
+        });
+      }
+
+      const rfNode: FlowNode = {
+        id: newNode.id,
+        type: "editable",
+        position: { x: newNode.position_x, y: newNode.position_y },
+        selected: true,
+        data: {
+          label: newNode.label,
+          mindMapId,
+          depth: currentNode?.data?.depth || 1,
+          theme: currentTheme,
+          isNew: true,
+          onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+          onDelete: (id?: string) =>
+            setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+          onRegenerate: () =>
+            setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+        },
+      };
+
+      const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+      setFlowNodes(nextNodes);
+      setFlowEdges(nextEdges);
+      setSelectedNodeId(newNode.id);
+      pushToHistory(nextNodes, nextEdges);
+      toast.success("Sibling node added");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add sibling node");
+    }
+  };
+
+  const handleAddRootNode = async () => {
+    if (!mindMapId) return;
+    try {
+      const centerPos = rfInstance
+        ? rfInstance.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+        : { x: 250, y: 250 };
+      const newNode = await createNode(mindMapId, {
+        label: "Floating Topic",
+        position_x: centerPos.x,
+        position_y: centerPos.y,
+      });
+      const rfNode: FlowNode = {
+        id: newNode.id,
+        type: "editable",
+        position: { x: newNode.position_x, y: newNode.position_y },
+        selected: true,
+        data: {
+          label: newNode.label,
+          mindMapId,
+          depth: 1,
+          theme: currentTheme,
+          isNew: true,
+          onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+          onDelete: (id?: string) =>
+            setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+          onRegenerate: () =>
+            setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+        },
+      };
+      const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+      setFlowNodes(nextNodes);
+      setSelectedNodeId(newNode.id);
+      pushToHistory(nextNodes, flowEdges);
+      toast.success("Floating topic created");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create floating topic");
+    }
+  };
+
+  const handleAddTemplateNode = async (label: string) => {
+    if (!mindMapId) return;
+    if (selectedNodeId) {
+      const parentNode = flowNodes.find((n) => n.id === selectedNodeId);
+      const parentPos = parentNode ? parentNode.position : { x: 200, y: 200 };
+      try {
+        const newNode = await createNode(mindMapId, {
+          label,
+          position_x: parentPos.x + 220,
+          position_y: parentPos.y + 40,
+        });
+        const newEdge = await createEdge(mindMapId, {
+          source: selectedNodeId,
+          target: newNode.id,
+        });
+        const rfNode: FlowNode = {
+          id: newNode.id,
+          type: "editable",
+          position: { x: newNode.position_x, y: newNode.position_y },
+          selected: true,
+          data: {
+            label: newNode.label,
+            mindMapId,
+            depth: ((parentNode?.data?.depth as number) || 1) + 1,
+            theme: currentTheme,
+            isNew: true,
+            onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+            onDelete: (id?: string) =>
+              setConfirmAction({ type: "delete", nodeId: id || newNode.id, nodeLabel: newNode.label }),
+            onRegenerate: () =>
+              setConfirmAction({ type: "regenerate", nodeId: newNode.id, nodeLabel: newNode.label }),
+          },
+        };
+        const nextNodes = [...flowNodes.map((n) => ({ ...n, selected: false })), rfNode];
+        const nextEdges = [
+          ...flowEdges,
+          { id: newEdge.id, source: selectedNodeId, target: newNode.id, type: "editable" },
+        ];
+        setFlowNodes(nextNodes);
+        setFlowEdges(nextEdges);
+        setSelectedNodeId(newNode.id);
+        pushToHistory(nextNodes, nextEdges);
+        toast.success(`Added ${label}`);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to add template node");
+      }
+    } else {
+      handleAddRootNode();
+    }
+  };
 
   const handleToolbarAddNode = async () => {
     if (!mindMapId) return;
@@ -993,10 +1328,92 @@ function Workspace() {
       {/* WORKSPACE BODY */}
       <div className="flex-1 flex flex-row overflow-hidden relative">
         
-        {/* 2. LEFT TOOL RAIL - 7 TOOLS */}
+        {/* 2. LEVEL 1: COMPACT ACTIVITY BAR (VS Code-style) */}
         <TooltipProvider delayDuration={150}>
-          <div className="w-14 bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col items-center py-3 gap-1.5 z-20 shrink-0 select-none">
-            {/* Tool 1: Select */}
+          <div className="w-12 bg-surface border-r border-outline-variant/30 flex flex-col items-center py-2.5 gap-1 shrink-0 select-none z-20">
+            {/* Outline / Structure Explorer */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleSelectLeftTool("outline")}
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    !isLeftPanelCollapsed && activeLeftView === "outline"
+                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Outline & Structure (Ctrl+B)"
+                >
+                  <Icon name="list_alt" className="text-[19px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Outline & Structure (Ctrl+B)
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Add Nodes & Templates */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleSelectLeftTool("add_node")}
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    !isLeftPanelCollapsed && activeLeftView === "add_node"
+                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Add Nodes & Topics"
+                >
+                  <Icon name="add_box" className="text-[19px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Add Nodes & Topics
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Layout Options */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleSelectLeftTool("layout")}
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    !isLeftPanelCollapsed && activeLeftView === "layout"
+                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Layout & Alignment"
+                >
+                  <Icon name="account_tree" className="text-[19px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Layout & Alignment
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Canvas View & Themes */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleSelectLeftTool("view")}
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    !isLeftPanelCollapsed && activeLeftView === "view"
+                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                  aria-label="Canvas View & Themes"
+                >
+                  <Icon name="visibility" className="text-[19px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Canvas View & Themes
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="w-6 h-px bg-outline-variant/30 my-1" />
+
+            {/* Canvas Tool: Select Mode */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -1004,14 +1421,14 @@ function Workspace() {
                     setActiveTool("select");
                     setConnectSourceNodeId(null);
                   }}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
                     activeTool === "select"
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Select mode"
                 >
-                  <Icon name="near_me" className="text-[20px]" />
+                  <Icon name="near_me" className="text-[19px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1019,27 +1436,7 @@ function Workspace() {
               </TooltipContent>
             </Tooltip>
 
-            {/* Tool 2: Add Node */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleToolbarAddNode}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                    activeTool === "add_node"
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                  }`}
-                  aria-label="Add Node"
-                >
-                  <Icon name="add_box" className="text-[20px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {selectedNodeId ? "Add Child Node (Tab)" : "Add Node (Click canvas)"}
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Tool 3: Connect */}
+            {/* Canvas Tool: Connect Mode */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -1058,14 +1455,14 @@ function Workspace() {
                       }
                     }
                   }}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
                     activeTool === "connect"
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                      ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Connect Nodes"
                 >
-                  <Icon name="cable" className="text-[20px]" />
+                  <Icon name="cable" className="text-[19px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1073,156 +1470,45 @@ function Workspace() {
               </TooltipContent>
             </Tooltip>
 
-            {/* Tool 4: Text / Note */}
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Bottom Tool: AI Assistant */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  disabled
-                  className="w-10 h-10 rounded-xl flex items-center justify-center opacity-40 cursor-not-allowed text-on-surface-variant transition-colors"
-                  aria-label="Text or Note"
-                >
-                  <Icon name="notes" className="text-[20px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Text / Note (Coming soon)
-              </TooltipContent>
-            </Tooltip>
-
-            <div className="w-6 h-px bg-outline-variant/30 my-0.5" />
-
-            {/* Tool 5: AI */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => {
-                    if (aiPanelState === "collapsed") {
-                      setAiPanelState("expanded");
-                      setRightPanelMode("ai");
-                    } else {
-                      setAiPanelState("collapsed");
-                    }
-                  }}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                    aiPanelState !== "collapsed"
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/20 shadow-xs"
+                  onClick={() => handleToggleAiPanel()}
+                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    !isAiPanelCollapsed
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 ring-1 ring-purple-500/30"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
-                  aria-label="AI Assistant"
+                  aria-label={isAiPanelCollapsed ? "Open AI Assistant (Ctrl+Shift+A)" : "Close AI Assistant (Ctrl+Shift+A)"}
                 >
-                  <Icon name="auto_awesome" className="text-[20px]" />
+                  <Icon name="auto_awesome" className="text-[19px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                AI Assistant
+                AI Assistant (Ctrl+Shift+A)
               </TooltipContent>
             </Tooltip>
-
-            {/* Tool 6: Layout */}
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-                      aria-label="Layout Options"
-                    >
-                      <Icon name="account_tree" className="text-[20px]" />
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  Layout Options
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent side="right" className="ml-2 w-52">
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Auto Layout</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => handleApplyLayout("balanced")} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="bubble_chart" className="mr-2 text-[16px]" /> Balanced Radial</span>
-                  {currentLayout === "balanced" && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleApplyLayout("horizontal")} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="align_horizontal_left" className="mr-2 text-[16px]" /> Horizontal</span>
-                  {currentLayout === "horizontal" && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleApplyLayout("vertical")} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="align_vertical_top" className="mr-2 text-[16px]" /> Vertical</span>
-                  {currentLayout === "vertical" && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })} className="cursor-pointer">
-                  <Icon name="crop_free" className="mr-2 text-[16px]" /> Fit Map to View
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Tool 7: View */}
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-                      aria-label="View & Canvas Options"
-                    >
-                      <Icon name="visibility" className="text-[20px]" />
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  View & Canvas
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent side="right" className="ml-2 w-56">
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Canvas View</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setShowMiniMap(!showMiniMap)} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="map" className="mr-2 text-[16px]" /> MiniMap</span>
-                  {showMiniMap && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsOutlineOpen(!isOutlineOpen)} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="list_alt" className="mr-2 text-[16px]" /> Outline Panel</span>
-                  {isOutlineOpen && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowGrid(!showGrid)} className="cursor-pointer flex items-center justify-between">
-                  <span className="flex items-center"><Icon name="grid_view" className="mr-2 text-[16px]" /> Canvas Grid</span>
-                  {showGrid && <Icon name="check" className="text-[16px] text-primary" />}
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Focus & Zoom</DropdownMenuLabel>
-                {focusedNodeId ? (
-                  <DropdownMenuItem onClick={() => setFocusedNodeId(null)} className="cursor-pointer">
-                    <Icon name="center_focus_weak" className="mr-2 text-[16px]" /> Exit Focus Mode
-                  </DropdownMenuItem>
-                ) : selectedNodeId ? (
-                  <DropdownMenuItem onClick={() => setFocusedNodeId(selectedNodeId)} className="cursor-pointer">
-                    <Icon name="center_focus_strong" className="mr-2 text-[16px]" /> Focus on Selected Node
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })} className="cursor-pointer">
-                  <Icon name="crop_free" className="mr-2 text-[16px]" /> Fit to View
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => rfInstance?.zoomTo(1, { duration: 250 })} className="cursor-pointer">
-                  <Icon name="search" className="mr-2 text-[16px]" /> Reset Zoom (100%)
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Color Theme</DropdownMenuLabel>
-                {Object.values(THEME_PALETTES).map(t => (
-                  <DropdownMenuItem key={t.id} onClick={() => handleSelectTheme(t.id)} className="cursor-pointer flex items-center justify-between">
-                    <span>{t.name}</span>
-                    {currentTheme === t.id && <Icon name="check" className="text-[16px] text-primary" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
           </div>
         </TooltipProvider>
 
-        {/* OUTLINE PANEL */}
-        {isOutlineOpen && (
-          <OutlinePanel
+        {/* 2. LEVEL 2: EXPANDABLE RESIZABLE LEFT TOOL PANEL */}
+        <ResizablePanel
+          side="left"
+          width={leftPanelWidth}
+          minWidth={220}
+          maxWidth={500}
+          collapsed={isLeftPanelCollapsed}
+          onResize={handleLeftPanelResize}
+          onCollapse={() => handleToggleLeftPanel(false)}
+          ariaLabel="Left tool panel"
+        >
+          <LeftToolPanel
+            activeView={activeLeftView}
+            onClose={() => handleToggleLeftPanel(false)}
             nodes={flowNodes}
             edges={flowEdges}
             selectedNodeId={selectedNodeId}
@@ -1233,9 +1519,24 @@ function Workspace() {
                 rfInstance.setCenter(targetNode.position.x, targetNode.position.y, { zoom: 1.2, duration: 600 });
               }
             }}
-            onClose={() => setIsOutlineOpen(false)}
+            onAddRootNode={handleAddRootNode}
+            onAddChildNode={handleAddChildNode}
+            onAddSiblingNode={handleAddSiblingNode}
+            onAddTemplateNode={handleAddTemplateNode}
+            currentLayout={currentLayout}
+            onApplyLayout={handleApplyLayout}
+            currentTheme={currentTheme}
+            onSelectTheme={handleSelectTheme}
+            showMiniMap={showMiniMap}
+            onToggleMiniMap={() => setShowMiniMap(!showMiniMap)}
+            showGrid={showGrid}
+            onToggleGrid={() => setShowGrid(!showGrid)}
+            focusedNodeId={focusedNodeId}
+            onToggleFocus={(nodeId) => setFocusedNodeId(nodeId)}
+            onFitView={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })}
+            onResetZoom={() => rfInstance?.zoomTo(1, { duration: 250 })}
           />
-        )}
+        </ResizablePanel>
 
         {/* 3. CENTER CANVAS */}
         <main className="flex-1 relative bg-surface-container-lowest dot-matrix flex flex-col">
@@ -1382,98 +1683,123 @@ function Workspace() {
               </button>
             </div>
           )}
+          {/* Subtle Floating AI restore pill on canvas when collapsed */}
+          {flowNodes.length > 0 && isAiPanelCollapsed && (
+            <div className="absolute bottom-6 right-6 z-20">
+              <button
+                onClick={() => handleToggleAiPanel(true)}
+                className="bg-surface/95 hover:bg-surface backdrop-blur shadow-level-2 hover:shadow-level-3 text-on-surface hover:text-primary px-3.5 py-2.5 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all group select-none"
+                title="Open AI Assistant (Ctrl+Shift+A)"
+                aria-label="Open AI Assistant"
+              >
+                <Icon name="auto_awesome" className="text-[18px] text-accent-violet group-hover:rotate-12 transition-transform" />
+                <span className="text-label-sm font-medium">AI Assistant</span>
+              </button>
+            </div>
+          )}
         </main>
 
-
-        {/* 5. RIGHT PANEL (AI Copilot / Node Inspector) */}
-        {flowNodes.length > 0 && aiPanelState === "collapsed" && (
-           <div className="absolute bottom-6 right-6 z-20">
-             <button onClick={() => setAiPanelState("expanded")} className="bg-surface shadow-level-3 text-primary p-4 rounded-full flex items-center gap-2 hover:bg-surface-container-low transition-colors">
-                <Icon name="auto_awesome" className="text-[24px] text-accent-violet" />
-             </button>
-           </div>
-        )}
-
-        {flowNodes.length > 0 && aiPanelState !== "collapsed" && (
-          <aside className={`${aiPanelState === "full" ? "w-[560px] md:w-[600px] absolute right-0 bottom-0 top-0 shadow-2xl" : "w-[380px]"} bg-surface border-l border-outline-variant/30 flex flex-col z-20 shrink-0 transition-all duration-200 overflow-hidden`}>
-            {/* Panel Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/30 bg-surface select-none">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Icon name={rightPanelMode === "ai" ? "auto_awesome" : rightPanelMode === "inspector" ? "tune" : "history"} className="text-[18px]" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-title-sm font-semibold text-on-surface truncate">
-                      {rightPanelMode === "ai" ? "AI Assistant" : rightPanelMode === "inspector" ? "Node Inspector" : "Version History"}
-                    </h3>
-                    
-                    {/* View Switcher Menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="text-on-surface-variant hover:text-on-surface p-0.5 rounded hover:bg-surface-container flex items-center transition-colors" title="Switch panel view">
-                          <Icon name="expand_more" className="text-[16px]" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        <DropdownMenuItem onClick={() => setRightPanelMode("ai")} className="cursor-pointer font-medium">
-                          <Icon name="auto_awesome" className="mr-2 text-[16px] text-primary" /> AI Assistant
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setRightPanelMode("inspector")} className="cursor-pointer">
-                          <Icon name="tune" className="mr-2 text-[16px]" /> Node Inspector
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setRightPanelMode("versions")} className="cursor-pointer">
-                          <Icon name="history" className="mr-2 text-[16px]" /> Version History
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  
-                  {/* Subtle Contextual Line */}
-                  <span className="text-[11px] text-on-surface-variant truncate">
-                    Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
-                  </span>
-                </div>
+        {/* 4. RIGHT RESIZABLE AI ASSISTANT / INSPECTOR PANEL */}
+        <ResizablePanel
+          side="right"
+          width={aiPanelWidth}
+          minWidth={280}
+          maxWidth={600}
+          collapsed={isAiPanelCollapsed}
+          onResize={handleAiPanelResize}
+          onCollapse={() => handleToggleAiPanel(false)}
+          ariaLabel="AI Assistant side panel"
+        >
+          {/* Panel Header */}
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-outline-variant/30 bg-surface select-none shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Icon
+                  name={rightPanelMode === "ai" ? "auto_awesome" : rightPanelMode === "inspector" ? "tune" : "history"}
+                  className="text-[16px]"
+                />
               </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1">
+                  <h3 className="text-label-lg font-semibold text-on-surface truncate">
+                    {rightPanelMode === "ai" ? "AI Assistant" : rightPanelMode === "inspector" ? "Node Inspector" : "Version History"}
+                  </h3>
 
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => setAiPanelState(aiPanelState === "full" ? "expanded" : "full")}
-                  className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg transition-colors"
-                  title={aiPanelState === "full" ? "Collapse to Sidebar" : "Expand to Full"}
-                >
-                  <Icon name={aiPanelState === "full" ? "close_fullscreen" : "open_in_full"} className="text-[18px]" />
-                </button>
-                <button
-                  onClick={() => setAiPanelState("collapsed")}
-                  className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg transition-colors"
-                  title="Close AI Assistant"
-                >
-                  <Icon name="close" className="text-[18px]" />
-                </button>
+                  {/* View Switcher Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="text-on-surface-variant hover:text-on-surface p-0.5 rounded hover:bg-surface-container flex items-center transition-colors"
+                        title="Switch panel view"
+                      >
+                        <Icon name="expand_more" className="text-[15px]" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      <DropdownMenuItem onClick={() => setRightPanelMode("ai")} className="cursor-pointer font-medium">
+                        <Icon name="auto_awesome" className="mr-2 text-[16px] text-primary" /> AI Assistant
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setRightPanelMode("inspector")} className="cursor-pointer">
+                        <Icon name="tune" className="mr-2 text-[16px]" /> Node Inspector
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setRightPanelMode("versions")} className="cursor-pointer">
+                        <Icon name="history" className="mr-2 text-[16px]" /> Version History
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Subtle Contextual Line */}
+                <span className="text-[11px] text-on-surface-variant truncate">
+                  Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
+                </span>
               </div>
             </div>
 
-            {/* Panel Body */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-container-lowest">
-              {rightPanelMode === "ai" ? (
-                <div className="flex-1 flex flex-col min-h-0 relative">
-                  
-                  {/* Messages / Intro Area */}
-                  <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-                    {chatMessages.length === 0 ? (
-                      /* Empty State matching Reference Image */
-                      <div className="flex flex-col gap-2.5 my-auto py-1">
-                        {/* 1. Greeting Card */}
-                        <div className="bg-surface border border-outline-variant/30 rounded-2xl p-3.5 shadow-xs">
-                          <h4 className="text-title-sm font-semibold text-on-surface">Hi! I can help you work with your map.</h4>
-                          <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
-                            You can ask me to improve, analyze, or summarize your ideas.
-                          </p>
-                        </div>
+            {/* Subtle VS Code Controls: Toggle Width and Close */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={() => {
+                  const nextWidth = aiPanelWidth >= 520 ? 380 : 580;
+                  handleAiPanelResize(nextWidth);
+                }}
+                className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md transition-colors"
+                title={aiPanelWidth >= 520 ? "Collapse width (380px)" : "Expand width (580px)"}
+                aria-label="Toggle panel width"
+              >
+                <Icon name={aiPanelWidth >= 520 ? "vertical_align_center" : "open_in_full"} className="text-[16px]" />
+              </button>
+              <button
+                onClick={() => handleToggleAiPanel(false)}
+                className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md transition-colors"
+                title="Close AI Assistant (Ctrl+Shift+A)"
+                aria-label="Close AI Assistant"
+              >
+                <Icon name="close" className="text-[16px]" />
+              </button>
+            </div>
+          </div>
 
-                        {/* 2. Context-Aware Quick Actions Grid (2x2) */}
-                        <div className="grid grid-cols-2 gap-2">
+          {/* Panel Body */}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden bg-surface-container-lowest">
+            {rightPanelMode === "ai" ? (
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+                
+                {/* Messages / Intro Area */}
+                <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3 min-w-0">
+                  {chatMessages.length === 0 ? (
+                    /* Empty State matching Reference Image */
+                    <div className="flex flex-col gap-2.5 my-auto py-1 min-w-0">
+                      {/* 1. Greeting Card */}
+                      <div className="bg-surface border border-outline-variant/30 rounded-2xl p-3.5 shadow-xs">
+                        <h4 className="text-title-sm font-semibold text-on-surface">Hi! I can help you work with your map.</h4>
+                        <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+                          You can ask me to improve, analyze, or summarize your ideas.
+                        </p>
+                      </div>
+
+                      {/* 2. Context-Aware Quick Actions Grid (Dynamic 1 or 2 cols based on panel width) */}
+                      <div className={`grid ${aiPanelWidth < 360 ? "grid-cols-1" : "grid-cols-2"} gap-2`}>
                           {selectedNode ? (
                             <>
                               {/* Selected Node Actions */}
@@ -1938,8 +2264,7 @@ function Workspace() {
                 </div>
               )}
             </div>
-          </aside>
-        )}
+        </ResizablePanel>
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
