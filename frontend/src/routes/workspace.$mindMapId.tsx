@@ -13,7 +13,9 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot, getSnapshots, type Snapshot } from "@/api/mindmaps";
+import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot, getSnapshots, type Snapshot, type GroundingSource } from "@/api/mindmaps";
+import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
+import { listProjectDocuments, type ProjectDocument } from "@/api/documents";
 import { getMindMapNodes, createNode, updateNode, summarizeNode, expandNode, findConnectionsNode, deleteNode } from "@/api/nodes";
 import { getMindMapEdges, deleteEdge, createEdge, updateEdge } from "@/api/edges";
 import { addEdge, reconnectEdge, type Connection, type Edge as FlowEdge } from "@xyflow/react";
@@ -104,9 +106,26 @@ function Workspace() {
     mapChanges?: { nodesAdded: number; nodesDeleted: number; snapshotId?: string; isUndone?: boolean };
     isError?: boolean;
     failedPrompt?: string;
+    sources?: GroundingSource[];
   }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Knowledge Base & RAG state
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectDocuments, setProjectDocuments] = useState<ProjectDocument[]>([]);
+  const [isKnowledgeModalOpen, setIsKnowledgeModalOpen] = useState(false);
+
+  const fetchProjectDocuments = async (pId?: string) => {
+    const idToUse = pId || projectId;
+    if (!idToUse) return;
+    try {
+      const docs = await listProjectDocuments(idToUse);
+      setProjectDocuments(docs);
+    } catch (e) {
+      console.error("Failed to load project documents", e);
+    }
+  };
 
   useEffect(() => {
     if (chatMessages.length > 0 || isChatting) {
@@ -423,6 +442,7 @@ function Workspace() {
         data: {
           label: newNode.label,
           mindMapId,
+          importance_score: newNode.importance_score ?? 1.0,
           depth: ((parentNode?.data?.depth as number) || 1) + 1,
           theme: currentTheme,
           isNew: true,
@@ -857,6 +877,8 @@ function Workspace() {
         getMindMap(mindMapId),
       ]);
       setMindMapTitle(mindMapData.title);
+      setProjectId(mindMapData.project_id);
+      fetchProjectDocuments(mindMapData.project_id);
 
       const columns = 4;
       const spacingX = 300;
@@ -877,6 +899,7 @@ function Workspace() {
           data: {
             label: node.label,
             mindMapId,
+            importance_score: node.importance_score ?? 1.0,
             onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
             onDelete: (id?: string) => {
                if (id) {
@@ -995,8 +1018,11 @@ function Workspace() {
     setIsGenerating(true);
     setGenerationError(null);
     try {
-      await generateAIMindMap(mindMapId, { topic: finalTopic, depth: depth });
+      const result = await generateAIMindMap(mindMapId, { topic: finalTopic, depth: depth });
       await loadGraph();
+      if (result.sources && result.sources.length > 0) {
+        toast.success(`Generated mind map grounded in ${result.sources.length} document source(s)!`);
+      }
     } catch (error) {
       console.error(error);
       setGenerationError("Failed to generate the mind map.");
@@ -1044,7 +1070,16 @@ function Workspace() {
       
       const mapChanges = (added > 0 || deleted > 0) ? { nodesAdded: added, nodesDeleted: deleted, snapshotId } : undefined;
       
-      setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "ai", content: response.response_text, mapChanges }]);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: response.response_text,
+          mapChanges,
+          sources: response.sources
+        }
+      ]);
       await loadGraph(); // fully reload the graph based on new backend state
     } catch (error) {
       console.error(error);
@@ -1411,6 +1446,25 @@ function Workspace() {
               </TooltipContent>
             </Tooltip>
 
+            {/* Knowledge Base (RAG) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsKnowledgeModalOpen(true)}
+                  className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  aria-label="Knowledge Base (RAG)"
+                >
+                  <Icon name="menu_book" className="text-[19px]" />
+                  {projectDocuments.length > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Knowledge Base (RAG) {projectDocuments.length > 0 ? `(${projectDocuments.length} docs)` : ""}
+              </TooltipContent>
+            </Tooltip>
+
             <div className="w-6 h-px bg-outline-variant/30 my-1" />
 
             {/* Canvas Tool: Select Mode */}
@@ -1727,10 +1781,22 @@ function Workspace() {
                   </DropdownMenu>
                 </div>
 
-                {/* Subtle Contextual Line */}
-                <span className="text-[11px] text-on-surface-variant truncate">
-                  Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
-                </span>
+                {/* Subtle Contextual Line & RAG Badge */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-on-surface-variant truncate">
+                    Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
+                  </span>
+                  {projectDocuments.length > 0 && (
+                    <button
+                      onClick={() => setIsKnowledgeModalOpen(true)}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-1.5 py-0.5 rounded-full hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                      title={`${projectDocuments.length} document(s) indexed. Click to manage.`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      RAG ({projectDocuments.length})
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1908,6 +1974,30 @@ function Workspace() {
                               {msg.content}
                             </div>
 
+                            {/* RAG Grounding Sources */}
+                            {msg.sources && msg.sources.length > 0 && (
+                              <details className="w-full max-w-[92%] bg-surface border border-primary/20 rounded-xl p-2 text-label-xs group">
+                                <summary className="cursor-pointer font-medium text-primary flex items-center justify-between list-none">
+                                  <span className="flex items-center gap-1.5">
+                                    <Icon name="verified" className="text-[13px] text-primary" />
+                                    Grounded in {msg.sources.length} document source{msg.sources.length > 1 ? 's' : ''}
+                                  </span>
+                                  <Icon name="expand_more" className="text-[14px] transition-transform group-open:rotate-180 text-outline" />
+                                </summary>
+                                <div className="mt-2 space-y-1.5 pt-1.5 border-t border-outline-variant/20">
+                                  {msg.sources.map((s, idx) => (
+                                    <div key={idx} className="bg-surface-container-low p-2 rounded-lg text-body-xs font-mono text-on-surface-variant">
+                                      <div className="flex items-center justify-between font-semibold text-primary mb-1">
+                                        <span className="truncate max-w-[180px]">{s.filename} {s.page_number ? `(p. ${s.page_number})` : ''}</span>
+                                        <span className="text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">{(s.score * 100).toFixed(0)}% match</span>
+                                      </div>
+                                      <p className="line-clamp-2 text-[11px] font-sans text-on-surface">{s.snippet}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
+
                             {/* Map Change Summary Card */}
                             {msg.mapChanges && !msg.mapChanges.isUndone && (
                               <div className="bg-surface border border-outline-variant/40 rounded-xl p-2.5 flex items-center justify-between w-full max-w-[92%] shadow-xs text-label-xs">
@@ -2025,6 +2115,9 @@ function Workspace() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onClick={() => handleSendChat("Highlight the most important nodes and prioritize critical topics")}>
+                            <Icon name="star" className="mr-2 text-[16px] text-amber-500" /> Prioritize key nodes
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")}>
                             <Icon name="bar_chart" className="mr-2 text-[16px]" /> Analyze map
                           </DropdownMenuItem>
@@ -2090,11 +2183,22 @@ function Workspace() {
                         <div className="flex items-center gap-1 text-outline">
                           <button
                             type="button"
-                            disabled
-                            className="p-1.5 text-on-surface-variant/50 hover:text-on-surface rounded-lg transition-colors cursor-not-allowed"
-                            title="Attach file (Coming soon)"
+                            onClick={() => setIsKnowledgeModalOpen(true)}
+                            className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 ${
+                              projectDocuments.length > 0
+                                ? "text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400"
+                                : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
+                            }`}
+                            title={
+                              projectDocuments.length > 0
+                                ? `Manage Knowledge Base (${projectDocuments.length} document${projectDocuments.length > 1 ? 's' : ''} grounding AI)`
+                                : "Attach Knowledge Base Documents (RAG)"
+                            }
                           >
                             <Icon name="attach_file" className="text-[18px]" />
+                            {projectDocuments.length > 0 && (
+                              <span className="text-[10px] font-bold px-1">{projectDocuments.length}</span>
+                            )}
                           </button>
                         </div>
                         <button
@@ -2237,6 +2341,14 @@ function Workspace() {
         onClose={() => setIsShareModalOpen(false)}
         mindMapTitle={mindMapTitle}
         remoteUsers={remoteUsers}
+      />
+
+      <KnowledgeBaseModal
+        isOpen={isKnowledgeModalOpen}
+        onClose={() => setIsKnowledgeModalOpen(false)}
+        projectId={projectId}
+        documents={projectDocuments}
+        onDocumentsChange={() => fetchProjectDocuments()}
       />
 
       

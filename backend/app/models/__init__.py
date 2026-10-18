@@ -4,6 +4,7 @@ from .mind_map import MindMap
 from .node import Node
 from .edge import Edge
 from .mind_map_snapshot import MindMapSnapshot
+from .project_document import ProjectDocument, DocumentChunk
 
 __all__ = [
     "User",
@@ -12,4 +13,6 @@ __all__ = [
     "Node",
     "Edge",
     "MindMapSnapshot",
+    "ProjectDocument",
+    "DocumentChunk",
 ]

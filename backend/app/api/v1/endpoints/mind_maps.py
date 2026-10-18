@@ -331,7 +331,8 @@ def chat_modify_mind_map(
         return {
             "response_text": result["response_text"],
             "nodes": [NodeResponse.model_validate(n).model_dump(mode='json') for n in result["nodes"]],
-            "edges": [EdgeResponse.model_validate(e).model_dump(mode='json') for e in result["edges"]]
+            "edges": [EdgeResponse.model_validate(e).model_dump(mode='json') for e in result["edges"]],
+            "sources": result.get("sources", []),
         }
     except Exception as e:
         raise HTTPException(
@@ -467,6 +468,7 @@ def restore_mind_map_snapshot(
                 type=n_data["type"],
                 position_x=n_data["position_x"],
                 position_y=n_data["position_y"],
+                importance_score=n_data.get("importance_score", 1.0),
             )
             db.add(node)
             created_nodes.append(node)

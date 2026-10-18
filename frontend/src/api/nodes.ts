@@ -7,6 +7,7 @@ export interface Node {
     type: string;
     position_x: number;
     position_y: number;
+    importance_score?: number;
     created_at: string;
     updated_at: string;
 }
@@ -16,6 +17,7 @@ export interface CreateNodeRequest {
     type?: string;
     position_x?: number;
     position_y?: number;
+    importance_score?: number;
 }
 
 export interface UpdateNodeRequest {
@@ -23,6 +25,7 @@ export interface UpdateNodeRequest {
     type?: string;
     position_x?: number;
     position_y?: number;
+    importance_score?: number;
 }
 
 export async function getMindMapNodes(

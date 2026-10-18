@@ -58,7 +58,13 @@ class Project(Base):
     )
     
     mind_maps = relationship(
-    "MindMap",
-    back_populates="project",
-    cascade="all, delete-orphan",
+        "MindMap",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    documents = relationship(
+        "ProjectDocument",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )

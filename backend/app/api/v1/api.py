@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     integrations,
     websockets,
     templates,
+    documents,
 )
 
 api_router = APIRouter()
@@ -23,3 +24,4 @@ api_router.include_router(edges.router)
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(websockets.router, prefix="/ws", tags=["websockets"])
 api_router.include_router(templates.router)
+api_router.include_router(documents.router)

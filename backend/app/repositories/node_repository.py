@@ -29,6 +29,7 @@ class NodeRepository:
             type=node_data.type,
             position_x=node_data.position_x,
             position_y=node_data.position_y,
+            importance_score=getattr(node_data, "importance_score", 1.0) if getattr(node_data, "importance_score", None) is not None else 1.0,
         )
 
         self.db.add(node)
@@ -85,6 +86,9 @@ class NodeRepository:
 
         if node_data.position_y is not None:
             node.position_y = node_data.position_y
+
+        if getattr(node_data, "importance_score", None) is not None:
+            node.importance_score = node_data.importance_score
 
         self.db.commit()
         self.db.refresh(node)

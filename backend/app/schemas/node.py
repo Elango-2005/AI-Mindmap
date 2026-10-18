@@ -13,6 +13,7 @@ class NodeCreate(BaseModel):
     type: str = "default"
     position_x: float = 0.0
     position_y: float = 0.0
+    importance_score: float = 1.0
 
 
 class NodeUpdate(BaseModel):
@@ -24,6 +25,7 @@ class NodeUpdate(BaseModel):
     type: str | None = None
     position_x: float | None = None
     position_y: float | None = None
+    importance_score: float | None = None
 
 
 class NodeResponse(BaseModel):
@@ -37,6 +39,7 @@ class NodeResponse(BaseModel):
     type: str
     position_x: float
     position_y: float
+    importance_score: float = 1.0
     created_at: datetime
     updated_at: datetime
 

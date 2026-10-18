@@ -126,7 +126,7 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
         selected: true,
-        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth + 1, theme: theme, isNew: true, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth + 1, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
       }]);
       setEdges((eds) => [...eds, {
         id: newEdge.id,
@@ -165,7 +165,7 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
         selected: true,
-        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: true, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
       }]);
       setEdges((eds) => [...eds, {
         id: newEdge.id,
@@ -235,7 +235,7 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         id: n.id,
         type: "editable",
         position: { x: n.position_x, y: n.position_y },
-        data: { label: n.label, mindMapId: data.mindMapId, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: n.label, mindMapId: data.mindMapId, importance_score: n.importance_score ?? 0.8, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
       }));
       const newEdges = res.edges.map((e: any) => ({
         id: e.id,
@@ -277,6 +277,10 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
     }
   };
 
+  const importanceScore = typeof data.importance_score === "number" ? data.importance_score : 1.0;
+  const isHighImportance = importanceScore >= 0.85;
+  const isLowImportance = importanceScore <= 0.3;
+
   let shapeClasses = "rounded-xl py-2 px-4 min-w-[120px]";
   let textClasses = "text-body-md font-medium";
   
@@ -288,6 +292,12 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
     textClasses = "text-body-lg font-semibold";
   } else {
     shapeClasses += " border-2";
+  }
+
+  if (isHighImportance && depth > 0) {
+    shapeClasses += " ring-1 ring-amber-400/40 shadow-sm";
+  } else if (isLowImportance && depth > 0) {
+    shapeClasses += " opacity-85";
   }
 
   const bgClass = theme.bg;

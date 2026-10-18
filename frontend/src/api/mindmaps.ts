@@ -44,9 +44,18 @@ export interface GenerateAIMindMapRequest {
     depth?: number;
 }
 
+export interface GroundingSource {
+    document_id: string;
+    filename: string;
+    page_number?: number | null;
+    score: number;
+    snippet: string;
+}
+
 export interface GenerateAIMindMapResponse {
     nodes: MindMapNode[];
     edges: MindMapEdge[];
+    sources?: GroundingSource[];
 }
 
 export async function getProjectMindMaps(
@@ -103,7 +112,7 @@ export async function chatMindMap(
     mindMapId: string,
     instruction: string,
     selectedNodeId?: string | null,
-): Promise<{ response_text: string, nodes: MindMapNode[], edges: MindMapEdge[] }> {
+): Promise<{ response_text: string, nodes: MindMapNode[], edges: MindMapEdge[], sources?: GroundingSource[] }> {
     const response = await api.post(
         `/mind-maps/${mindMapId}/chat`,
         { instruction, selected_node_id: selectedNodeId }

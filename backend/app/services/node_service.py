@@ -172,6 +172,9 @@ class NodeService:
         offset_x = 200
         offset_y = 100
 
+        parent_score = getattr(node, "importance_score", 1.0) or 1.0
+        child_score = round(max(0.2, min(0.9, parent_score * 0.8)), 2)
+
         for i, concept in enumerate(sub_concepts):
             # Create Node
             new_node_data = NodeCreate(
@@ -179,6 +182,7 @@ class NodeService:
                 type="default",
                 position_x=node.position_x + offset_x,
                 position_y=node.position_y + (i * offset_y),
+                importance_score=child_score,
             )
             new_node = self.node_repository.create(
                 mind_map_id=node.mind_map_id,

@@ -51,6 +51,13 @@ class Node(Base):
         default=0.0,
     )
 
+    importance_score: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        default=1.0,
+        server_default="1.0",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

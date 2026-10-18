@@ -11,6 +11,7 @@ from app.models.node import Node
 from app.models.user import User
 from app.repositories.mind_map_repository import MindMapRepository
 from app.services.ai_service import AIService
+from app.services.rag_service import RAGService
 
 class AIMindMapService:
     """
@@ -40,20 +41,41 @@ class AIMindMapService:
         and save it to the database.
         """
 
-        self._verify_mind_map_access(
+        mind_map = self._verify_mind_map_access(
             mind_map_id,
             current_user,
         )
 
+        rag_service = RAGService(self.db)
+        retrieved_context = None
+        sources = []
+        if rag_service.has_documents(mind_map.project_id):
+            chunks = rag_service.retrieve_relevant_chunks(mind_map.project_id, topic, top_k=5)
+            if chunks:
+                retrieved_context = rag_service.format_context_for_prompt(chunks)
+                sources = [
+                    {
+                        "document_id": str(c["document_id"]),
+                        "filename": c["filename"],
+                        "page_number": c["page_number"],
+                        "score": round(c["score"], 4),
+                        "snippet": c["text"][:150] + "..." if len(c["text"]) > 150 else c["text"]
+                    }
+                    for c in chunks
+                ]
+
         mind_map_data = self.ai_service.create_mind_map(
             topic,
-            depth
+            depth,
+            retrieved_context=retrieved_context,
         )
 
-        return self.replace_mind_map_graph(
+        result = self.replace_mind_map_graph(
             mind_map_id,
             mind_map_data,
         )
+        result["sources"] = sources
+        return result
 
     def chat_and_modify_mind_map(
         self,
@@ -65,14 +87,40 @@ class AIMindMapService:
         """
         Send current graph + instruction to AI, get new graph + text response, save new graph.
         """
-        self._verify_mind_map_access(mind_map_id, current_user)
+        mind_map = self._verify_mind_map_access(mind_map_id, current_user)
+
+        # Optional RAG retrieval grounded by instruction
+        rag_service = RAGService(self.db)
+        retrieved_context = None
+        sources = []
+        if rag_service.has_documents(mind_map.project_id):
+            chunks = rag_service.retrieve_relevant_chunks(mind_map.project_id, instruction, top_k=4)
+            if chunks:
+                retrieved_context = rag_service.format_context_for_prompt(chunks)
+                sources = [
+                    {
+                        "document_id": str(c["document_id"]),
+                        "filename": c["filename"],
+                        "page_number": c["page_number"],
+                        "score": round(c["score"], 4),
+                        "snippet": c["text"][:150] + "..." if len(c["text"]) > 150 else c["text"]
+                    }
+                    for c in chunks
+                ]
 
         # Get current nodes and edges
         nodes = self.db.query(Node).filter(Node.mind_map_id == mind_map_id).all()
         edges = self.db.query(Edge).filter(Edge.mind_map_id == mind_map_id).all()
 
         current_graph = {
-            "nodes": [{"id": str(n.id), "label": n.label} for n in nodes],
+            "nodes": [
+                {
+                    "id": str(n.id),
+                    "label": n.label,
+                    "importance_score": getattr(n, "importance_score", 1.0)
+                }
+                for n in nodes
+            ],
             "edges": [{"source": str(e.source), "target": str(e.target)} for e in edges]
         }
         
@@ -86,7 +134,13 @@ class AIMindMapService:
                     break
 
         # Send to AI
-        response = self.ai_service.chat_modify_mind_map(instruction, current_graph, selected_node_id, selected_node_label)
+        response = self.ai_service.chat_modify_mind_map(
+            instruction,
+            current_graph,
+            selected_node_id,
+            selected_node_label,
+            retrieved_context=retrieved_context,
+        )
 
         # Update the graph
         mind_map_data = {
@@ -103,14 +157,15 @@ class AIMindMapService:
         return {
             "response_text": response["response_text"],
             "nodes": result["nodes"],
-            "edges": result["edges"]
+            "edges": result["edges"],
+            "sources": sources,
         }
 
     def _verify_mind_map_access(
         self,
         mind_map_id: UUID,
         current_user: User,
-    ) -> None:
+    ):
         """
         Verify that the current user owns the mind map.
         """
@@ -127,7 +182,9 @@ class AIMindMapService:
         if mind_map.project.user_id != current_user.id:
             raise MindMapAccessDeniedError(
                 "Access denied."
-        )
+            )
+
+        return mind_map
 
     def _delete_existing_graph(
         self,
@@ -188,10 +245,21 @@ class AIMindMapService:
                     pos_x = existing_positions[node_ai_id]["x"]
                     pos_y = existing_positions[node_ai_id]["y"]
 
+                raw_score = node_data.get("importance_score")
+                if raw_score is not None:
+                    try:
+                        clean_score = round(max(0.0, min(1.0, float(raw_score))), 2)
+                    except (ValueError, TypeError):
+                        clean_score = 1.0
+                else:
+                    clean_score = 1.0
+
                 if node_ai_id in existing_node_dict:
                     # UPDATE existing node
                     node = existing_node_dict[node_ai_id]
                     node.label = node_data["label"]
+                    if raw_score is not None:
+                        node.importance_score = clean_score
                     # Optionally update position if AI changes it, but usually AI just leaves it to frontend layout
                     kept_node_ids.add(node_ai_id)
                     node_id_mapping[node_ai_id] = node.id
@@ -204,6 +272,7 @@ class AIMindMapService:
                         type="default",
                         position_x=pos_x,
                         position_y=pos_y,
+                        importance_score=clean_score,
                     )
                     self.db.add(node)
                     self.db.flush()
@@ -271,12 +340,22 @@ class AIMindMapService:
             # --------------------------------------------------
 
             for node_data in nodes:
+                raw_score = node_data.get("importance_score")
+                if raw_score is not None:
+                    try:
+                        clean_score = round(max(0.0, min(1.0, float(raw_score))), 2)
+                    except (ValueError, TypeError):
+                        clean_score = 1.0
+                else:
+                    clean_score = 1.0
+
                 node = Node(
                     mind_map_id=mind_map_id,
                     label=node_data["label"],
                     type="default",
                     position_x=0.0,
                     position_y=0.0,
+                    importance_score=clean_score,
                 )
 
                 self.db.add(node)

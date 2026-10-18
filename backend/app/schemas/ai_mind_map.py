@@ -31,6 +31,7 @@ class AIMindMapGenerateResponse(BaseModel):
 
     nodes: list[NodeResponse]
     edges: list[EdgeResponse]
+    sources: list[dict] = Field(default_factory=list)
 
     model_config = ConfigDict(
         from_attributes=True,
