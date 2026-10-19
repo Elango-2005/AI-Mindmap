@@ -50,6 +50,16 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str
 
+    # --------------------------------------------------
+    # Integrations - MindMeister
+    # --------------------------------------------------
+
+    MINDMEISTER_CLIENT_ID: str = Field(default="")
+    MINDMEISTER_CLIENT_SECRET: str = Field(default="")
+    MINDMEISTER_REDIRECT_URI: str = Field(
+        default="http://127.0.0.1:8000/api/v1/integrations/mindmeister/callback"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

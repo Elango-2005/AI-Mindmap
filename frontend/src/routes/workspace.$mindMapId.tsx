@@ -46,6 +46,7 @@ import { OutlinePanel } from "@/components/OutlinePanel";
 import { ResizablePanel } from "@/components/ResizablePanel";
 import { LeftToolPanel, type LeftToolView } from "@/components/LeftToolPanel";
 import { ShareModal } from "@/components/ShareModal";
+import { MindMeisterModal } from "@/components/MindMeisterModal";
 import { exportMindMapToPdf } from "@/lib/exportPdf";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -161,6 +162,7 @@ function Workspace() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isMindMeisterModalOpen, setIsMindMeisterModalOpen] = useState(false);
   const [isKeyboardHelpOpen, setIsKeyboardHelpOpen] = useState(false);
   
   // Right panel mode
@@ -1433,6 +1435,13 @@ function Workspace() {
                 <DropdownMenuItem onClick={() => handleExport("freemind")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as FreeMind</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("opml")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as OPML</DropdownMenuItem>
               </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Cloud Sync</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer text-primary font-medium">
+                  <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud...
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -1442,12 +1451,15 @@ function Workspace() {
                 <Icon name="more_vert" className="text-[20px]" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem asChild>
                 <label className="cursor-pointer flex items-center w-full">
-                  <Icon name="upload_file" className="mr-2 text-[16px]" /> Import Map
+                  <Icon name="upload_file" className="mr-2 text-[16px]" /> Import Map File
                   <input type="file" className="hidden" accept=".md,.opml,.mm,.xmind" onChange={handleImport} />
                 </label>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer">
+                <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud Sync
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -2443,6 +2455,14 @@ function Workspace() {
         projectId={projectId}
         documents={projectDocuments}
         onDocumentsChange={() => fetchProjectDocuments()}
+      />
+
+      <MindMeisterModal
+        isOpen={isMindMeisterModalOpen}
+        onClose={() => setIsMindMeisterModalOpen(false)}
+        mindMapId={mindMapId}
+        mindMapTitle={mindMapTitle}
+        onImportComplete={() => loadGraph()}
       />
 
       

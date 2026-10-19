@@ -80,5 +80,11 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
+    integrations: Mapped[list["UserIntegration"]] = relationship(
+        "UserIntegration",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self):
         return f"<User(email='{self.email}')>"

@@ -33,7 +33,7 @@ class TestCollaborationCRDT(unittest.TestCase):
         self.db.flush()
 
         self.project = Project(
-            name="Collab Test Project",
+            title="Collab Test Project",
             user_id=self.user.id
         )
         self.db.add(self.project)
