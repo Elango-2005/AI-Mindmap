@@ -26,6 +26,7 @@ class NodeUpdate(BaseModel):
     position_x: float | None = None
     position_y: float | None = None
     importance_score: float | None = None
+    version: int | None = None
 
 
 class NodeResponse(BaseModel):
@@ -40,6 +41,7 @@ class NodeResponse(BaseModel):
     position_x: float
     position_y: float
     importance_score: float = 1.0
+    version: int = 1
     created_at: datetime
     updated_at: datetime
 

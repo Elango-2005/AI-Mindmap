@@ -79,6 +79,11 @@ function Workspace() {
     broadcastNodesChange,
     broadcastEdgesChange,
     broadcastCursorMove,
+    broadcastNodeUpdate,
+    broadcastNodeCreate,
+    broadcastNodeDelete,
+    broadcastEdgeCreate,
+    broadcastEdgeDelete,
   } = useMindMapSync({
     mindMapId: mindMapId || null,
     setNodes: setFlowNodes,
@@ -465,6 +470,21 @@ function Workspace() {
       setFlowEdges(nextEdges);
       setSelectedNodeId(newNode.id);
       pushToHistory(nextNodes, nextEdges);
+
+      broadcastNodeCreate({
+        id: newNode.id,
+        label: newNode.label,
+        position_x: newNode.position_x,
+        position_y: newNode.position_y,
+        importance_score: newNode.importance_score ?? 1.0,
+      });
+      broadcastEdgeCreate({
+        id: newEdge.id,
+        source: parentId,
+        target: newNode.id,
+        type: "editable",
+      });
+
       toast.success("Child node added");
     } catch (err) {
       console.error(err);
@@ -491,8 +511,9 @@ function Workspace() {
       });
 
       let nextEdges = [...flowEdges];
+      let newEdge: any = null;
       if (parentId) {
-        const newEdge = await createEdge(mindMapId, {
+        newEdge = await createEdge(mindMapId, {
           source: parentId,
           target: newNode.id,
         });
@@ -528,6 +549,23 @@ function Workspace() {
       setFlowEdges(nextEdges);
       setSelectedNodeId(newNode.id);
       pushToHistory(nextNodes, nextEdges);
+
+      broadcastNodeCreate({
+        id: newNode.id,
+        label: newNode.label,
+        position_x: newNode.position_x,
+        position_y: newNode.position_y,
+        importance_score: newNode.importance_score ?? 1.0,
+      });
+      if (parentId && newEdge) {
+        broadcastEdgeCreate({
+          id: newEdge.id,
+          source: parentId,
+          target: newNode.id,
+          type: "editable",
+        });
+      }
+
       toast.success("Sibling node added");
     } catch (err) {
       console.error(err);
@@ -568,6 +606,15 @@ function Workspace() {
       setFlowNodes(nextNodes);
       setSelectedNodeId(newNode.id);
       pushToHistory(nextNodes, flowEdges);
+
+      broadcastNodeCreate({
+        id: newNode.id,
+        label: newNode.label,
+        position_x: newNode.position_x,
+        position_y: newNode.position_y,
+        importance_score: newNode.importance_score ?? 1.0,
+      });
+
       toast.success("Floating topic created");
     } catch (err) {
       console.error(err);
@@ -617,6 +664,21 @@ function Workspace() {
         setFlowEdges(nextEdges);
         setSelectedNodeId(newNode.id);
         pushToHistory(nextNodes, nextEdges);
+
+        broadcastNodeCreate({
+          id: newNode.id,
+          label: newNode.label,
+          position_x: newNode.position_x,
+          position_y: newNode.position_y,
+          importance_score: newNode.importance_score ?? 1.0,
+        });
+        broadcastEdgeCreate({
+          id: newEdge.id,
+          source: selectedNodeId,
+          target: newNode.id,
+          type: "editable",
+        });
+
         toast.success(`Added ${label}`);
       } catch (err) {
         console.error(err);
@@ -672,6 +734,21 @@ function Workspace() {
         setFlowEdges(nextEdges);
         setSelectedNodeId(newNode.id);
         pushToHistory(nextNodes, nextEdges);
+
+        broadcastNodeCreate({
+          id: newNode.id,
+          label: newNode.label,
+          position_x: newNode.position_x,
+          position_y: newNode.position_y,
+          importance_score: newNode.importance_score ?? 1.0,
+        });
+        broadcastEdgeCreate({
+          id: newEdge.id,
+          source: selectedNodeId,
+          target: newNode.id,
+          type: "editable",
+        });
+
         toast.success("Child node added");
       } catch (err) {
         console.error(err);
@@ -717,6 +794,15 @@ function Workspace() {
         setFlowNodes(nextNodes);
         setSelectedNodeId(newNode.id);
         pushToHistory(nextNodes, flowEdges);
+
+        broadcastNodeCreate({
+          id: newNode.id,
+          label: newNode.label,
+          position_x: newNode.position_x,
+          position_y: newNode.position_y,
+          importance_score: newNode.importance_score ?? 1.0,
+        });
+
         setActiveTool("select");
         toast.success("Node placed on canvas");
       } catch (err) {
@@ -799,6 +885,7 @@ function Workspace() {
       if (confirmAction.type === 'delete') {
         const toDelete = [confirmAction.nodeId, ...descendants];
         await Promise.all(toDelete.map(id => deleteNode(id)));
+        toDelete.forEach(id => broadcastNodeDelete(id));
         setFlowNodes(nds => nds.filter(n => !toDelete.includes(n.id)));
         setFlowEdges(eds => eds.filter(e => !toDelete.includes(e.source) && !toDelete.includes(e.target)));
         toast.success("Node and its branch deleted.");
@@ -901,15 +988,13 @@ function Workspace() {
             mindMapId,
             importance_score: node.importance_score ?? 1.0,
             onPushHistory: (newNodes: any, newEdges: any) => pushToHistory(newNodes, newEdges),
+            onBroadcastUpdate: (id: string, fields: any) => broadcastNodeUpdate(id, fields),
+            onBroadcastCreate: (node: any, edge?: any) => {
+              broadcastNodeCreate(node);
+              if (edge) broadcastEdgeCreate(edge);
+            },
             onDelete: (id?: string) => {
                if (id) {
-                   // From context menu, silent delete (managed by standard ReactFlow handlers via onNodesDelete)
-                   // wait, context menu calls onDelete(id). 
-                   // We actually just want to open the prompt OR just delete it.
-                   // User wants to be able to delete a node manually.
-                   // The safe AI regeneration rule means if they delete manually it shouldn't be terrifying, but the backend is safe.
-                   // Actually, if we pass id, let's just trigger the confirmAction for deletion to be safe, or just do it.
-                   // Standard React Flow selection + Backspace works. We will just use standard selection + backspace for quick delete.
                    setConfirmAction({ type: 'delete', nodeId: id, nodeLabel: node.label });
                } else {
                    setConfirmAction({ type: 'delete', nodeId: node.id, nodeLabel: node.label });
@@ -1103,6 +1188,7 @@ function Workspace() {
   const handleNodesDelete = async (deleted: FlowNode[]) => {
     try {
       await Promise.all(deleted.map(n => deleteNode(n.id)));
+      deleted.forEach(n => broadcastNodeDelete(n.id));
       setFlowNodes(current => {
         pushToHistory(current, flowEdges);
         return current;
@@ -1113,6 +1199,7 @@ function Workspace() {
   const handleEdgesDelete = async (deleted: FlowEdge[]) => {
     try {
       await Promise.all(deleted.map(e => deleteEdge(e.id)));
+      deleted.forEach(e => broadcastEdgeDelete(e.id));
       setFlowEdges(current => {
         pushToHistory(flowNodes, current);
         return current;
@@ -1164,6 +1251,12 @@ function Workspace() {
         pushToHistory(flowNodes, next);
         return next;
       });
+      broadcastEdgeCreate({
+        id: newEdge.id,
+        source: newEdge.source,
+        target: newEdge.target,
+        type: "editable"
+      });
       toast.success("Connected nodes");
     } catch (e) {
       console.error(e);
@@ -1174,6 +1267,7 @@ function Workspace() {
   const handleNodeDragStop = async (_e: any, node: any) => {
     try {
       await updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+      broadcastNodeUpdate(node.id, { position_x: node.position.x, position_y: node.position.y });
       setFlowNodes(current => {
         pushToHistory(current, flowEdges);
         return current;

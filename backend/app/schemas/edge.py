@@ -26,6 +26,7 @@ class EdgeUpdate(BaseModel):
     label: str | None = None
     type: str | None = None
     animated: bool | None = None
+    version: int | None = None
 
 
 class EdgeResponse(BaseModel):
@@ -40,6 +41,7 @@ class EdgeResponse(BaseModel):
     label: str | None
     type: str
     animated: bool
+    version: int = 1
     created_at: datetime
     updated_at: datetime
 

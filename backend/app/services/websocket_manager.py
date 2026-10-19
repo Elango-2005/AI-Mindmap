@@ -62,4 +62,12 @@ class ConnectionManager:
             for dead in dead_sockets:
                 self.disconnect(dead, mind_map_id)
 
+    def get_room_users(self, mind_map_id: UUID) -> List[Dict[str, Any]]:
+        if mind_map_id not in self.active_connections:
+            return []
+        return [
+            {"user_id": c["user_id"], "user_name": c["user_name"]}
+            for c in self.active_connections[mind_map_id]
+        ]
+
 manager = ConnectionManager()

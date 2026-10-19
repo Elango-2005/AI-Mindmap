@@ -12,6 +12,7 @@ from app.models.user import User
 from app.repositories.mind_map_repository import MindMapRepository
 from app.services.ai_service import AIService
 from app.services.rag_service import RAGService
+from app.services.collaboration_service import collaboration_service
 
 class AIMindMapService:
     """
@@ -74,6 +75,16 @@ class AIMindMapService:
             mind_map_id,
             mind_map_data,
         )
+        collaboration_service.reload_room(self.db, mind_map_id)
+        sync_state = collaboration_service.get_full_sync_state(self.db, mind_map_id)
+        import asyncio
+        from app.services.websocket_manager import manager
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast(mind_map_id, sync_state))
+        except Exception:
+            pass
+
         result["sources"] = sources
         return result
 
@@ -88,6 +99,7 @@ class AIMindMapService:
         Send current graph + instruction to AI, get new graph + text response, save new graph.
         """
         mind_map = self._verify_mind_map_access(mind_map_id, current_user)
+        base_clock = collaboration_service.get_clock(mind_map_id)
 
         # Optional RAG retrieval grounded by instruction
         rag_service = RAGService(self.db)
@@ -124,8 +136,6 @@ class AIMindMapService:
             "edges": [{"source": str(e.source), "target": str(e.target)} for e in edges]
         }
         
-        existing_positions = {str(n.id): {"x": n.position_x, "y": n.position_y} for n in nodes}
-        
         selected_node_label = None
         if selected_node_id:
             for n in nodes:
@@ -142,22 +152,30 @@ class AIMindMapService:
             retrieved_context=retrieved_context,
         )
 
-        # Update the graph
-        mind_map_data = {
-            "nodes": response["nodes"],
-            "edges": response["edges"]
-        }
-
-        result = self.replace_mind_map_graph(
+        # Update the graph using 3-way semantic CRDT merge
+        merge_result = collaboration_service.merge_ai_graph(
+            self.db,
             mind_map_id,
-            mind_map_data,
-            existing_positions=existing_positions,
+            response["nodes"],
+            response["edges"],
+            base_clock=base_clock,
         )
+
+        import asyncio
+        from app.services.websocket_manager import manager
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast(mind_map_id, merge_result))
+        except Exception:
+            pass
+
+        fresh_nodes = self.db.query(Node).filter(Node.mind_map_id == mind_map_id).all()
+        fresh_edges = self.db.query(Edge).filter(Edge.mind_map_id == mind_map_id).all()
 
         return {
             "response_text": response["response_text"],
-            "nodes": result["nodes"],
-            "edges": result["edges"],
+            "nodes": fresh_nodes,
+            "edges": fresh_edges,
             "sources": sources,
         }
 

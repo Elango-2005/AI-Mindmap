@@ -83,6 +83,9 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
 
     try {
       await updateNode(id, { label: newLabel });
+      if (data.onBroadcastUpdate) {
+        data.onBroadcastUpdate(id, { label: newLabel });
+      }
       pushSnapshot();
     } catch (err) {
       console.error("Failed to update node label:", err);
@@ -121,12 +124,16 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         target: newNode.id
       });
       
+      if (data.onBroadcastCreate) {
+        data.onBroadcastCreate(newNode, newEdge);
+      }
+
       setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), {
         id: newNode.id,
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
         selected: true,
-        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth + 1, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth + 1, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate, onBroadcastUpdate: data.onBroadcastUpdate, onBroadcastCreate: data.onBroadcastCreate }
       }]);
       setEdges((eds) => [...eds, {
         id: newEdge.id,
@@ -160,12 +167,16 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         target: newNode.id
       });
       
+      if (data.onBroadcastCreate) {
+        data.onBroadcastCreate(newNode, newEdge);
+      }
+
       setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), {
         id: newNode.id,
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
         selected: true,
-        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: true, importance_score: newNode.importance_score ?? 1.0, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate, onBroadcastUpdate: data.onBroadcastUpdate, onBroadcastCreate: data.onBroadcastCreate }
       }]);
       setEdges((eds) => [...eds, {
         id: newEdge.id,
@@ -198,8 +209,9 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
       // If it has a parent, attach to same parent
       const edges = getEdges();
       const parentEdge = edges.find(e => e.target === id);
+      let newEdge: any = null;
       if (parentEdge) {
-        const newEdge = await createEdge(data.mindMapId, {
+        newEdge = await createEdge(data.mindMapId, {
           source: parentEdge.source,
           target: newNode.id
         });
@@ -211,11 +223,15 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         }]);
       }
       
+      if (data.onBroadcastCreate) {
+        data.onBroadcastCreate(newNode, newEdge);
+      }
+
       setNodes((nds) => [...nds, {
         id: newNode.id,
         type: "editable",
         position: { x: newNode.position_x, y: newNode.position_y },
-        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: false, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate }
+        data: { label: newNode.label, mindMapId: data.mindMapId, depth: depth, theme: theme, isNew: false, onPushHistory: data.onPushHistory, onDelete: data.onDelete, onRegenerate: data.onRegenerate, onBroadcastUpdate: data.onBroadcastUpdate, onBroadcastCreate: data.onBroadcastCreate }
       }]);
       pushSnapshot();
       toast.success("Node duplicated");
