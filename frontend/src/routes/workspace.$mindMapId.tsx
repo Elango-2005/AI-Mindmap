@@ -47,6 +47,7 @@ import { ResizablePanel } from "@/components/ResizablePanel";
 import { LeftToolPanel, type LeftToolView } from "@/components/LeftToolPanel";
 import { ShareModal } from "@/components/ShareModal";
 import { MindMeisterModal } from "@/components/MindMeisterModal";
+import { CoggleModal } from "@/components/CoggleModal";
 import { exportMindMapToPdf } from "@/lib/exportPdf";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -163,6 +164,7 @@ function Workspace() {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isMindMeisterModalOpen, setIsMindMeisterModalOpen] = useState(false);
+  const [isCoggleModalOpen, setIsCoggleModalOpen] = useState(false);
   const [isKeyboardHelpOpen, setIsKeyboardHelpOpen] = useState(false);
   
   // Right panel mode
@@ -1441,6 +1443,9 @@ function Workspace() {
                 <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer text-primary font-medium">
                   <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud...
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsCoggleModalOpen(true)} className="cursor-pointer text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Icon name="share" className="mr-2 text-[16px]" /> Coggle Cloud...
+                </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1460,6 +1465,9 @@ function Workspace() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer">
                 <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud Sync
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsCoggleModalOpen(true)} className="cursor-pointer">
+                <Icon name="share" className="mr-2 text-[16px]" /> Coggle Cloud Sync
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -2460,6 +2468,14 @@ function Workspace() {
       <MindMeisterModal
         isOpen={isMindMeisterModalOpen}
         onClose={() => setIsMindMeisterModalOpen(false)}
+        mindMapId={mindMapId}
+        mindMapTitle={mindMapTitle}
+        onImportComplete={() => loadGraph()}
+      />
+
+      <CoggleModal
+        isOpen={isCoggleModalOpen}
+        onClose={() => setIsCoggleModalOpen(false)}
         mindMapId={mindMapId}
         mindMapTitle={mindMapTitle}
         onImportComplete={() => loadGraph()}

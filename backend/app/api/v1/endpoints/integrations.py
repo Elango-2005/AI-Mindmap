@@ -24,6 +24,12 @@ from app.services.mindmeister_service import (
     MindMeisterAuthError,
     MindMeisterAPIError,
 )
+from app.services.coggle_service import (
+    CoggleService,
+    CoggleConfigError,
+    CoggleAuthError,
+    CoggleAPIError,
+)
 from app.repositories.node_repository import NodeRepository
 from app.repositories.edge_repository import EdgeRepository
 from app.repositories.mind_map_repository import MindMapRepository
@@ -36,10 +42,19 @@ router = APIRouter()
 def get_mindmeister_service(db: Session = Depends(get_db)) -> MindMeisterService:
     return MindMeisterService(db)
 
+def get_coggle_service(db: Session = Depends(get_db)) -> CoggleService:
+    return CoggleService(db)
+
 class MindMeisterImportRequest(BaseModel):
     mm_map_id: str = Field(..., description="MindMeister Map ID to import")
 
 class MindMeisterCodeExchangeRequest(BaseModel):
+    code: str
+
+class CoggleImportRequest(BaseModel):
+    diagram_id: str = Field(..., description="Coggle Diagram ID to import")
+
+class CoggleCodeExchangeRequest(BaseModel):
     code: str
 
 def get_export_service(db: Session = Depends(get_db)):
@@ -357,6 +372,240 @@ def export_to_mindmeister(
     except MindMeisterAuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except (MindMeisterConfigError, MindMeisterAPIError, ValueError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# ==============================================================================
+# Coggle Direct Cloud API Integration Endpoints
+# ==============================================================================
+
+@router.get("/coggle/status")
+def get_coggle_status(
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Get current user's Coggle connection status and credentials availability.
+    """
+    return coggle_service.get_integration_status(current_user.id)
+
+
+@router.get("/coggle/auth-url")
+def get_coggle_auth_url(
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Generate official Coggle OAuth 2.0 authorization URL.
+    """
+    if not coggle_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Coggle OAuth is not configured. Missing COGGLE_CLIENT_ID or COGGLE_CLIENT_SECRET in backend environment.",
+        )
+    state = f"{current_user.id}:{secrets.token_urlsafe(16)}"
+    url = coggle_service.get_authorization_url(state)
+    return {"auth_url": url, "configured": True}
+
+
+@router.get("/coggle/callback", response_class=HTMLResponse)
+def coggle_oauth_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Coggle OAuth 2.0 redirect landing endpoint.
+    Handles browser redirects from Coggle consent screen.
+    """
+    if error:
+        err_msg = html.escape(error_description or error)
+        return HTMLResponse(
+            f"""<!DOCTYPE html>
+            <html>
+            <head><title>Coggle Authentication Error</title></head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc; margin: 0;">
+                <div style="text-align: center; padding: 2.5rem; border-radius: 16px; background: #1e293b; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155;">
+                    <div style="font-size: 44px; margin-bottom: 12px;">⚠️</div>
+                    <h2 style="margin: 0 0 10px 0; color: #f87171;">Connection Failed</h2>
+                    <p style="color: #94a3b8; font-size: 14px; line-height: 1.5;">Coggle authorization was not completed:<br><strong style="color: #e2e8f0;">{err_msg}</strong></p>
+                    <button onclick="window.close();" style="margin-top: 20px; padding: 10px 24px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close Window
+                    </button>
+                </div>
+            </body>
+            </html>""",
+            status_code=400,
+        )
+
+    if not code or not state:
+        return HTMLResponse(
+            """<!DOCTYPE html>
+            <html>
+            <head><title>Coggle Authentication Error</title></head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc; margin: 0;">
+                <div style="text-align: center; padding: 2.5rem; border-radius: 16px; background: #1e293b; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155;">
+                    <div style="font-size: 44px; margin-bottom: 12px;">⚠️</div>
+                    <h2 style="margin: 0 0 10px 0; color: #f87171;">Missing Code or State</h2>
+                    <p style="color: #94a3b8; font-size: 14px;">Invalid callback parameters received from Coggle.</p>
+                    <button onclick="window.close();" style="margin-top: 20px; padding: 10px 24px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close Window
+                    </button>
+                </div>
+            </body>
+            </html>""",
+            status_code=400,
+        )
+
+    try:
+        user_id_str = state.split(":")[0]
+        user_id = UUID(user_id_str)
+        coggle_service.exchange_code(code, user_id)
+
+        return HTMLResponse(
+            """<!DOCTYPE html>
+            <html>
+            <head><title>Coggle Connected</title></head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc; margin: 0;">
+                <div style="text-align: center; padding: 2.5rem; border-radius: 16px; background: #1e293b; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155;">
+                    <div style="font-size: 44px; margin-bottom: 12px;">🎉</div>
+                    <h2 style="margin: 0 0 10px 0; color: #38bdf8;">Coggle Connected!</h2>
+                    <p style="color: #94a3b8; font-size: 14px; line-height: 1.5;">Your Coggle account is successfully connected to MindVault.<br>This window will close automatically.</p>
+                    <button onclick="if(window.opener){window.opener.postMessage({type:'COGGLE_CONNECTED'},'*');window.close();}else{window.location.href='/';}"
+                        style="margin-top: 20px; padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Return to MindVault
+                    </button>
+                </div>
+                <script>
+                    try {
+                        if (window.opener) {
+                            window.opener.postMessage({ type: 'COGGLE_CONNECTED' }, '*');
+                            setTimeout(() => { window.close(); }, 1200);
+                        }
+                    } catch (e) {}
+                </script>
+            </body>
+            </html>"""
+        )
+    except Exception as e:
+        logger.exception("Coggle OAuth exchange failed in callback")
+        err_msg = html.escape(str(e))
+        return HTMLResponse(
+            f"""<!DOCTYPE html>
+            <html>
+            <head><title>Coggle Error</title></head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc; margin: 0;">
+                <div style="text-align: center; padding: 2.5rem; border-radius: 16px; background: #1e293b; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155;">
+                    <div style="font-size: 44px; margin-bottom: 12px;">❌</div>
+                    <h2 style="margin: 0 0 10px 0; color: #f87171;">Authorization Failed</h2>
+                    <p style="color: #94a3b8; font-size: 14px;">{err_msg}</p>
+                    <button onclick="window.close();" style="margin-top: 20px; padding: 10px 24px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close Window
+                    </button>
+                </div>
+            </body>
+            </html>""",
+            status_code=400,
+        )
+
+
+@router.post("/coggle/callback")
+def coggle_oauth_code_exchange(
+    body: CoggleCodeExchangeRequest,
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Exchange authorization code programmatically from the frontend.
+    """
+    try:
+        integration = coggle_service.exchange_code(body.code, current_user.id)
+        return {
+            "status": "success",
+            "message": "Coggle account connected successfully.",
+            "account_name": integration.account_name,
+            "account_email": integration.account_email,
+        }
+    except (CoggleConfigError, CoggleAuthError, CoggleAPIError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/coggle/disconnect")
+def disconnect_coggle(
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Revoke Coggle access token and disconnect account.
+    """
+    success = coggle_service.disconnect(current_user.id)
+    return {
+        "status": "success" if success else "not_connected",
+        "message": "Coggle integration disconnected." if success else "No active Coggle integration found.",
+    }
+
+
+@router.get("/coggle/diagrams")
+def list_coggle_diagrams(
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    List user's diagrams from Coggle.
+    """
+    try:
+        diagrams = coggle_service.list_diagrams(current_user.id)
+        return {"diagrams": diagrams}
+    except CoggleAuthError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except (CoggleConfigError, CoggleAPIError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/coggle/import/{mind_map_id}")
+def import_coggle_diagram(
+    mind_map_id: UUID,
+    body: CoggleImportRequest,
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Import a Coggle diagram into the specified MindVault mind map.
+    """
+    try:
+        result = coggle_service.import_diagram(current_user, mind_map_id, body.diagram_id)
+        return result
+    except CoggleAuthError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except (CoggleConfigError, CoggleAPIError, ValueError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/coggle/export/{mind_map_id}")
+def export_to_coggle(
+    mind_map_id: UUID,
+    current_user: User = Depends(get_current_user),
+    coggle_service: CoggleService = Depends(get_coggle_service),
+):
+    """
+    Export the specified MindVault mind map directly into the user's Coggle account.
+    """
+    try:
+        result = coggle_service.export_diagram(current_user, mind_map_id)
+        return result
+    except CoggleAuthError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except (CoggleConfigError, CoggleAPIError, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

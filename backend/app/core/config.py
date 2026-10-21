@@ -60,6 +60,16 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:8000/api/v1/integrations/mindmeister/callback"
     )
 
+    # --------------------------------------------------
+    # Integrations - Coggle
+    # --------------------------------------------------
+
+    COGGLE_CLIENT_ID: str = Field(default="")
+    COGGLE_CLIENT_SECRET: str = Field(default="")
+    COGGLE_REDIRECT_URI: str = Field(
+        default="http://127.0.0.1:8000/api/v1/integrations/coggle/callback"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

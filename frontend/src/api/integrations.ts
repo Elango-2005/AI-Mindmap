@@ -90,3 +90,69 @@ export async function exportMindMeisterMap(mindMapId: string): Promise<MindMeist
   return response.data;
 }
 
+// ---------------------------------------------------------------------------
+// Coggle Direct Cloud API
+// ---------------------------------------------------------------------------
+
+export interface CoggleStatus {
+  configured: boolean;
+  connected: boolean;
+  provider: string;
+  account_id: string | null;
+  account_name: string | null;
+  account_email: string | null;
+  expires_at: string | null;
+}
+
+export interface CoggleDiagram {
+  id: string;
+  title: string;
+  updated?: string;
+  web_url?: string;
+}
+
+export interface CoggleExportResponse {
+  status: string;
+  message: string;
+  coggle_diagram_id: string;
+  web_url: string;
+}
+
+export interface CoggleImportResponse {
+  status: string;
+  message: string;
+  mind_map_id: string;
+  coggle_diagram_id: string;
+}
+
+export async function getCoggleStatus(): Promise<CoggleStatus> {
+  const response = await api.get<CoggleStatus>("/integrations/coggle/status");
+  return response.data;
+}
+
+export async function getCoggleAuthUrl(): Promise<{ auth_url: string; configured: boolean }> {
+  const response = await api.get<{ auth_url: string; configured: boolean }>("/integrations/coggle/auth-url");
+  return response.data;
+}
+
+export async function disconnectCoggle(): Promise<{ status: string; message: string }> {
+  const response = await api.post<{ status: string; message: string }>("/integrations/coggle/disconnect");
+  return response.data;
+}
+
+export async function getCoggleDiagrams(): Promise<{ diagrams: CoggleDiagram[] }> {
+  const response = await api.get<{ diagrams: CoggleDiagram[] }>("/integrations/coggle/diagrams");
+  return response.data;
+}
+
+export async function importCoggleDiagram(mindMapId: string, diagramId: string): Promise<CoggleImportResponse> {
+  const response = await api.post<CoggleImportResponse>(`/integrations/coggle/import/${mindMapId}`, {
+    diagram_id: diagramId,
+  });
+  return response.data;
+}
+
+export async function exportCoggleDiagram(mindMapId: string): Promise<CoggleExportResponse> {
+  const response = await api.post<CoggleExportResponse>(`/integrations/coggle/export/${mindMapId}`);
+  return response.data;
+}
