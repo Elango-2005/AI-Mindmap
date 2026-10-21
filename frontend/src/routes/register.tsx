@@ -149,7 +149,7 @@ function RegisterPage() {
 
             <Icon
               name={isSubmitting ? "progress_activity" : "person_add"}
-              className="text-[18px]"
+              className="text-[16px]"
             />
           </button>
         </form>

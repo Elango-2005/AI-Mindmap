@@ -23,10 +23,10 @@ export function AppSidebar({
   className?: string;
 }) {
   return (
-    <aside className={cn("w-[260px] shrink-0 flex flex-col h-full bg-surface-container-lowest border-r border-outline-variant/30 py-6 px-4 gap-2", className ?? "hidden md:flex")}>
+    <aside className={cn("w-[240px] shrink-0 flex flex-col h-full bg-surface-container-lowest border-r border-outline-variant/30 py-5 px-3 gap-2", className ?? "hidden md:flex")}>
       {showBrand && (
-        <div className="flex items-center gap-3 px-3 mb-6">
-          <img alt="MindVault AI logo" className="w-8 h-8 rounded-lg" src={LOGO_URL} />
+        <div className="flex items-center gap-2.5 px-3 mb-4">
+          <img alt="MindVault AI logo" className="w-7 h-7 rounded-lg" src={LOGO_URL} />
           <div>
             <h2 className="text-title-md font-semibold text-on-surface">MindVault</h2>
           </div>
@@ -39,13 +39,13 @@ export function AppSidebar({
             key={item.label}
             to={item.to}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-body-md font-medium",
+              "flex items-center gap-2 px-3 py-2 h-9 rounded-lg transition-colors text-ui font-medium",
               active === item.label
-                ? "bg-surface-container text-on-surface"
+                ? "bg-surface-container text-on-surface font-semibold"
                 : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
             )}
           >
-            <Icon name={item.icon} className="text-[20px]" filled={active === item.label} />
+            <Icon name={item.icon} size="sm" filled={active === item.label} />
             <span>{item.label}</span>
           </Link>
         ))}
@@ -55,13 +55,13 @@ export function AppSidebar({
         <Link
           to="/settings"
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-body-md font-medium",
+            "flex items-center gap-2 px-3 py-2 h-9 rounded-lg transition-colors text-ui font-medium",
             active === "Settings" 
-                ? "bg-surface-container text-on-surface"
-                : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+              ? "bg-surface-container text-on-surface font-semibold"
+              : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
           )}
         >
-          <Icon name="person" className="text-[20px]" filled={active === "Settings"} />
+          <Icon name="person" size="sm" filled={active === "Settings"} />
           <span>Account</span>
         </Link>
       </div>

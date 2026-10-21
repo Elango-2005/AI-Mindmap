@@ -113,7 +113,7 @@ export function KnowledgeBaseModal({
         <DialogHeader className="shrink-0 mb-3">
           <div className="flex items-center gap-2.5 text-primary mb-1">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <Icon name="menu_book" className="text-[22px]" />
+              <Icon name="menu_book" className="text-[20px]" />
             </div>
             <div>
               <DialogTitle className="text-headline-sm font-bold text-on-surface">
@@ -242,7 +242,7 @@ export function KnowledgeBaseModal({
                             {doc.filename}
                           </p>
                           <div className="flex items-center gap-2 text-label-xs text-outline mt-0.5">
-                            <span className="uppercase font-semibold px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant text-[10px]">
+                            <span className="uppercase font-semibold px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant text-xs">
                               {doc.file_type}
                             </span>
                             <span>{formatFileSize(doc.file_size_bytes)}</span>
@@ -260,7 +260,7 @@ export function KnowledgeBaseModal({
                       >
                         <Icon
                           name={deletingId === doc.id ? "sync" : "delete"}
-                          className={`text-[18px] ${deletingId === doc.id ? "animate-spin" : ""}`}
+                          className={`text-[16px] ${deletingId === doc.id ? "animate-spin" : ""}`}
                         />
                       </button>
                     </div>
@@ -329,14 +329,14 @@ export function KnowledgeBaseModal({
         </div>
 
         {/* Footer info */}
-        <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between text-label-xs text-outline shrink-0">
-          <div className="flex items-center gap-1.5 text-primary">
-            <Icon name="verified_user" className="text-[14px]" />
-            <span>Strict Project Isolation: Chunks are scoped exclusively to this project.</span>
+        <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between gap-4 text-xs text-outline shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+            <Icon name="verified_user" className="text-[14px] text-primary shrink-0" />
+            <span className="text-xs">Strict Project Isolation: Chunks are scoped exclusively to this project.</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-body-sm font-medium text-on-surface transition-colors"
+            className="px-3.5 py-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-xs font-medium text-on-surface transition-colors shrink-0"
           >
             Close
           </button>

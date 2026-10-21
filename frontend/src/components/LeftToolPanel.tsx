@@ -168,7 +168,7 @@ export function LeftToolPanel({
             {item.label}
           </span>
           {hasChildren && (
-            <span className="text-[11px] text-outline px-1 rounded-full bg-surface-container-low shrink-0">
+            <span className="text-xs text-outline px-1 rounded-full bg-surface-container-low shrink-0">
               {item.children.length}
             </span>
           )}
@@ -273,14 +273,14 @@ export function LeftToolPanel({
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Icon name="subdirectory_arrow_right" className="text-[18px]" />
+                      <Icon name="subdirectory_arrow_right" className="text-[16px]" />
                     </div>
                     <div>
                       <div className="text-label-sm font-semibold text-on-surface">Add Child Node</div>
                       <div className="text-body-xs text-on-surface-variant">Attaches to selected node</div>
                     </div>
                   </div>
-                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-surface-container rounded border border-outline-variant/30 text-outline">
+                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-surface-container rounded border border-outline-variant/30 text-outline">
                     Tab
                   </kbd>
                 </button>
@@ -291,14 +291,14 @@ export function LeftToolPanel({
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Icon name="add" className="text-[18px]" />
+                      <Icon name="add" className="text-[16px]" />
                     </div>
                     <div>
                       <div className="text-label-sm font-semibold text-on-surface">Add Sibling Node</div>
                       <div className="text-body-xs text-on-surface-variant">Creates parallel topic</div>
                     </div>
                   </div>
-                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-surface-container rounded border border-outline-variant/30 text-outline">
+                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-surface-container rounded border border-outline-variant/30 text-outline">
                     Enter
                   </kbd>
                 </button>
@@ -308,7 +308,7 @@ export function LeftToolPanel({
                   className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-outline-variant/30 hover:border-primary/50 hover:bg-primary/5 text-left transition-colors group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                    <Icon name="center_focus_strong" className="text-[18px]" />
+                    <Icon name="center_focus_strong" className="text-[16px]" />
                   </div>
                   <div>
                     <div className="text-label-sm font-semibold text-on-surface">Add Floating Topic</div>
@@ -400,7 +400,7 @@ export function LeftToolPanel({
                           : "bg-surface-container-high text-on-surface"
                       }`}
                     >
-                      <Icon name={item.icon} className="text-[20px]" />
+                      <Icon name={item.icon} className="text-[16px]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -408,7 +408,7 @@ export function LeftToolPanel({
                           {item.title}
                         </span>
                         {currentLayout === item.id && (
-                          <span className="text-primary text-[11px] font-medium flex items-center gap-0.5">
+                          <span className="text-primary text-xs font-medium flex items-center gap-0.5">
                             <Icon name="check" className="text-[14px]" /> Active
                           </span>
                         )}
@@ -427,7 +427,7 @@ export function LeftToolPanel({
                 onClick={onFitView}
                 className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-outline-variant/30 hover:border-primary/50 hover:bg-surface-container-low text-label-sm font-medium text-on-surface transition-colors"
               >
-                <Icon name="crop_free" className="text-[18px] text-primary" />
+                <Icon name="crop_free" className="text-[16px] text-primary" />
                 Fit Map to View
               </button>
             </div>
@@ -447,7 +447,7 @@ export function LeftToolPanel({
                   className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 hover:bg-surface-container-low transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon name="map" className="text-[18px] text-primary" />
+                    <Icon name="map" className="text-[16px] text-primary" />
                     <span className="text-body-sm font-medium text-on-surface">MiniMap</span>
                   </div>
                   <div
@@ -468,7 +468,7 @@ export function LeftToolPanel({
                   className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 hover:bg-surface-container-low transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon name="grid_view" className="text-[18px] text-primary" />
+                    <Icon name="grid_view" className="text-[16px] text-primary" />
                     <span className="text-body-sm font-medium text-on-surface">Canvas Grid</span>
                   </div>
                   <div
@@ -490,7 +490,7 @@ export function LeftToolPanel({
                     className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 hover:bg-surface-container-low transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon name="center_focus_strong" className="text-[18px] text-accent-violet" />
+                      <Icon name="center_focus_strong" className="text-[16px] text-accent-violet" />
                       <span className="text-body-sm font-medium text-on-surface">
                         {focusedNodeId ? "Exit Focus Mode" : "Focus Selected Branch"}
                       </span>

@@ -491,3 +491,68 @@ def restore_mind_map_snapshot(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+from pydantic import BaseModel, EmailStr
+
+class MindMapShareRequest(BaseModel):
+    email: EmailStr
+    role: str = "editor"
+
+@router.post("/{mind_map_id}/share")
+def share_mind_map(
+    mind_map_id: UUID,
+    share_req: MindMapShareRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Share a mind map with another user by email and send a collaboration notification.
+    """
+    service = MindMapService(MindMapRepository(db), ProjectRepository(db))
+    try:
+        mind_map = service.get_mind_map(mind_map_id, current_user)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    recipient_email = share_req.email.strip().lower()
+    if recipient_email == current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot share mind map with yourself.",
+        )
+
+    recipient = db.query(User).filter(User.email.ilike(recipient_email)).first()
+    if not recipient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email '{recipient_email}' was not found.",
+        )
+
+    from app.services.notification_service import NotificationService
+    from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+    from app.schemas.notification import NotificationType, NotificationCategory
+
+    notif_service = NotificationService(NotificationRepository(db), NotificationPreferenceRepository(db))
+    notif = notif_service.create_notification(
+        user_id=recipient.id,
+        type=NotificationType.MAP_SHARED,
+        category=NotificationCategory.COLLABORATION,
+        title=f"{current_user.full_name} shared a mind map",
+        message=f"{current_user.full_name} invited you to collaborate on '{mind_map.title}'.",
+        entity_type="mind_map",
+        entity_id=mind_map.id,
+        project_id=mind_map.project_id,
+        mind_map_id=mind_map.id,
+        extra_metadata={
+            "actor_name": current_user.full_name,
+            "actor_email": current_user.email,
+            "link": f"/workspace/{mind_map.id}",
+            "role": share_req.role,
+        },
+    )
+
+    return {
+        "success": True,
+        "message": f"Mind map '{mind_map.title}' shared with {recipient.full_name} ({recipient.email}).",
+        "notification_id": str(notif.id) if notif else None,
+    }

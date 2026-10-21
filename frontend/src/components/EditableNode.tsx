@@ -297,14 +297,14 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
   const isHighImportance = importanceScore >= 0.85;
   const isLowImportance = importanceScore <= 0.3;
 
-  let shapeClasses = "rounded-xl py-2 px-4 min-w-[120px]";
-  let textClasses = "text-body-md font-medium";
+  let shapeClasses = "rounded-xl py-2 px-3.5 min-w-[110px]";
+  let textClasses = "text-ui font-medium";
   
   if (depth === 0) {
-    shapeClasses = "rounded-full py-4 px-6 min-w-[200px] shadow-md border-4";
-    textClasses = "text-title-lg font-bold tracking-tight";
+    shapeClasses = "rounded-full py-3 px-6 min-w-[180px] shadow-md border-2";
+    textClasses = "text-headline-sm font-semibold tracking-tight";
   } else if (depth === 1) {
-    shapeClasses = "rounded-full py-3 px-5 min-w-[150px] shadow-sm border-2";
+    shapeClasses = "rounded-full py-2.5 px-4.5 min-w-[140px] shadow-sm border-2";
     textClasses = "text-body-lg font-semibold";
   } else {
     shapeClasses += " border-2";
@@ -326,28 +326,28 @@ export function EditableNode({ id, data, selected, positionAbsoluteX, positionAb
         <NodeToolbar
           isVisible={selected && !isEditing}
           position={Position.Top}
-          className="flex items-center gap-1 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-xl p-1.5 shadow-level-2 mb-2 transition-all"
+          className="flex items-center gap-1 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-xl p-1 shadow-level-2 mb-2 transition-all"
         >
-          <button onClick={handleAddChild} className="p-1.5 hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger" title="Add Child">
-            <Icon name="add_circle" className="text-[18px]" />
+          <button onClick={handleAddChild} className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger" title="Add Child">
+            <Icon name="add_circle" className="text-[16px]" />
           </button>
-          <button onClick={handleAddSibling} className="p-1.5 hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger" title="Add Sibling">
-            <Icon name="queue" className="text-[18px]" />
-          </button>
-          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-          <button onClick={() => setIsEditing(true)} className="p-1.5 hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors" title="Rename">
-            <Icon name="edit" className="text-[18px]" />
+          <button onClick={handleAddSibling} className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger" title="Add Sibling">
+            <Icon name="queue" className="text-[16px]" />
           </button>
           <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-          <button onClick={handleAIExpand} disabled={isProcessingAI} className="p-1.5 hover:bg-accent-violet/10 text-accent-violet rounded-lg transition-colors disabled:opacity-50" title="AI Expand">
-            <Icon name={isProcessingAI ? "sync" : "auto_awesome"} className={`text-[18px] ${isProcessingAI ? "animate-spin" : ""}`} />
-          </button>
-          <button onClick={handleAISummarize} disabled={isProcessingAI} className="p-1.5 hover:bg-accent-blue/10 text-accent-blue rounded-lg transition-colors disabled:opacity-50" title="AI Summarize">
-            <Icon name="summarize" className="text-[18px]" />
+          <button onClick={() => setIsEditing(true)} className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors" title="Rename">
+            <Icon name="edit" className="text-[16px]" />
           </button>
           <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-          <button onClick={handleDelete} className="p-1.5 hover:bg-error-container hover:text-error text-outline rounded-lg transition-colors" title="Delete">
-            <Icon name="delete" className="text-[18px]" />
+          <button onClick={handleAIExpand} disabled={isProcessingAI} className="w-8 h-8 flex items-center justify-center hover:bg-accent-violet/10 text-accent-violet rounded-lg transition-colors disabled:opacity-50" title="AI Expand">
+            <Icon name={isProcessingAI ? "sync" : "auto_awesome"} className={`text-[16px] ${isProcessingAI ? "animate-spin" : ""}`} />
+          </button>
+          <button onClick={handleAISummarize} disabled={isProcessingAI} className="w-8 h-8 flex items-center justify-center hover:bg-accent-blue/10 text-accent-blue rounded-lg transition-colors disabled:opacity-50" title="AI Summarize">
+            <Icon name="summarize" className="text-[16px]" />
+          </button>
+          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
+          <button onClick={handleDelete} className="w-8 h-8 flex items-center justify-center hover:bg-error-container hover:text-error text-outline rounded-lg transition-colors" title="Delete">
+            <Icon name="delete" className="text-[16px]" />
           </button>
         </NodeToolbar>
 

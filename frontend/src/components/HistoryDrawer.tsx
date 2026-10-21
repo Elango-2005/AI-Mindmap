@@ -82,7 +82,7 @@ export function HistoryDrawer({ isOpen, onClose, mindMapId, onRestore }: History
       <SheetContent side="right" className="w-[340px] p-0 flex flex-col bg-surface border-l border-outline-variant/30">
         <SheetHeader className="p-4 border-b border-outline-variant/30 bg-surface-container-lowest">
           <SheetTitle className="flex items-center gap-2 text-on-surface text-headline-sm">
-            <Icon name="history" className="text-primary text-[22px]" />
+            <Icon name="history" className="text-primary text-[20px]" />
             Version History
           </SheetTitle>
         </SheetHeader>
@@ -117,7 +117,7 @@ export function HistoryDrawer({ isOpen, onClose, mindMapId, onRestore }: History
             <div className="text-center text-on-surface-variant py-8 flex flex-col items-center gap-2">
               <Icon name="history_toggle_off" className="text-[32px] opacity-50" />
               <p className="text-body-sm">No saved versions yet.</p>
-              <p className="text-[11px] opacity-70 px-4">Create a snapshot before making major changes.</p>
+              <p className="text-xs opacity-70 px-4">Create a snapshot before making major changes.</p>
             </div>
           )}
 
@@ -126,9 +126,9 @@ export function HistoryDrawer({ isOpen, onClose, mindMapId, onRestore }: History
               <div className="flex justify-between items-start gap-2">
                 <div className="flex flex-col">
                   <span className="text-label-md text-on-surface font-semibold">{snap.name}</span>
-                  <span className="text-[11px] text-on-surface-variant">{formatDate(snap.created_at)}</span>
+                  <span className="text-xs text-on-surface-variant">{formatDate(snap.created_at)}</span>
                 </div>
-                <div className="bg-surface-container-high rounded px-1.5 py-0.5 text-[10px] text-on-surface-variant font-medium shrink-0">
+                <div className="bg-surface-container-high rounded px-1.5 py-0.5 text-xs text-on-surface-variant font-medium shrink-0">
                   {snap.graph_data.nodes.length} nodes
                 </div>
               </div>

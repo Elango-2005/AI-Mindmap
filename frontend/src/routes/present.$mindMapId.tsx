@@ -209,7 +209,7 @@ function Present() {
           className="flex items-center gap-xs px-md py-sm rounded-lg hover:bg-surface-container transition-colors text-label-md text-on-surface-variant hover:text-on-surface group"
         >
           Exit
-          <Icon name="close" className="text-[18px] group-hover:text-error transition-colors" />
+          <Icon name="close" className="text-[16px] group-hover:text-error transition-colors" />
         </Link>
       </header>
 

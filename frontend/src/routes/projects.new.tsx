@@ -130,11 +130,11 @@ function NewProject() {
                 <div className="flex items-center justify-between px-4 py-3 bg-surface-container-low/50 border-t border-outline-variant/20">
                   <div className="flex items-center gap-2">
                     <button type="button" className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2 text-sm font-medium" title="Attach file (Coming Soon)">
-                      <Icon name="attach_file" className="text-[18px]" /> Attach
+                      <Icon name="attach_file" className="text-[16px]" /> Attach
                     </button>
                     <div className="w-px h-4 bg-outline-variant/30" />
                     <button type="button" className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2 text-sm font-medium" title="Search web (Coming Soon)">
-                      <Icon name="travel_explore" className="text-[18px]" /> Search
+                      <Icon name="travel_explore" className="text-[16px]" /> Search
                     </button>
                   </div>
                   <button
@@ -142,7 +142,7 @@ function NewProject() {
                     disabled={!prompt.trim()}
                     className="bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:hover:bg-primary"
                   >
-                    <Icon name="auto_awesome" className="text-[18px]" /> Generate
+                    <Icon name="auto_awesome" className="text-[16px]" /> Generate
                   </button>
                 </div>
               </div>
@@ -232,7 +232,7 @@ function NewProject() {
                 onClick={handleGenerate}
                 className="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
               >
-                <Icon name="refresh" className="text-[18px]" /> Try again
+                <Icon name="refresh" className="text-[16px]" /> Try again
               </button>
             </div>
           </div>

@@ -96,21 +96,21 @@ function HistoryComponent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-headline-md sm:text-headline-lg text-on-surface font-bold">History</h1>
-                <p className="text-body-sm sm:text-body-md text-on-surface-variant mt-0.5">
+                <h1 className="text-2xl font-semibold text-on-surface">History</h1>
+                <p className="text-ui text-on-surface-variant mt-0.5">
                   All your mind maps, sorted by recent activity
                 </p>
               </div>
             </div>
 
             <div className="relative w-full sm:w-72">
-              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]" />
+              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]" />
               <input
                 type="text"
                 placeholder="Search maps or projects..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-ui text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               />
             </div>
           </div>
@@ -125,13 +125,13 @@ function HistoryComponent() {
           )}
           {!loading && error && (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <Icon name="error_outline" className="text-[48px] text-error" />
+              <Icon name="error_outline" className="text-[32px] text-error" />
               <p className="text-body-md text-on-surface-variant">{error}</p>
             </div>
           )}
           {!loading && !error && filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-              <Icon name="history" className="text-[48px] text-outline" />
+              <Icon name="history" className="text-[32px] text-outline" />
               <div>
                 <h3 className="text-headline-sm text-on-surface">{search ? "No results found" : "No history yet"}</h3>
                 <p className="text-body-md text-on-surface-variant mt-1">
@@ -141,7 +141,7 @@ function HistoryComponent() {
               {!search && (
                 <Link
                   to="/dashboard"
-                  className="bg-primary text-on-primary text-label-md rounded-xl py-2.5 px-6 flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                  className="bg-primary text-on-primary text-label-md rounded-xl py-2 px-4 flex items-center gap-2 transition-all hover:-translate-y-0.5"
                 >
                   <Icon name="add" />
                   New Project
@@ -184,8 +184,8 @@ function HistoryComponent() {
                             params={{ mindMapId: entry.mindMap.id }}
                             className="flex items-center gap-3 sm:gap-md flex-1 min-w-0"
                           >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${actionColor} group-hover:bg-primary group-hover:text-on-primary transition-colors`}>
-                              <Icon name={actionIcon} className="text-[20px]" />
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${actionColor} group-hover:bg-primary group-hover:text-on-primary transition-colors`}>
+                              <Icon name={actionIcon} className="text-[16px]" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
@@ -222,14 +222,14 @@ function HistoryComponent() {
                                 className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
                                 title="Present Slideshow"
                               >
-                                <Icon name="play_circle" className="text-[18px]" />
+                                <Icon name="play_circle" className="text-[16px]" />
                               </Link>
                               <button
                                 onClick={(e) => handleCopyLink(e, entry.mindMap.id)}
                                 className="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
                                 title="Copy Share Link"
                               >
-                                <Icon name="link" className="text-[18px]" />
+                                <Icon name="link" className="text-[16px]" />
                               </button>
                               <Link
                                 to="/workspace/$mindMapId"
@@ -237,7 +237,7 @@ function HistoryComponent() {
                                 className="p-2 rounded-lg text-outline group-hover:text-primary hover:bg-surface-container transition-colors"
                                 title="Open in Workspace"
                               >
-                                <Icon name="chevron_right" className="text-[18px]" />
+                                <Icon name="chevron_right" className="text-[16px]" />
                               </Link>
                             </div>
                           </div>

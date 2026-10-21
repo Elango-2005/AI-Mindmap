@@ -37,10 +37,10 @@ function Dashboard() {
     <AppLayout activeRoute="Dashboard">
       <div className="flex-1 overflow-y-auto w-full p-8 md:p-12 lg:p-16 max-w-7xl mx-auto">
         <header className="mb-12">
-          <h1 className="text-4xl font-semibold text-on-surface tracking-tight mb-2">
+          <h1 className="text-3xl font-semibold text-on-surface tracking-tight mb-2">
             Welcome back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ""}
           </h1>
-          <p className="text-lg text-on-surface-variant">
+          <p className="text-md text-on-surface-variant">
             What would you like to map out today?
           </p>
         </header>
@@ -48,19 +48,19 @@ function Dashboard() {
         <section className="mb-16">
           <div className="relative max-w-3xl">
             <div className="relative flex items-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm focus-within:border-primary/50 focus-within:shadow-md transition-all overflow-hidden cursor-text" onClick={() => navigate({ to: "/projects/new" })}>
-              <div className="pl-6 pr-3 py-4 text-on-surface-variant">
-                <Icon name="auto_awesome" className="text-[24px]" />
+              <div className="pl-4 pr-3 py-2.5 text-on-surface-variant">
+                <Icon name="auto_awesome" size="md" />
               </div>
               <input
                 type="text"
                 readOnly
                 placeholder="Describe a topic to map out, or leave blank for an empty canvas..."
-                className="flex-1 bg-transparent border-none text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none py-5 pr-4 cursor-pointer"
+                className="flex-1 bg-transparent border-none text-ui text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none py-2.5 pr-4 cursor-pointer"
               />
               <div className="pr-3 pl-2">
                 <Link
                   to="/projects/new"
-                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+                  className="bg-primary text-on-primary px-4 py-2 h-9 rounded-lg font-medium text-ui hover:bg-primary/90 transition-colors flex items-center gap-2"
                 >
                   Create
                 </Link>
@@ -85,7 +85,7 @@ function Dashboard() {
         {projects.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-medium text-on-surface tracking-tight">Recent Projects</h2>
+              <h2 className="text-headline-sm font-semibold text-on-surface tracking-tight">Recent Projects</h2>
               <Link to="/projects" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
                 View all <Icon name="arrow_forward" className="text-[16px]" />
               </Link>

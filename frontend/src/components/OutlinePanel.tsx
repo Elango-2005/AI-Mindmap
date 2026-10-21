@@ -130,7 +130,7 @@ export function OutlinePanel({
           </div>
 
           {hasChildren && (
-            <span className="text-[10px] text-outline px-1.5 py-0.5 rounded-full bg-surface-container-high ml-2 shrink-0">
+            <span className="text-xs text-outline px-1.5 py-0.5 rounded-full bg-surface-container-high ml-2 shrink-0">
               {item.children.length}
             </span>
           )}
@@ -158,7 +158,7 @@ export function OutlinePanel({
           className="text-outline hover:text-on-surface transition-colors p-1 rounded-md hover:bg-surface-container"
           title="Close Outline"
         >
-          <Icon name="close" className="text-[18px]" />
+          <Icon name="close" className="text-[16px]" />
         </button>
       </div>
 

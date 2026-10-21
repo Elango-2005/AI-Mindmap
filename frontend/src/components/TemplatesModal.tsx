@@ -123,7 +123,7 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5 text-primary">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Icon name="auto_awesome_motion" className="text-[24px] text-primary" />
+                <Icon name="auto_awesome_motion" className="text-[20px] text-primary" />
               </div>
               <div>
                 <DialogTitle className="text-headline-sm font-bold text-on-surface">
@@ -142,7 +142,7 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
             <div className="relative flex-1">
               <Icon
                 name="search"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant"
               />
               <input
                 type="text"
@@ -214,14 +214,14 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
                         <div
                           className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors.bg} ${colors.text} border ${colors.border}`}
                         >
-                          <Icon name={tpl.icon} className="text-[22px]" />
+                          <Icon name={tpl.icon} className="text-[20px]" />
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
                             {tpl.category}
                           </span>
                           <span
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${colors.bg} ${colors.text} border ${colors.border}`}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.bg} ${colors.text} border ${colors.border}`}
                           >
                             {tpl.badge}
                           </span>
@@ -241,14 +241,14 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
                         {tpl.topics_preview.slice(0, 4).map((topic, idx) => (
                           <span
                             key={idx}
-                            className="text-[11px] px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant border border-outline-variant/20 truncate max-w-[140px]"
+                            className="text-xs px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant border border-outline-variant/20 truncate max-w-[140px]"
                             title={topic}
                           >
                             {topic}
                           </span>
                         ))}
                         {tpl.topics_preview.length > 4 && (
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-surface-container-low text-outline">
+                          <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface-container-low text-outline">
                             +{tpl.topics_preview.length - 4} more
                           </span>
                         )}
@@ -258,7 +258,7 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
                     {/* Footer Row: Node Count & CTA */}
                     <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between mt-auto">
                       <span className="flex items-center gap-1 text-label-xs text-on-surface-variant">
-                        <Icon name="account_tree" className="text-[15px] text-outline" />
+                        <Icon name="account_tree" className="text-[14px] text-outline" />
                         <span className="font-semibold text-on-surface">{tpl.node_count}</span> nodes
                       </span>
 

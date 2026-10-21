@@ -6,6 +6,16 @@ import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/api/auth";
 import { updateProfile, uploadAvatar } from "@/api/users";
 import { getProjects, type Project } from "@/api/projects";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  type NotificationPreferences,
+  type NotificationItem,
+} from "@/api/notifications";
 import { toast } from "sonner";
 
 const TITLE = "Settings — MindVault AI";
@@ -95,6 +105,120 @@ function Settings() {
   const [editName, setEditName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Notification state
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
+  const [isNotifLoading, setIsNotifLoading] = useState(false);
+  const [isNotifSaving, setIsNotifSaving] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
+
+  // Notification Inbox state
+  const [inboxItems, setInboxItems] = useState<NotificationItem[]>([]);
+  const [inboxTotal, setInboxTotal] = useState(0);
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const [inboxFilter, setInboxFilter] = useState<"all" | "unread">("all");
+  const [isInboxLoading, setIsInboxLoading] = useState(false);
+
+  const loadNotificationPreferences = async () => {
+    try {
+      setIsNotifLoading(true);
+      setNotifError(null);
+      const data = await getNotificationPreferences();
+      setNotifPrefs(data);
+    } catch (e: any) {
+      console.error(e);
+      setNotifError("Couldn't load notification preferences.");
+    } finally {
+      setIsNotifLoading(false);
+    }
+  };
+
+  const loadInboxNotifications = async () => {
+    try {
+      setIsInboxLoading(true);
+      const res = await getNotifications({
+        limit: 50,
+        unread_only: inboxFilter === "unread",
+      });
+      setInboxItems(res.items);
+      setInboxTotal(res.total);
+      setInboxUnreadCount(res.unread_count);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsInboxLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (section === "Notifications") {
+      loadNotificationPreferences();
+      loadInboxNotifications();
+    }
+  }, [section, inboxFilter]);
+
+  const handleTogglePref = async (key: keyof NotificationPreferences, val: any) => {
+    if (!notifPrefs) return;
+    const oldPrefs = { ...notifPrefs };
+    setNotifPrefs({ ...notifPrefs, [key]: val });
+
+    try {
+      setIsNotifSaving(true);
+      const updated = await updateNotificationPreferences({ [key]: val });
+      setNotifPrefs(updated);
+      toast.success("Preferences updated");
+    } catch (e) {
+      console.error(e);
+      setNotifPrefs(oldPrefs);
+      toast.error("Couldn't save notification preferences.");
+    } finally {
+      setIsNotifSaving(false);
+    }
+  };
+
+  const handleInboxMarkRead = async (id: string) => {
+    try {
+      await markAsRead(id);
+      setInboxItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, is_read: true } : item))
+      );
+      setInboxUnreadCount((prev) => Math.max(0, prev - 1));
+      toast.success("Notification marked as read");
+    } catch (e) {
+      toast.error("Failed to mark as read");
+    }
+  };
+
+  const handleInboxMarkAllRead = async () => {
+    try {
+      await markAllAsRead();
+      setInboxItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
+      setInboxUnreadCount(0);
+      toast.success("All notifications marked as read");
+    } catch (e) {
+      toast.error("Failed to mark all as read");
+    }
+  };
+
+  const handleInboxDelete = async (id: string) => {
+    try {
+      await deleteNotification(id);
+      setInboxItems((prev) => prev.filter((item) => item.id !== id));
+      setInboxTotal((prev) => Math.max(0, prev - 1));
+      toast.success("Notification deleted");
+    } catch (e) {
+      toast.error("Failed to delete notification");
+    }
+  };
+
+  const handleInboxClick = async (item: NotificationItem) => {
+    if (!item.is_read) {
+      handleInboxMarkRead(item.id);
+    }
+    if (item.link) {
+      window.location.href = item.link;
+    }
+  };
   const [avatarError, setAvatarError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -189,7 +313,7 @@ function Settings() {
             to="/dashboard"
             className="flex items-center gap-sm hover:opacity-80 transition-opacity"
           >
-            <Icon name="arrow_back" className="text-on-surface-variant text-xl" />
+            <Icon name="arrow_back" className="text-on-surface-variant" size="sm" />
             <span className="text-label-md text-on-surface-variant">Back to Workspace</span>
           </Link>
           <h1 className="text-headline-lg text-on-surface mt-6">Settings</h1>
@@ -237,7 +361,7 @@ function Settings() {
 
               {isLoading ? (
                 <div className="flex items-center gap-3 py-16 justify-center text-on-surface-variant text-body-md">
-                  <Icon name="sync" className="animate-spin text-primary text-[22px]" />
+                  <Icon name="sync" className="animate-spin text-primary text-[20px]" />
                   <span>Loading profile...</span>
                 </div>
               ) : user ? (
@@ -281,7 +405,7 @@ function Settings() {
                             {user.full_name}
                           </h3>
                           <div>
-                            <span className="inline-flex items-center text-[11px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center text-xs font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
                               Personal profile
                             </span>
                           </div>
@@ -309,7 +433,7 @@ function Settings() {
                             }}
                             className="w-full sm:w-auto px-4 py-2 text-label-md font-medium bg-primary text-on-primary hover:bg-primary/90 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                           >
-                            <Icon name="edit" className="text-[17px]" />
+                            <Icon name="edit" className="text-[16px]" />
                             Edit profile
                           </button>
                         )}
@@ -335,7 +459,7 @@ function Settings() {
                           }}
                           className="text-label-sm font-semibold text-primary hover:underline flex items-center gap-1"
                         >
-                          <Icon name="edit" className="text-[15px]" /> Edit
+                          <Icon name="edit" className="text-[16px]" /> Edit
                         </button>
                       )}
                     </div>
@@ -370,7 +494,7 @@ function Settings() {
                           <label htmlFor="email" className="text-label-sm font-medium text-on-surface">
                             Email address
                           </label>
-                          <span className="text-[11px] font-semibold text-outline uppercase tracking-wider bg-surface-container-high px-2 py-0.5 rounded">
+                          <span className="text-xs font-semibold text-outline uppercase tracking-wider bg-surface-container-high px-2 py-0.5 rounded">
                             Read only
                           </span>
                         </div>
@@ -589,7 +713,7 @@ function Settings() {
                 <section className="bg-error/5 rounded-xl border border-error/20 overflow-hidden">
                   <div className="p-4 border-b border-error/10 bg-error/10">
                     <h3 className="text-label-md text-error font-bold flex items-center gap-2">
-                      <Icon name="warning" className="text-[18px]" /> Danger Zone
+                      <Icon name="warning" className="text-[16px]" /> Danger Zone
                     </h3>
                   </div>
                   <div className="p-6 flex flex-col gap-6">
@@ -605,7 +729,7 @@ function Settings() {
                         }}
                         className="px-4 py-2 bg-surface hover:bg-surface-container-low text-on-surface font-medium rounded-lg transition-colors border border-outline-variant/30 flex items-center gap-2 whitespace-nowrap"
                       >
-                        <Icon name="logout" className="text-[18px]" /> Log Out
+                        <Icon name="logout" className="text-[16px]" /> Log Out
                       </button>
                     </div>
 
@@ -618,7 +742,7 @@ function Settings() {
                         onClick={() => alert("Account deletion disabled in demo.")}
                         className="px-4 py-2 bg-error hover:bg-error/90 text-on-error font-bold rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
                       >
-                        <Icon name="delete_forever" className="text-[18px]" /> Delete Account
+                        <Icon name="delete_forever" className="text-[16px]" /> Delete Account
                       </button>
                     </div>
                   </div>
@@ -627,7 +751,363 @@ function Settings() {
             </>
           )}
 
-          {section !== "Profile" && section !== "Appearance" && section !== "Account" && (
+          {section === "Notifications" && (
+            <>
+              <header className="mb-lg border-b border-outline-variant/30 pb-sm">
+                <h2 className="text-headline-md text-on-surface">Notifications</h2>
+                <p className="text-body-md text-on-surface-variant mt-xs">
+                  Choose what MindVault should notify you about and where those notifications should appear.
+                </p>
+              </header>
+
+              {isNotifLoading ? (
+                <div className="space-y-6 animate-pulse">
+                  <div className="h-36 bg-surface-container-lowest rounded-xl border border-outline-variant/20 p-6" />
+                  <div className="h-64 bg-surface-container-lowest rounded-xl border border-outline-variant/20 p-6" />
+                </div>
+              ) : notifError ? (
+                <div className="p-6 bg-error/10 border border-error/20 rounded-xl text-error flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Icon name="error" className="text-2xl" />
+                    <span>{notifError}</span>
+                  </div>
+                  <button
+                    onClick={loadNotificationPreferences}
+                    className="px-4 py-1.5 bg-error text-on-error rounded-lg font-medium text-sm shadow-sm"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-xl">
+                  {/* Section 1: Notification Channels */}
+                  <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-label-md text-on-surface font-semibold">Notification channels</h3>
+                        <p className="text-label-sm text-on-surface-variant mt-0.5">
+                          Receive notifications inside MindVault.
+                        </p>
+                      </div>
+                      {isNotifSaving && (
+                        <span className="text-xs text-primary font-medium flex items-center gap-1.5">
+                          <Icon name="sync" className="animate-spin text-sm" /> Saving...
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-outline-variant/20">
+                      {/* In-app */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">In-app notifications</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Receive notifications inside MindVault.
+                          </div>
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.in_app_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("in_app_enabled", checked)}
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">Email notifications</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Receive important notifications by email.
+                          </div>
+                          {!notifPrefs?.email_provider_configured && (
+                            <div className="mt-2 text-label-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2 max-w-lg">
+                              <Icon name="info" className="text-[16px] shrink-0" />
+                              <span>Email delivery requires provider configuration. Preferences are stored and will automatically apply once an email provider is connected.</span>
+                            </div>
+                          )}
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.email_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("email_enabled", checked)}
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Section 2: Activity (What you want to be notified about) */}
+                  <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="text-label-md text-on-surface font-semibold">Activity</h3>
+                      <p className="text-label-sm text-on-surface-variant mt-0.5">
+                        Control which types of events trigger notifications.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-outline-variant/20">
+                      {/* Collaboration */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">Collaboration</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Invitations, sharing, and important collaboration activity.
+                          </div>
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.collaboration_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("collaboration_enabled", checked)}
+                        />
+                      </div>
+
+                      {/* AI */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">AI activity</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Important AI operations and suggestions.
+                          </div>
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.ai_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("ai_enabled", checked)}
+                        />
+                      </div>
+
+                      {/* Projects & maps */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">Projects & maps</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Important project and mind-map activity.
+                          </div>
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.project_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("project_enabled", checked)}
+                        />
+                      </div>
+
+                      {/* Export status */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="text-body-md text-on-surface font-medium">Export status</div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            When exports finish or fail.
+                          </div>
+                        </div>
+                        <Toggle
+                          checked={notifPrefs?.export_enabled ?? true}
+                          onChange={(checked) => handleTogglePref("export_enabled", checked)}
+                        />
+                      </div>
+
+                      {/* Account & security */}
+                      <div className="flex justify-between items-center py-4 gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-body-md text-on-surface font-medium">Account & security</span>
+                            <span className="text-xs font-bold uppercase tracking-wider bg-surface-container-high px-2 py-0.5 rounded text-on-surface-variant">
+                              Always Active
+                            </span>
+                          </div>
+                          <div className="text-body-sm text-on-surface-variant mt-0.5">
+                            Important account and security events. Critical security alerts cannot be disabled.
+                          </div>
+                        </div>
+                        <button
+                          disabled
+                          title="Critical security alerts cannot be disabled"
+                          className="opacity-70 cursor-not-allowed"
+                        >
+                          <Toggle checked={true} onChange={() => {}} />
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Section 3: Email delivery */}
+                  <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="text-label-md text-on-surface font-semibold">Email delivery</h3>
+                      <p className="text-label-sm text-on-surface-variant mt-0.5">
+                        Choose the cadence for email notifications.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        { id: "important", label: "Important notifications", desc: "Only critical alerts, invitations, and major completions" },
+                        { id: "all", label: "All notifications", desc: "Every enabled notification sent as it happens" },
+                        { id: "digest", label: "Daily digest", desc: "A daily summary of your activity and notifications" },
+                      ].map((opt) => (
+                        <label
+                          key={opt.id}
+                          className={cn(
+                            "flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer",
+                            notifPrefs?.email_frequency === opt.id
+                              ? "border-primary/50 bg-primary/5"
+                              : "border-outline-variant/30 hover:bg-surface-container-low"
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="email_frequency"
+                            value={opt.id}
+                            checked={notifPrefs?.email_frequency === opt.id}
+                            onChange={() => handleTogglePref("email_frequency", opt.id)}
+                            className="mt-1 text-primary focus:ring-primary h-4 w-4"
+                          />
+                          <div>
+                            <div className="text-label-md font-medium text-on-surface">{opt.label}</div>
+                            <div className="text-body-xs text-on-surface-variant mt-0.5">{opt.desc}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    {!notifPrefs?.email_provider_configured && (
+                      <p className="text-xs text-on-surface-variant/70 mt-3 italic">
+                        * Email delivery requires provider configuration. Selected frequency will take effect once an email provider is connected.
+                      </p>
+                    )}
+                  </section>
+
+                  {/* Section 4: Notification Inbox */}
+                  <section className="bg-surface-container-lowest rounded-xl p-lg border border-outline-variant/30 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                      <div>
+                        <h3 className="text-label-md text-on-surface font-semibold">Notification Inbox</h3>
+                        <p className="text-label-sm text-on-surface-variant mt-0.5">
+                          Review and manage all your past notifications.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setInboxFilter("all")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                            inboxFilter === "all"
+                              ? "bg-primary text-on-primary"
+                              : "bg-surface-container text-on-surface hover:bg-surface-container-high"
+                          )}
+                        >
+                          All ({inboxTotal})
+                        </button>
+                        <button
+                          onClick={() => setInboxFilter("unread")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                            inboxFilter === "unread"
+                              ? "bg-primary text-on-primary"
+                              : "bg-surface-container text-on-surface hover:bg-surface-container-high"
+                          )}
+                        >
+                          Unread ({inboxUnreadCount})
+                        </button>
+                        {inboxUnreadCount > 0 && (
+                          <button
+                            onClick={handleInboxMarkAllRead}
+                            className="px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-2"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {isInboxLoading ? (
+                      <div className="p-6 space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="h-16 bg-surface-container rounded-lg animate-pulse" />
+                        ))}
+                      </div>
+                    ) : inboxItems.length === 0 ? (
+                      <div className="py-12 flex flex-col items-center justify-center text-center">
+                        <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-3">
+                          <Icon name="done_all" className="text-2xl" />
+                        </div>
+                        <h4 className="text-title-sm font-semibold text-on-surface">You're all caught up</h4>
+                        <p className="text-body-sm text-on-surface-variant mt-1 max-w-sm">
+                          {inboxFilter === "unread"
+                            ? "You have no unread notifications."
+                            : "You don't have any notifications yet."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-outline-variant/20 border border-outline-variant/20 rounded-xl overflow-hidden">
+                        {inboxItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              "p-4 flex items-center justify-between gap-4 transition-colors",
+                              item.is_read ? "bg-surface hover:bg-surface-container-low" : "bg-primary/5 hover:bg-primary/10"
+                            )}
+                          >
+                            <div
+                              onClick={() => handleInboxClick(item)}
+                              className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer"
+                            >
+                              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0 mt-0.5">
+                                <Icon
+                                  name={
+                                    item.category === "collaboration"
+                                      ? "group"
+                                      : item.category === "ai"
+                                        ? "auto_awesome"
+                                        : item.category === "export"
+                                          ? "download"
+                                          : item.category === "account"
+                                            ? "shield"
+                                            : "folder"
+                                  }
+                                  className="text-lg"
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("text-label-md font-semibold", item.is_read ? "text-on-surface" : "text-on-surface font-bold")}>
+                                    {item.title}
+                                  </span>
+                                  {!item.is_read && (
+                                    <span className="w-2 h-2 rounded-full bg-primary" />
+                                  )}
+                                </div>
+                                <p className="text-body-sm text-on-surface-variant mt-0.5 line-clamp-2">
+                                  {item.message}
+                                </p>
+                                <span className="text-xs text-on-surface-variant/70 mt-1 block">
+                                  {formatDate(item.created_at)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!item.is_read && (
+                                <button
+                                  onClick={() => handleInboxMarkRead(item.id)}
+                                  title="Mark as read"
+                                  className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                                >
+                                  <Icon name="check" className="text-lg" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleInboxDelete(item.id)}
+                                title="Delete notification"
+                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                              >
+                                <Icon name="delete" className="text-lg" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              )}
+            </>
+          )}
+
+          {section !== "Profile" && section !== "Appearance" && section !== "Account" && section !== "Notifications" && (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center">
               <Icon name="construction" className="text-[48px] text-on-surface-variant/50 mb-md" />
               <h2 className="text-headline-md text-on-surface mb-2">{section} Settings</h2>

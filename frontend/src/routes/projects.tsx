@@ -148,14 +148,14 @@ function Projects() {
         <header className="mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
             <div>
-              <h1 className="text-4xl font-semibold text-on-surface tracking-tight mb-2">Projects</h1>
-              <p className="text-lg text-on-surface-variant">
+              <h1 className="text-3xl font-semibold text-on-surface tracking-tight mb-2">Projects</h1>
+              <p className="text-ui text-on-surface-variant">
                 Your maps, research and ideas in one place.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-64">
-                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]" />
+                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]" />
                 <input
                   type="text"
                   placeholder="Search projects..."
@@ -168,7 +168,7 @@ function Projects() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors shadow-sm">
-                    <Icon name="filter_list" className="text-[18px]" />
+                    <Icon name="filter_list" className="text-[16px]" />
                     Filter
                   </button>
                 </DropdownMenuTrigger>
@@ -186,7 +186,7 @@ function Projects() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant/40 rounded-lg text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors shadow-sm">
-                    <Icon name="sort" className="text-[18px]" />
+                    <Icon name="sort" className="text-[16px]" />
                     Sort
                   </button>
                 </DropdownMenuTrigger>
@@ -206,14 +206,14 @@ function Projects() {
                   className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${viewMode === "grid" ? "bg-surface-container-high text-on-surface" : "text-on-surface-variant hover:text-on-surface"}`}
                   title="Grid View"
                 >
-                  <Icon name="grid_view" className="text-[18px]" />
+                  <Icon name="grid_view" className="text-[16px]" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
                   className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${viewMode === "list" ? "bg-surface-container-high text-on-surface" : "text-on-surface-variant hover:text-on-surface"}`}
                   title="List View"
                 >
-                  <Icon name="view_list" className="text-[18px]" />
+                  <Icon name="view_list" className="text-[16px]" />
                 </button>
               </div>
 
@@ -221,7 +221,7 @@ function Projects() {
                 to="/projects/new"
                 className="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm ml-auto sm:ml-0"
               >
-                <Icon name="add" className="text-[18px]" />
+                <Icon name="add" className="text-[16px]" />
                 New Project
               </Link>
             </div>
@@ -240,21 +240,21 @@ function Projects() {
             <div className="flex flex-col sm:flex-row gap-4">
                <Link
                   to="/projects/new"
-                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                  className="bg-primary text-on-primary px-4 py-2 rounded-lg font-medium text-ui hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Icon name="auto_awesome" className="text-[18px]" /> Create with AI
+                  <Icon name="auto_awesome" className="text-[16px]" /> Create with AI
                 </Link>
                 <Link
                   to="/templates"
-                  className="bg-surface-container-lowest border border-outline-variant/40 text-on-surface px-6 py-3 rounded-xl font-medium hover:bg-surface-container-low transition-colors shadow-sm flex items-center justify-center gap-2"
+                  className="bg-surface-container-lowest border border-outline-variant/40 text-on-surface px-4 py-2 rounded-lg font-medium text-ui hover:bg-surface-container-low transition-colors shadow-sm flex items-center justify-center gap-2"
                 >
-                  <Icon name="auto_awesome_motion" className="text-[18px]" /> Start from template
+                  <Icon name="auto_awesome_motion" className="text-[16px]" /> Start from template
                 </Link>
             </div>
           </div>
         ) : filteredAndSortedProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-4 text-center border border-dashed border-outline-variant/50 rounded-2xl bg-surface-container-lowest/50">
-            <Icon name="search_off" className="text-[48px] text-on-surface-variant mb-4" />
+            <Icon name="search_off" className="text-[32px] text-on-surface-variant mb-4" />
             <h3 className="text-xl font-medium text-on-surface mb-2">No projects found</h3>
             <p className="text-on-surface-variant max-w-md">
               Try adjusting your search or filters to find what you're looking for.
@@ -280,29 +280,29 @@ function Projects() {
                     {isAiGen && (
                       <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1 border border-outline-variant/20 shadow-sm">
                         <Icon name="auto_awesome" className="text-[12px] text-accent-violet" />
-                        <span className="text-[10px] font-semibold text-on-surface uppercase tracking-wider">AI Gen</span>
+                        <span className="text-xs font-semibold text-on-surface uppercase tracking-wider">AI Gen</span>
                       </div>
                     )}
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                           <button className="bg-surface/95 backdrop-blur-md p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:text-primary hover:shadow-sm transition-all">
-                            <Icon name="more_vert" className="text-[20px]" />
+                            <Icon name="more_vert" className="text-[16px]" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-level-2">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: "/workspace/$mindMapId", params: { mindMapId: project.mind_maps?.[0]?.id || "" } }); }}>
-                            <Icon name="open_in_new" className="mr-2 text-[18px]" /> Open
+                            <Icon name="open_in_new" className="mr-2 text-[16px]" /> Open
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}>
-                            <Icon name="edit" className="mr-2 text-[18px]" /> Rename
+                            <Icon name="edit" className="mr-2 text-[16px]" /> Rename
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             className="text-error focus:text-error focus:bg-error-container/30"
                             onClick={(e) => handleDeleteProject(project.id, e as any)}
                           >
-                            <Icon name="delete" className="mr-2 text-[18px]" /> Delete
+                            <Icon name="delete" className="mr-2 text-[16px]" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -402,22 +402,22 @@ function Projects() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                           <button className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors opacity-0 group-hover:opacity-100">
-                            <Icon name="more_vert" className="text-[20px]" />
+                            <Icon name="more_vert" className="text-[16px]" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-level-2">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: "/workspace/$mindMapId", params: { mindMapId: project.mind_maps?.[0]?.id || "" } }); }}>
-                            <Icon name="open_in_new" className="mr-2 text-[18px]" /> Open
+                            <Icon name="open_in_new" className="mr-2 text-[16px]" /> Open
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}>
-                            <Icon name="edit" className="mr-2 text-[18px]" /> Rename
+                            <Icon name="edit" className="mr-2 text-[16px]" /> Rename
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             className="text-error focus:text-error focus:bg-error-container/30"
                             onClick={(e) => handleDeleteProject(project.id, e as any)}
                           >
-                            <Icon name="delete" className="mr-2 text-[18px]" /> Delete
+                            <Icon name="delete" className="mr-2 text-[16px]" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

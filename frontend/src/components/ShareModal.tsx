@@ -7,11 +7,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Icon } from "@/components/Icon";
+import { shareMindMap } from "@/api/notifications";
 import { toast } from "sonner";
 
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mindMapId?: string;
   mindMapTitle: string;
   remoteUsers?: Record<string, { userId: string; userName: string; color: string }>;
 }
@@ -19,10 +21,13 @@ interface ShareModalProps {
 export function ShareModal({
   isOpen,
   onClose,
+  mindMapId,
   mindMapTitle,
   remoteUsers = {},
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
   
   // Hardcoded to edit since backend does not currently support granular permissions
   const accessLevel = "edit";
@@ -37,6 +42,22 @@ export function ShareModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !mindMapId) return;
+
+    try {
+      setIsInviting(true);
+      const res = await shareMindMap(mindMapId, inviteEmail.trim());
+      toast.success(res.message || `Shared with ${inviteEmail.trim()}`);
+      setInviteEmail("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to share mind map");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   const activeUserList = Object.values(remoteUsers);
 
   return (
@@ -44,7 +65,7 @@ export function ShareModal({
       <DialogContent className="w-[calc(100%-2rem)] max-w-[32rem] bg-surface border border-outline-variant/30 text-on-surface shadow-level-3 p-6 rounded-2xl">
         <DialogHeader className="mb-2">
           <div className="flex items-center gap-2 text-primary mb-1">
-            <Icon name="share" className="text-[24px]" />
+            <Icon name="share" className="text-[20px]" />
             <DialogTitle className="text-headline-sm font-bold text-on-surface">
               Share "{mindMapTitle}"
             </DialogTitle>
@@ -55,6 +76,45 @@ export function ShareModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Invite Collaborator Section */}
+          <section>
+            <h4 className="text-label-sm font-bold text-outline uppercase tracking-wider mb-2">
+              Invite Collaborators
+            </h4>
+            <form onSubmit={handleSendInvite} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="email"
+                  placeholder="colleague@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="w-full pl-3 pr-8 py-2.5 bg-surface-container-low border border-outline-variant/50 rounded-xl text-body-sm text-on-surface focus:outline-none focus:border-primary/50 transition-colors"
+                />
+                <Icon
+                  name="mail"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[16px]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isInviting || !inviteEmail.trim() || !mindMapId}
+                className="shrink-0 h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-primary text-on-primary hover:bg-primary/90 transition-all disabled:opacity-50 shadow-sm"
+              >
+                {isInviting ? (
+                  <>
+                    <Icon name="sync" className="animate-spin text-[14px]" />
+                    <span>Inviting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="person_add" className="text-[14px]" />
+                    <span>Invite</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </section>
+
           {/* Share Link Section */}
           <section>
             <h4 className="text-label-sm font-bold text-outline uppercase tracking-wider mb-3">
@@ -74,14 +134,15 @@ export function ShareModal({
                 />
               </div>
               <button
+                type="button"
                 onClick={handleCopy}
-                className={`shrink-0 px-4 py-2.5 rounded-xl text-label-sm font-semibold flex items-center gap-2 transition-all shadow-sm ${
+                className={`shrink-0 h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
                   copied
                     ? "bg-primary text-on-primary"
                     : "bg-primary-container text-on-primary-container hover:bg-primary-container/80"
                 }`}
               >
-                <Icon name={copied ? "check" : "content_copy"} className="text-[18px]" />
+                <Icon name={copied ? "check" : "content_copy"} className="text-[14px]" />
                 <span>{copied ? "Copied" : "Copy link"}</span>
               </button>
             </div>
@@ -94,8 +155,8 @@ export function ShareModal({
             </h4>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Icon name="edit" className="text-[20px]" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Icon name="edit" className="text-[16px]" />
                 </div>
                 <div>
                   <p className="text-label-md font-bold text-on-surface">Anyone with the link</p>
@@ -113,7 +174,7 @@ export function ShareModal({
                 <option value="view">Viewer</option>
               </select>
             </div>
-            <p className="text-label-xs text-outline mt-2 px-1">
+            <p className="text-[11px] leading-relaxed text-outline/80 mt-1.5 px-0.5">
               * Granular permissions (Viewer/Editor) are currently unsupported by the backend. All shared links provide Edit access.
             </p>
           </section>
@@ -126,14 +187,14 @@ export function ShareModal({
             <div className="space-y-1 border border-outline-variant/20 rounded-xl overflow-hidden bg-surface-container-lowest">
               <div className="flex items-center justify-between p-3 hover:bg-surface-container-low transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-label-sm font-bold">
+                  <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold shrink-0">
                     You
                   </div>
                   <div>
                     <p className="text-label-md font-medium text-on-surface">You (Owner)</p>
                   </div>
                 </div>
-                <span className="text-label-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">
+                <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   Active
                 </span>
               </div>
@@ -145,14 +206,14 @@ export function ShareModal({
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-label-sm font-bold text-white shadow-sm"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0"
                       style={{ backgroundColor: user.color || "#0284c7" }}
                     >
                       {user.userName?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <p className="text-label-md font-medium text-on-surface">{user.userName}</p>
                   </div>
-                  <span className="text-label-xs font-bold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-md flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
                   </span>

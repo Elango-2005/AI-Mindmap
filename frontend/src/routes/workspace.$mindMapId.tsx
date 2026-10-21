@@ -46,6 +46,7 @@ import { OutlinePanel } from "@/components/OutlinePanel";
 import { ResizablePanel } from "@/components/ResizablePanel";
 import { LeftToolPanel, type LeftToolView } from "@/components/LeftToolPanel";
 import { ShareModal } from "@/components/ShareModal";
+import { NotificationBell } from "@/components/NotificationBell";
 import { MindMeisterModal } from "@/components/MindMeisterModal";
 import { CoggleModal } from "@/components/CoggleModal";
 import { exportMindMapToPdf } from "@/lib/exportPdf";
@@ -1402,10 +1403,10 @@ function Workspace() {
           <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
 
           <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded disabled:opacity-30">
-            <Icon name="undo" className="text-[18px]" />
+            <Icon name="undo" className="text-[16px]" />
           </button>
           <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded disabled:opacity-30">
-            <Icon name="redo" className="text-[18px]" />
+            <Icon name="redo" className="text-[16px]" />
           </button>
           
           <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-label-sm font-semibold rounded-lg transition-colors">
@@ -1471,6 +1472,9 @@ function Workspace() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
+          <NotificationBell />
         </div>
       </header>
 
@@ -1485,14 +1489,14 @@ function Workspace() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleSelectLeftTool("outline")}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     !isLeftPanelCollapsed && activeLeftView === "outline"
                       ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Outline & Structure (Ctrl+B)"
                 >
-                  <Icon name="list_alt" className="text-[19px]" />
+                  <Icon name="list_alt" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1505,14 +1509,14 @@ function Workspace() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleSelectLeftTool("add_node")}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     !isLeftPanelCollapsed && activeLeftView === "add_node"
                       ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Add Nodes & Topics"
                 >
-                  <Icon name="add_box" className="text-[19px]" />
+                  <Icon name="add_box" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1525,14 +1529,14 @@ function Workspace() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleSelectLeftTool("layout")}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     !isLeftPanelCollapsed && activeLeftView === "layout"
                       ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Layout & Alignment"
                 >
-                  <Icon name="account_tree" className="text-[19px]" />
+                  <Icon name="account_tree" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1545,14 +1549,14 @@ function Workspace() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleSelectLeftTool("view")}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     !isLeftPanelCollapsed && activeLeftView === "view"
                       ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Canvas View & Themes"
                 >
-                  <Icon name="visibility" className="text-[19px]" />
+                  <Icon name="visibility" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1565,10 +1569,10 @@ function Workspace() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setIsKnowledgeModalOpen(true)}
-                  className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   aria-label="Knowledge Base (RAG)"
                 >
-                  <Icon name="menu_book" className="text-[19px]" />
+                  <Icon name="menu_book" className="text-[16px]" />
                   {projectDocuments.length > 0 && (
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
                   )}
@@ -1589,14 +1593,14 @@ function Workspace() {
                     setActiveTool("select");
                     setConnectSourceNodeId(null);
                   }}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     activeTool === "select"
                       ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Select mode"
                 >
-                  <Icon name="near_me" className="text-[19px]" />
+                  <Icon name="near_me" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1623,14 +1627,14 @@ function Workspace() {
                       }
                     }
                   }}
-                  className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                     activeTool === "connect"
                       ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
                       : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   }`}
                   aria-label="Connect Nodes"
                 >
-                  <Icon name="cable" className="text-[19px]" />
+                  <Icon name="cable" className="text-[16px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -1784,7 +1788,7 @@ function Workspace() {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors text-label-sm font-semibold"
                     title="Exit Focus Mode"
                   >
-                    <Icon name="center_focus_weak" className="text-[18px]" /> Exit Focus
+                    <Icon name="center_focus_weak" className="text-[16px]" /> Exit Focus
                   </button>
                   <div className="w-px h-6 bg-outline-variant/50 mx-1" />
                 </>
@@ -1796,7 +1800,7 @@ function Workspace() {
                 }`}
                 title="Toggle MiniMap"
               >
-                <Icon name="map" className="text-[20px]" />
+                <Icon name="map" className="text-[16px]" />
               </button>
               <div className="w-px h-6 bg-outline-variant/50 mx-1" />
               <button
@@ -1804,14 +1808,14 @@ function Workspace() {
                 className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
                 title="Fit View"
               >
-                <Icon name="crop_free" className="text-[20px]" />
+                <Icon name="crop_free" className="text-[16px]" />
               </button>
               <button
                 onClick={() => rfInstance?.zoomOut({ duration: 250 })}
                 className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
                 title="Zoom Out"
               >
-                <Icon name="remove" className="text-[20px]" />
+                <Icon name="remove" className="text-[16px]" />
               </button>
               <button
                 onClick={() => rfInstance?.zoomTo(1, { duration: 250 })}
@@ -1825,7 +1829,7 @@ function Workspace() {
                 className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
                 title="Zoom In"
               >
-                <Icon name="add" className="text-[20px]" />
+                <Icon name="add" className="text-[16px]" />
               </button>
             </div>
           )}
@@ -1838,7 +1842,7 @@ function Workspace() {
                 title="Open AI Assistant (Ctrl+Shift+A)"
                 aria-label="Open AI Assistant"
               >
-                <Icon name="auto_awesome" className="text-[18px] text-accent-violet group-hover:rotate-12 transition-transform" />
+                <Icon name="auto_awesome" className="text-[16px] text-accent-violet group-hover:rotate-12 transition-transform" />
                 <span className="text-label-sm font-medium">AI Assistant</span>
               </button>
             </div>
@@ -1878,7 +1882,7 @@ function Workspace() {
                         className="text-on-surface-variant hover:text-on-surface p-0.5 rounded hover:bg-surface-container flex items-center transition-colors"
                         title="Switch panel view"
                       >
-                        <Icon name="expand_more" className="text-[15px]" />
+                        <Icon name="expand_more" className="text-[14px]" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
@@ -1897,13 +1901,13 @@ function Workspace() {
 
                 {/* Subtle Contextual Line & RAG Badge */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-on-surface-variant truncate">
+                  <span className="text-xs text-on-surface-variant truncate">
                     Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
                   </span>
                   {projectDocuments.length > 0 && (
                     <button
                       onClick={() => setIsKnowledgeModalOpen(true)}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-1.5 py-0.5 rounded-full hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-1.5 py-0.5 rounded-full hover:bg-emerald-500/20 transition-colors cursor-pointer"
                       title={`${projectDocuments.length} document(s) indexed. Click to manage.`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1955,7 +1959,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="account_tree" className="text-[17px]" />
+                                  <Icon name="account_tree" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Expand node</span>
                               </button>
@@ -1965,7 +1969,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="description" className="text-[17px]" />
+                                  <Icon name="description" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Explain concept</span>
                               </button>
@@ -1975,7 +1979,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="edit_note" className="text-[17px]" />
+                                  <Icon name="edit_note" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Rewrite / Simplify</span>
                               </button>
@@ -1985,7 +1989,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="hub" className="text-[17px]" />
+                                  <Icon name="hub" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Find connections</span>
                               </button>
@@ -1998,7 +2002,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="schema" className="text-[17px]" />
+                                  <Icon name="schema" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Improve map structure</span>
                               </button>
@@ -2008,7 +2012,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="description" className="text-[17px]" />
+                                  <Icon name="description" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Summarize map</span>
                               </button>
@@ -2018,7 +2022,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="lightbulb" className="text-[17px]" />
+                                  <Icon name="lightbulb" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Find gaps & suggestions</span>
                               </button>
@@ -2028,7 +2032,7 @@ function Workspace() {
                                 className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                                  <Icon name="bar_chart" className="text-[17px]" />
+                                  <Icon name="bar_chart" className="text-[16px]" />
                                 </div>
                                 <span className="text-label-sm font-semibold text-on-surface leading-snug">Analyze map</span>
                               </button>
@@ -2040,7 +2044,7 @@ function Workspace() {
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="text-[11px] text-on-surface-variant hover:text-on-surface flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-surface-container transition-colors font-medium">
+                              <button className="text-xs text-on-surface-variant hover:text-on-surface flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-surface-container transition-colors font-medium">
                                 <span>More actions</span>
                                 <Icon name="expand_more" className="text-[14px]" />
                               </button>
@@ -2062,7 +2066,7 @@ function Workspace() {
                         {/* 3. Divider */}
                         <div className="flex items-center gap-3 my-0.5">
                           <div className="flex-1 h-px bg-outline-variant/30" />
-                          <span className="text-[10px] font-medium text-outline uppercase tracking-wider">or</span>
+                          <span className="text-xs font-medium text-outline uppercase tracking-wider">or</span>
                           <div className="flex-1 h-px bg-outline-variant/30" />
                         </div>
                       </div>
@@ -2072,8 +2076,8 @@ function Workspace() {
                         {chatMessages.map((msg) => (
                           <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} gap-1.5`}>
                             {msg.role === "ai" && (
-                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary pl-1">
-                                <Icon name="auto_awesome" className="text-[13px]" />
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary pl-1">
+                                <Icon name="auto_awesome" className="text-[14px]" />
                                 <span>MindVault AI</span>
                               </div>
                             )}
@@ -2093,7 +2097,7 @@ function Workspace() {
                               <details className="w-full max-w-[92%] bg-surface border border-primary/20 rounded-xl p-2 text-label-xs group">
                                 <summary className="cursor-pointer font-medium text-primary flex items-center justify-between list-none">
                                   <span className="flex items-center gap-1.5">
-                                    <Icon name="verified" className="text-[13px] text-primary" />
+                                    <Icon name="verified" className="text-[14px] text-primary" />
                                     Grounded in {msg.sources.length} document source{msg.sources.length > 1 ? 's' : ''}
                                   </span>
                                   <Icon name="expand_more" className="text-[14px] transition-transform group-open:rotate-180 text-outline" />
@@ -2103,9 +2107,9 @@ function Workspace() {
                                     <div key={idx} className="bg-surface-container-low p-2 rounded-lg text-body-xs font-mono text-on-surface-variant">
                                       <div className="flex items-center justify-between font-semibold text-primary mb-1">
                                         <span className="truncate max-w-[180px]">{s.filename} {s.page_number ? `(p. ${s.page_number})` : ''}</span>
-                                        <span className="text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">{(s.score * 100).toFixed(0)}% match</span>
+                                        <span className="text-xs bg-primary/10 px-1.5 py-0.5 rounded">{(s.score * 100).toFixed(0)}% match</span>
                                       </div>
-                                      <p className="line-clamp-2 text-[11px] font-sans text-on-surface">{s.snippet}</p>
+                                      <p className="line-clamp-2 text-xs font-sans text-on-surface">{s.snippet}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -2133,7 +2137,7 @@ function Workspace() {
                                     onClick={() => handleUndoAIChat(msg.id, msg.mapChanges!.snapshotId!)}
                                     className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded font-bold transition-colors flex items-center gap-1"
                                   >
-                                    <Icon name="undo" className="text-[13px]" /> Undo
+                                    <Icon name="undo" className="text-[14px]" /> Undo
                                   </button>
                                 )}
                               </div>
@@ -2150,7 +2154,7 @@ function Workspace() {
                                 onClick={() => handleSendChat(msg.failedPrompt)}
                                 className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded text-label-xs font-semibold flex items-center gap-1 border border-primary/20 transition-colors ml-1"
                               >
-                                <Icon name="refresh" className="text-[13px]" /> Try again
+                                <Icon name="refresh" className="text-[14px]" /> Try again
                               </button>
                             )}
                           </div>
@@ -2159,8 +2163,8 @@ function Workspace() {
                         {/* Real Loading Indicator */}
                         {isChatting && (
                           <div className="flex flex-col items-start gap-1.5 animate-in fade-in duration-200">
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary pl-1">
-                              <Icon name="auto_awesome" className="text-[13px]" />
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary pl-1">
+                              <Icon name="auto_awesome" className="text-[14px]" />
                               <span>MindVault AI</span>
                             </div>
                             <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-xs bg-surface-container-low text-on-surface-variant border border-outline-variant/30 text-body-sm flex items-center gap-2">
@@ -2182,19 +2186,19 @@ function Workspace() {
                         <>
                           <button
                             onClick={() => handleSendChat(`Expand node "${selectedNode.data.label}" with child concepts`)}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Expand node
                           </button>
                           <button
                             onClick={() => handleSendChat(`Explain "${selectedNode.data.label}" clearly`)}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Explain
                           </button>
                           <button
                             onClick={() => handleSendChat(`Rewrite and simplify "${selectedNode.data.label}"`)}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Rewrite
                           </button>
@@ -2203,19 +2207,19 @@ function Workspace() {
                         <>
                           <button
                             onClick={() => handleSendChat("Improve map structure")}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Improve structure
                           </button>
                           <button
                             onClick={() => handleSendChat("Summarize entire map")}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Summarize map
                           </button>
                           <button
                             onClick={() => handleSendChat("Identify gaps and missing concepts")}
-                            className="text-[11px] font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
+                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
                           >
                             Find gaps
                           </button>
@@ -2224,8 +2228,8 @@ function Workspace() {
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="text-[11px] font-medium text-on-surface-variant hover:text-on-surface px-2 py-1 rounded-full hover:bg-surface-container flex items-center gap-0.5 transition-colors">
-                            More <Icon name="expand_more" className="text-[12px]" />
+                          <button className="text-xs font-medium text-on-surface-variant hover:text-on-surface px-2 py-1 rounded-full hover:bg-surface-container flex items-center gap-0.5 transition-colors">
+                            More <Icon name="expand_more" className="text-[14px]" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
@@ -2252,8 +2256,8 @@ function Workspace() {
                       
                       {/* Compact Context Target */}
                       <div className="flex items-center justify-between mb-1.5 px-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-on-surface-variant">
-                          <Icon name={selectedNode ? "adjust" : "public"} className="text-[13px] text-primary" />
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
+                          <Icon name={selectedNode ? "adjust" : "public"} className="text-[14px] text-primary" />
                           <span className="truncate max-w-[220px]">
                             {selectedNode ? (selectedNode.data.label as string) : "Entire Map"}
                           </span>
@@ -2261,10 +2265,10 @@ function Workspace() {
                         {selectedNode && (
                           <button
                             onClick={() => setSelectedNodeId(null)}
-                            className="text-[10px] text-outline hover:text-on-surface px-1.5 py-0.5 rounded hover:bg-surface-container flex items-center gap-0.5 transition-colors"
+                            className="text-xs text-outline hover:text-on-surface px-1.5 py-0.5 rounded hover:bg-surface-container flex items-center gap-0.5 transition-colors"
                             title="Clear selection to target entire map"
                           >
-                            Clear <Icon name="close" className="text-[12px]" />
+                            Clear <Icon name="close" className="text-[14px]" />
                           </button>
                         )}
                       </div>
@@ -2309,9 +2313,9 @@ function Workspace() {
                                 : "Attach Knowledge Base Documents (RAG)"
                             }
                           >
-                            <Icon name="attach_file" className="text-[18px]" />
+                            <Icon name="attach_file" className="text-[16px]" />
                             {projectDocuments.length > 0 && (
-                              <span className="text-[10px] font-bold px-1">{projectDocuments.length}</span>
+                              <span className="text-xs font-bold px-1">{projectDocuments.length}</span>
                             )}
                           </button>
                         </div>
@@ -2322,7 +2326,7 @@ function Workspace() {
                           aria-label="Send message"
                           title="Send message (Enter)"
                         >
-                          <Icon name="arrow_upward" className="text-[18px]" />
+                          <Icon name="arrow_upward" className="text-[16px]" />
                         </button>
                       </div>
 
@@ -2335,7 +2339,7 @@ function Workspace() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-label-md font-bold text-on-surface">Version History</h3>
                     <button onClick={loadSnapshots} className="p-1 text-on-surface-variant hover:bg-surface-container rounded-lg" title="Refresh history">
-                      <Icon name="refresh" className="text-[18px]" />
+                      <Icon name="refresh" className="text-[16px]" />
                     </button>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-2 pb-4">
@@ -2359,11 +2363,11 @@ function Workspace() {
                                       <p className="text-label-sm font-bold text-on-surface line-clamp-2">
                                          {snap.name || "Manual save"}
                                       </p>
-                                      <span className="text-[10px] font-medium text-outline shrink-0 mt-0.5">
+                                      <span className="text-xs font-medium text-outline shrink-0 mt-0.5">
                                          {new Date(snap.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                    </div>
-                                   <p className="text-[11px] text-on-surface-variant mb-3">
+                                   <p className="text-xs text-on-surface-variant mb-3">
                                       {new Date(snap.created_at).toLocaleDateString()}
                                    </p>
                                    <button onClick={() => handleRestoreSnapshot(snap.id)} className="w-full py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-label-xs font-bold rounded transition-colors flex items-center justify-center gap-1.5">
@@ -2403,19 +2407,19 @@ function Workspace() {
                          <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">AI Node Actions</label>
                          <div className="grid grid-cols-2 gap-2 mb-4">
                             <button onClick={() => handleExpandNode(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
-                               <Icon name="account_tree" className="text-primary text-[20px]" />
+                               <Icon name="account_tree" className="text-primary text-[16px]" />
                                <span className="font-semibold text-on-surface text-label-sm mt-1">Expand</span>
                             </button>
                             <button onClick={() => handleSummarizeNode(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
-                               <Icon name="short_text" className="text-primary text-[20px]" />
+                               <Icon name="short_text" className="text-primary text-[16px]" />
                                <span className="font-semibold text-on-surface text-label-sm mt-1">Summarize</span>
                             </button>
                             <button onClick={() => handleFindConnections(selectedNode.id)} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
-                               <Icon name="hub" className="text-primary text-[20px]" />
+                               <Icon name="hub" className="text-primary text-[16px]" />
                                <span className="font-semibold text-on-surface text-label-sm mt-1">Connections</span>
                             </button>
                             <button onClick={() => setConfirmAction({ type: 'regenerate', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
-                               <Icon name="auto_awesome" className="text-primary text-[20px]" />
+                               <Icon name="auto_awesome" className="text-primary text-[16px]" />
                                <span className="font-semibold text-on-surface text-label-sm mt-1">Regenerate</span>
                             </button>
                             <button onClick={() => {
@@ -2427,21 +2431,21 @@ function Workspace() {
                                  }
                                }
                             }} className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors">
-                               <Icon name="center_focus_strong" className="text-primary text-[20px]" />
+                               <Icon name="center_focus_strong" className="text-primary text-[16px]" />
                                <span className="font-semibold text-on-surface text-label-sm mt-1">Focus Branch</span>
                             </button>
                          </div>
                          <div className="h-px bg-outline-variant/30 mb-4" />
                          <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">Metadata (Coming Soon)</label>
                          <div className="flex gap-2 opacity-50 pointer-events-none mb-4">
-                           <span className="px-2 py-1 bg-surface-container rounded text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="sell" className="text-[12px]"/> Tags</span>
-                           <span className="px-2 py-1 bg-surface-container rounded text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="link" className="text-[12px]"/> Source</span>
+                           <span className="px-2 py-1 bg-surface-container rounded text-xs uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="sell" className="text-[12px]"/> Tags</span>
+                           <span className="px-2 py-1 bg-surface-container rounded text-xs uppercase font-bold text-on-surface-variant flex items-center gap-1"><Icon name="link" className="text-[12px]"/> Source</span>
                          </div>
                          <div className="h-px bg-outline-variant/30 mb-4" />
                          <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-3 block">Danger Zone</label>
                          <button onClick={() => setConfirmAction({ type: 'delete', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })} className="flex items-center gap-3 w-full p-2 hover:bg-error-container/30 rounded-lg text-left text-body-sm text-error transition-colors">
                             <div className="w-8 h-8 rounded bg-error/10 flex items-center justify-center text-error"><Icon name="delete" /></div>
-                            <div><div className="font-semibold">Delete Node</div><div className="opacity-70 text-[11px]">Remove node & children</div></div>
+                            <div><div className="font-semibold">Delete Node</div><div className="opacity-70 text-xs">Remove node & children</div></div>
                          </button>
                       </div>
                     </>
@@ -2453,6 +2457,7 @@ function Workspace() {
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+        mindMapId={mindMapId}
         mindMapTitle={mindMapTitle}
         remoteUsers={remoteUsers}
       />
@@ -2506,7 +2511,7 @@ function Workspace() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
           <div className="bg-surface border border-outline-variant/30 rounded-2xl shadow-level-3 w-full max-w-[28rem] p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4 text-error">
-              <Icon name="warning" className="text-[28px]" />
+              <Icon name="warning" className="text-[24px]" />
               <h2 className="text-headline-sm font-bold text-on-surface">
                 {confirmAction.type === 'delete' ? 'Delete Branch?' : 'Regenerate Branch?'}
               </h2>

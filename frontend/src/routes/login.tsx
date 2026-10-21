@@ -137,7 +137,7 @@ function LoginPage() {
 
             <Icon
               name={isSubmitting ? "progress_activity" : "login"}
-              className="text-[18px]"
+              className="text-[16px]"
             />
           </button>
         </form>
@@ -163,7 +163,7 @@ function LoginPage() {
               >
                 <Icon
                   name={provider === "Google" ? "public" : "code"}
-                  className="text-[18px] opacity-70"
+                  className="text-[16px] opacity-70"
                 />
                 {provider}
               </button>

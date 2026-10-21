@@ -191,7 +191,7 @@ export function MindMeisterModal({
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <Icon name="account_circle" className="text-[18px]" />
+            <Icon name="account_circle" className="text-[16px]" />
             Account Status
           </button>
           <button
@@ -206,7 +206,7 @@ export function MindMeisterModal({
                 : "border-transparent text-on-surface-variant hover:text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
             }`}
           >
-            <Icon name="download" className="text-[18px]" />
+            <Icon name="download" className="text-[16px]" />
             Import from Cloud
           </button>
           <button
@@ -218,7 +218,7 @@ export function MindMeisterModal({
                 : "border-transparent text-on-surface-variant hover:text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
             }`}
           >
-            <Icon name="upload" className="text-[18px]" />
+            <Icon name="upload" className="text-[16px]" />
             Export to Cloud
           </button>
         </div>
@@ -235,9 +235,9 @@ export function MindMeisterModal({
                 </div>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
                   MindMeister direct cloud integration requires OAuth application credentials in your environment.
-                  Set the following in <code className="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[11px]">backend/.env</code>:
+                  Set the following in <code className="px-1.5 py-0.5 rounded bg-surface-container font-mono text-xs">backend/.env</code>:
                 </p>
-                <div className="bg-surface-container-high/60 p-2.5 rounded-lg font-mono text-[11px] text-on-surface-variant space-y-0.5 overflow-x-auto select-all">
+                <div className="bg-surface-container-high/60 p-2.5 rounded-lg font-mono text-xs text-on-surface-variant space-y-0.5 overflow-x-auto select-all">
                   <div>MINDMEISTER_CLIENT_ID=&lt;your_client_id&gt;</div>
                   <div>MINDMEISTER_CLIENT_SECRET=&lt;your_client_secret&gt;</div>
                   <div>MINDMEISTER_REDIRECT_URI=http://127.0.0.1:8000/api/v1/integrations/mindmeister/callback</div>
@@ -258,7 +258,7 @@ export function MindMeisterModal({
                       : "bg-surface-container-high text-outline"
                   }`}
                 >
-                  <Icon name={status?.connected ? "check_circle" : "link_off"} className="text-[22px]" />
+                  <Icon name={status?.connected ? "check_circle" : "link_off"} className="text-[20px]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export function MindMeisterModal({
                       {status?.connected ? "MindMeister Connected" : "MindMeister Disconnected"}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                         status?.connected
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : "bg-outline-variant/30 text-outline"
@@ -321,7 +321,7 @@ export function MindMeisterModal({
                   className="p-3.5 rounded-xl border border-outline-variant/30 bg-surface hover:bg-surface-container transition-all text-left flex items-start gap-3 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Icon name="download" className="text-[18px]" />
+                    <Icon name="download" className="text-[16px]" />
                   </div>
                   <div>
                     <div className="font-semibold text-label-md text-on-surface">Import a Map</div>
@@ -334,7 +334,7 @@ export function MindMeisterModal({
                   className="p-3.5 rounded-xl border border-outline-variant/30 bg-surface hover:bg-surface-container transition-all text-left flex items-start gap-3 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Icon name="upload" className="text-[18px]" />
+                    <Icon name="upload" className="text-[16px]" />
                   </div>
                   <div>
                     <div className="font-semibold text-label-md text-on-surface">Export This Map</div>
@@ -365,7 +365,7 @@ export function MindMeisterModal({
 
             {loadingMaps ? (
               <div className="py-12 text-center text-outline text-body-sm flex flex-col items-center gap-2">
-                <Icon name="progress_activity" className="text-[28px] animate-spin text-primary" />
+                <Icon name="progress_activity" className="text-[24px] animate-spin text-primary" />
                 Loading your maps from MindMeister...
               </div>
             ) : maps.length === 0 ? (
@@ -429,7 +429,7 @@ export function MindMeisterModal({
             <div className="p-4 rounded-xl bg-surface-container border border-outline-variant/30 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-                  <Icon name="cloud_upload" className="text-[22px]" />
+                  <Icon name="cloud_upload" className="text-[20px]" />
                 </div>
                 <div>
                   <h4 className="font-bold text-body-md text-on-surface">Export to MindMeister</h4>
@@ -447,12 +447,12 @@ export function MindMeisterModal({
                 >
                   {exporting ? (
                     <>
-                      <Icon name="progress_activity" className="text-[18px] animate-spin" />
+                      <Icon name="progress_activity" className="text-[16px] animate-spin" />
                       Uploading map to MindMeister...
                     </>
                   ) : (
                     <>
-                      <Icon name="cloud_upload" className="text-[18px]" />
+                      <Icon name="cloud_upload" className="text-[16px]" />
                       Export Current Map Now
                     </>
                   )}

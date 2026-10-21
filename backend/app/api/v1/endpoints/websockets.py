@@ -154,3 +154,31 @@ async def websocket_endpoint(websocket: WebSocket, mind_map_id: UUID, token: str
         manager.disconnect(websocket, mind_map_id)
     finally:
         db.close()
+
+
+@router.websocket("/notifications")
+async def notifications_websocket_endpoint(websocket: WebSocket, token: str = None):
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    user = await get_user_from_token(token)
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect_user(websocket, user.id)
+    try:
+        await websocket.send_json({
+            "type": "connected",
+            "user_id": str(user.id),
+        })
+
+        while True:
+            data = await websocket.receive_json()
+            if data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        manager.disconnect_user(websocket, user.id)
+    except Exception:
+        manager.disconnect_user(websocket, user.id)

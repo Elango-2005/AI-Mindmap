@@ -122,8 +122,8 @@ function TemplatesPage() {
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
           
           <header className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold text-on-surface tracking-tight">Start faster.</h1>
-            <p className="text-on-surface-variant text-body-lg">
+            <h1 className="text-2xl font-semibold text-on-surface tracking-tight">Start faster.</h1>
+            <p className="text-on-surface-variant text-ui">
               Choose a template to jumpstart your knowledge map.
             </p>
           </header>
@@ -160,7 +160,7 @@ function TemplatesPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-surface-container text-on-surface-variant/60 gap-1.5 p-4 text-center">
-                      <Icon name="auto_awesome" className="text-[28px] text-primary/40" />
+                      <Icon name="auto_awesome" className="text-[24px] text-primary/40" />
                       <span className="text-label-xs font-medium text-outline">{template.name}</span>
                     </div>
                   )}
@@ -175,7 +175,7 @@ function TemplatesPage() {
                     onClick={() => handleUseTemplate(template.prompt)}
                     className="mt-4 w-full py-2 bg-surface-container-high hover:bg-primary hover:text-on-primary text-on-surface font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    Use template <Icon name="arrow_forward" className="text-[18px]" />
+                    Use template <Icon name="arrow_forward" className="text-[16px]" />
                   </button>
                 </div>
               </div>

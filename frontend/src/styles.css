@@ -6,9 +6,41 @@
 
 /*
  * MindVault AI design system.
- * Material-inspired indigo palette, Inter typography, 8pt spacing scale.
+ * Material-inspired indigo palette, Inter typography, 4px base spacing scale.
  * All colors are semantic tokens — never hardcode hex values in components.
  */
+
+:root {
+  /* Global Typography System Tokens */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-ui: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 28px;
+  --font-size-display: 32px;
+
+  /* Line Heights */
+  --line-height-xs: 16px;
+  --line-height-sm: 18px;
+  --line-height-ui: 20px;
+  --line-height-md: 24px;
+  --line-height-lg: 24px;
+  --line-height-xl: 24px;
+  --line-height-2xl: 32px;
+  --line-height-3xl: 36px;
+  --line-height-display: 40px;
+
+  /* Global Icon Size Tokens */
+  --icon-size-xs: 14px;
+  --icon-size-sm: 16px; /* DEFAULT UI ICON SIZE */
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --icon-size-xl: 32px;
+}
+
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -57,35 +89,105 @@
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
 
-  /* Typography */
-  --text-display: 48px;
-  --text-display--line-height: 1.1;
+  /* Standardized Typography Scale */
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+
+  --text-sm: 13px;
+  --text-sm--line-height: 18px;
+
+  --text-ui: 14px;
+  --text-ui--line-height: 20px;
+
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+
+  --text-xl: 20px;
+  --text-xl--line-height: 24px;
+
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+
+  --text-3xl: 28px;
+  --text-3xl--line-height: 36px;
+
+  --text-4xl: 32px;
+  --text-4xl--line-height: 40px;
+
+  /* Semantic Typography Hierarchy */
+  --text-display: 32px;
+  --text-display--line-height: 40px;
   --text-display--letter-spacing: -0.02em;
   --text-display--font-weight: 700;
-  --text-headline-lg: 32px;
-  --text-headline-lg--line-height: 1.2;
-  --text-headline-lg--letter-spacing: -0.02em;
+
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--letter-spacing: -0.015em;
   --text-headline-lg--font-weight: 600;
+
   --text-headline-lg-mobile: 24px;
-  --text-headline-lg-mobile--line-height: 1.2;
+  --text-headline-lg-mobile--line-height: 32px;
   --text-headline-lg-mobile--font-weight: 600;
-  --text-headline-md: 20px;
-  --text-headline-md--line-height: 1.4;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
   --text-headline-md--font-weight: 600;
+
   --text-headline-sm: 18px;
-  --text-headline-sm--line-height: 1.4;
+  --text-headline-sm--line-height: 24px;
   --text-headline-sm--font-weight: 600;
-  --text-body-lg: 18px;
-  --text-body-lg--line-height: 1.6;
-  --text-body-md: 16px;
-  --text-body-md--line-height: 1.5;
+
+  --text-title-lg: 20px;
+  --text-title-lg--line-height: 24px;
+  --text-title-lg--font-weight: 600;
+
+  --text-title-md: 16px;
+  --text-title-md--line-height: 24px;
+  --text-title-md--font-weight: 600;
+
+  --text-title-sm: 14px;
+  --text-title-sm--line-height: 20px;
+  --text-title-sm--font-weight: 600;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--font-weight: 400;
+
+  --text-body-xs: 12px;
+  --text-body-xs--line-height: 16px;
+  --text-body-xs--font-weight: 400;
+
+  --text-label-lg: 14px;
+  --text-label-lg--line-height: 20px;
+  --text-label-lg--font-weight: 600;
+
   --text-label-md: 14px;
-  --text-label-md--line-height: 1.4;
+  --text-label-md--line-height: 20px;
   --text-label-md--font-weight: 500;
+
   --text-label-sm: 12px;
-  --text-label-sm--line-height: 1;
+  --text-label-sm--line-height: 16px;
   --text-label-sm--letter-spacing: 0.02em;
-  --text-label-sm--font-weight: 600;
+  --text-label-sm--font-weight: 500;
+
+  --text-label-xs: 12px;
+  --text-label-xs--line-height: 16px;
+  --text-label-xs--letter-spacing: 0.02em;
+  --text-label-xs--font-weight: 500;
 
   /* Palette */
   --color-background: #f9f9ff;
@@ -209,14 +311,20 @@
   font-family: "Material Symbols Outlined";
   font-weight: normal;
   font-style: normal;
+  font-size: var(--icon-size-sm, 16px);
   line-height: 1;
   letter-spacing: normal;
   text-transform: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
   -webkit-font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
 }

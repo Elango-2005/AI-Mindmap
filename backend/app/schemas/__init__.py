@@ -14,3 +14,12 @@ from .auth import (
 from .mind_map import MindMapCreate, MindMapUpdate, MindMapResponse
 from .node import NodeCreate, NodeUpdate, NodeResponse
 from .edge import EdgeCreate, EdgeUpdate, EdgeResponse
+
+from .notification import (
+    NotificationResponse,
+    NotificationListResponse,
+    NotificationPreferenceResponse,
+    NotificationPreferenceUpdate,
+    NotificationCategory,
+    NotificationType,
+)

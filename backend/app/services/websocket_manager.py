@@ -1,12 +1,16 @@
+import asyncio
 import json
 from uuid import UUID
 from typing import Dict, List, Any
 from fastapi import WebSocket
 
+
 class ConnectionManager:
     def __init__(self):
         # Maps mind_map_id to a list of (WebSocket, user_id, user_name)
         self.active_connections: Dict[UUID, List[Dict[str, Any]]] = {}
+        # Maps user_id to a list of WebSocket connections for personal notification delivery
+        self.user_connections: Dict[UUID, List[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, mind_map_id: UUID, user_id: UUID, user_name: str):
         await websocket.accept()
@@ -37,7 +41,6 @@ class ConnectionManager:
                 del self.active_connections[mind_map_id]
                 
             if user_info:
-                import asyncio
                 # Fire and forget the broadcast (since disconnect is synchronous)
                 try:
                     loop = asyncio.get_running_loop()
@@ -69,5 +72,32 @@ class ConnectionManager:
             {"user_id": c["user_id"], "user_name": c["user_name"]}
             for c in self.active_connections[mind_map_id]
         ]
+
+    # User-level Notification WebSocket Management
+    async def connect_user(self, websocket: WebSocket, user_id: UUID):
+        await websocket.accept()
+        if user_id not in self.user_connections:
+            self.user_connections[user_id] = []
+        self.user_connections[user_id].append(websocket)
+
+    def disconnect_user(self, websocket: WebSocket, user_id: UUID):
+        if user_id in self.user_connections:
+            self.user_connections[user_id] = [
+                ws for ws in self.user_connections[user_id] if ws != websocket
+            ]
+            if len(self.user_connections[user_id]) == 0:
+                del self.user_connections[user_id]
+
+    async def broadcast_to_user(self, user_id: UUID, message: dict):
+        if user_id in self.user_connections:
+            dead_sockets = []
+            for ws in list(self.user_connections[user_id]):
+                try:
+                    await ws.send_json(message)
+                except Exception:
+                    dead_sockets.append(ws)
+            for dead in dead_sockets:
+                self.disconnect_user(dead, user_id)
+
 
 manager = ConnectionManager()

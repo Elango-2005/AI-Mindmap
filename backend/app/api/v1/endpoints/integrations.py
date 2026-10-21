@@ -368,10 +368,44 @@ def export_to_mindmeister(
     """
     try:
         result = mindmeister_service.export_map(current_user, mind_map_id)
+        try:
+            from app.services.notification_service import NotificationService
+            from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+            from app.schemas.notification import NotificationType, NotificationCategory
+            notif_service = NotificationService(NotificationRepository(mindmeister_service.db), NotificationPreferenceRepository(mindmeister_service.db))
+            notif_service.create_notification(
+                user_id=current_user.id,
+                type=NotificationType.EXPORT_COMPLETED,
+                category=NotificationCategory.EXPORT,
+                title="MindMeister export completed",
+                message="Mind map exported to your MindMeister account successfully.",
+                entity_type="mind_map",
+                entity_id=mind_map_id,
+                mind_map_id=mind_map_id,
+            )
+        except Exception:
+            pass
         return result
     except MindMeisterAuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except (MindMeisterConfigError, MindMeisterAPIError, ValueError) as e:
+        try:
+            from app.services.notification_service import NotificationService
+            from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+            from app.schemas.notification import NotificationType, NotificationCategory
+            notif_service = NotificationService(NotificationRepository(mindmeister_service.db), NotificationPreferenceRepository(mindmeister_service.db))
+            notif_service.create_notification(
+                user_id=current_user.id,
+                type=NotificationType.EXPORT_FAILED,
+                category=NotificationCategory.EXPORT,
+                title="MindMeister export failed",
+                message=str(e),
+                entity_type="mind_map",
+                entity_id=mind_map_id,
+                mind_map_id=mind_map_id,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -602,10 +636,44 @@ def export_to_coggle(
     """
     try:
         result = coggle_service.export_diagram(current_user, mind_map_id)
+        try:
+            from app.services.notification_service import NotificationService
+            from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+            from app.schemas.notification import NotificationType, NotificationCategory
+            notif_service = NotificationService(NotificationRepository(coggle_service.db), NotificationPreferenceRepository(coggle_service.db))
+            notif_service.create_notification(
+                user_id=current_user.id,
+                type=NotificationType.EXPORT_COMPLETED,
+                category=NotificationCategory.EXPORT,
+                title="Coggle export completed",
+                message="Mind map exported to your Coggle account successfully.",
+                entity_type="mind_map",
+                entity_id=mind_map_id,
+                mind_map_id=mind_map_id,
+            )
+        except Exception:
+            pass
         return result
     except CoggleAuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except (CoggleConfigError, CoggleAPIError, ValueError) as e:
+        try:
+            from app.services.notification_service import NotificationService
+            from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+            from app.schemas.notification import NotificationType, NotificationCategory
+            notif_service = NotificationService(NotificationRepository(coggle_service.db), NotificationPreferenceRepository(coggle_service.db))
+            notif_service.create_notification(
+                user_id=current_user.id,
+                type=NotificationType.EXPORT_FAILED,
+                category=NotificationCategory.EXPORT,
+                title="Coggle export failed",
+                message=str(e),
+                entity_type="mind_map",
+                entity_id=mind_map_id,
+                mind_map_id=mind_map_id,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

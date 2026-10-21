@@ -162,7 +162,7 @@ function Landing() {
                   <div key={i} className="w-3 h-3 rounded-full bg-outline-variant/50" />
                 ))}
               </div>
-              <div className="mx-auto bg-surface-container-lowest text-on-surface-variant text-[11px] px-xl py-1 rounded-lg border border-outline-variant/20 flex items-center gap-xs w-64 justify-center">
+              <div className="mx-auto bg-surface-container-lowest text-on-surface-variant text-xs px-xl py-1 rounded-lg border border-outline-variant/20 flex items-center gap-xs w-64 justify-center">
                 <Icon name="lock" className="text-[14px]" />
                 mindforge.ai/workspace
               </div>
@@ -203,7 +203,7 @@ function Landing() {
                 <div className="bg-surface-container-lowest border border-outline-variant/50 border-l-4 border-l-tertiary-container rounded-xl p-md shadow-sm w-48 relative">
                   <div className="absolute -top-2 -right-2 w-4 h-4 bg-error rounded-full border-2 border-surface-container-lowest shadow-sm" />
                   <div className="flex items-center gap-xs mb-xs">
-                    <Icon name="neurology" className="text-tertiary-container text-[18px]" />
+                    <Icon name="neurology" className="text-tertiary-container text-[16px]" />
                     <span className="text-label-sm font-bold text-on-surface">Core Strategy</span>
                   </div>
                   <p className="text-[12px] text-on-surface-variant leading-tight">
@@ -238,7 +238,7 @@ function Landing() {
                       <Icon name={node.icon} className={cn("text-[16px]", node.color)} />
                       <span className="text-label-sm text-on-surface">{node.title}</span>
                     </div>
-                    <p className="text-[11px] text-on-surface-variant">{node.body}</p>
+                    <p className="text-xs text-on-surface-variant">{node.body}</p>
                   </div>
                 </div>
               ))}
@@ -342,11 +342,11 @@ function Landing() {
                 <div className="relative w-32 h-24">
                   <div className="absolute top-0 left-0 bg-surface border border-outline-variant/30 px-xs py-1 rounded shadow-sm flex items-center gap-xs z-20">
                     <div className="w-2 h-2 rounded-full bg-error" />
-                    <span className="text-[10px] text-on-surface">Alex</span>
+                    <span className="text-xs text-on-surface">Alex</span>
                   </div>
                   <div className="absolute bottom-4 right-0 bg-surface border border-outline-variant/30 px-xs py-1 rounded shadow-sm flex items-center gap-xs z-10">
                     <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="text-[10px] text-on-surface">Sam</span>
+                    <span className="text-xs text-on-surface">Sam</span>
                   </div>
                   <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-50 z-[1]">
                     <path

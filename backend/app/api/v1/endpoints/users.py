@@ -35,6 +35,25 @@ def update_user_me(
         return current_user
         
     updated_user = user_repo.update(current_user, update_data)
+    
+    # Notify user of account profile update
+    try:
+        from app.services.notification_service import NotificationService
+        from app.repositories.notification_repository import NotificationRepository, NotificationPreferenceRepository
+        from app.schemas.notification import NotificationType, NotificationCategory
+        notif_service = NotificationService(NotificationRepository(db), NotificationPreferenceRepository(db))
+        notif_service.create_notification(
+            user_id=current_user.id,
+            type=NotificationType.SECURITY_ALERT,
+            category=NotificationCategory.ACCOUNT,
+            title="Profile updated",
+            message="Your account profile information was updated successfully.",
+            entity_type="user",
+            entity_id=current_user.id,
+        )
+    except Exception:
+        pass
+
     return updated_user
 
 
