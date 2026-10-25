@@ -366,9 +366,9 @@ export function LeftToolPanel({
               <div className="space-y-2">
                 {[
                   {
-                    id: "balanced" as LayoutDirection,
-                    title: "Balanced Radial",
-                    desc: "Expands outwards in all directions with balanced branch spacing.",
+                    id: "radial" as LayoutDirection,
+                    title: "Radial Mind Map",
+                    desc: "Root at center with 360° proportional branches expanding outward.",
                     icon: "bubble_chart",
                   },
                   {
@@ -380,45 +380,48 @@ export function LeftToolPanel({
                   {
                     id: "vertical" as LayoutDirection,
                     title: "Vertical Hierarchy",
-                    desc: "Top-to-bottom layout, ideal for organizational structures.",
+                    desc: "Top-to-bottom layout, ideal for organizational breakdowns.",
                     icon: "align_vertical_top",
                   },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => onApplyLayout(item.id)}
-                    className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
-                      currentLayout === item.id
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                        : "border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low"
-                    }`}
-                  >
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        currentLayout === item.id
-                          ? "bg-primary text-white"
-                          : "bg-surface-container-high text-on-surface"
+                ].map((item) => {
+                  const isActive = currentLayout === item.id || (item.id === "radial" && currentLayout === "balanced");
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onApplyLayout(item.id)}
+                      className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                        isActive
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                          : "border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low"
                       }`}
                     >
-                      <Icon name={item.icon} className="text-[16px]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-label-sm font-semibold text-on-surface">
-                          {item.title}
-                        </span>
-                        {currentLayout === item.id && (
-                          <span className="text-primary text-xs font-medium flex items-center gap-0.5">
-                            <Icon name="check" className="text-[14px]" /> Active
-                          </span>
-                        )}
+                      <div
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          isActive
+                            ? "bg-primary text-white"
+                            : "bg-surface-container-high text-on-surface"
+                        }`}
+                      >
+                        <Icon name={item.icon} className="text-[16px]" />
                       </div>
-                      <p className="text-body-xs text-on-surface-variant mt-0.5 leading-relaxed">
-                        {item.desc}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-label-sm font-semibold text-on-surface">
+                            {item.title}
+                          </span>
+                          {isActive && (
+                            <span className="text-primary text-xs font-medium flex items-center gap-0.5">
+                              <Icon name="check" className="text-[14px]" /> Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-body-xs text-on-surface-variant mt-0.5 leading-relaxed">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -514,34 +517,41 @@ export function LeftToolPanel({
                     <button
                       key={t.id}
                       onClick={() => onSelectTheme(t.id)}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                      className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
                         isCurrent
                           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                           : "border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex items-center -space-x-1">
-                          <span
-                            className="w-4 h-4 rounded-full border border-surface shadow-xs"
-                            style={{ backgroundColor: t.primary }}
-                          />
-                          <span
-                            className="w-4 h-4 rounded-full border border-surface shadow-xs"
-                            style={{ backgroundColor: t.secondary }}
-                          />
-                          <span
-                            className="w-4 h-4 rounded-full border border-surface shadow-xs"
-                            style={{ backgroundColor: t.accent }}
-                          />
-                        </div>
-                        <span className="text-label-sm font-medium text-on-surface">
-                          {t.name}
-                        </span>
+                      <div className="flex items-center -space-x-1.5 shrink-0 mt-0.5">
+                        <span
+                          className="w-4 h-4 rounded-full border-2 border-surface shadow-xs"
+                          style={{ backgroundColor: t.primary }}
+                        />
+                        <span
+                          className="w-4 h-4 rounded-full border-2 border-surface shadow-xs"
+                          style={{ backgroundColor: t.secondary }}
+                        />
+                        <span
+                          className="w-4 h-4 rounded-full border-2 border-surface shadow-xs"
+                          style={{ backgroundColor: t.accent }}
+                        />
                       </div>
-                      {isCurrent && (
-                        <Icon name="check" className="text-[16px] text-primary" />
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-label-sm font-semibold text-on-surface">
+                            {t.name}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-primary text-xs font-medium flex items-center gap-0.5">
+                              <Icon name="check" className="text-[14px]" /> Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-body-xs text-on-surface-variant mt-0.5 leading-relaxed">
+                          {t.description}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}

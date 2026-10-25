@@ -66,12 +66,20 @@ Follow these rules:
    * 0.8 = High importance primary pillar / major branch
    * 0.5 = Moderate importance / supporting subtopic
    * 0.2 = Minor detail or leaf node
-7. Focus on educationally useful information.
-8. Do not include unrelated information.
-9. Do not invent facts.
+7. Assign an appropriate semantic 'type' to every node from:
+   * 'ROOT' - The main root concept
+   * 'TOPIC' - Primary pillars / major categories branching from root
+   * 'CONCEPT' - Detailed subtopics and supporting concepts
+   * 'TASK' - Action-oriented deliverables, todos, or implementation steps
+   * 'INSIGHT' - Key observations, conclusions, or takeaways
+   * 'AI_SUGGESTION' - Speculative recommendations or exploratory possibilities
+8. Edges can optionally include a descriptive 'label' indicating relationship (e.g. 'leads to', 'part of', 'influences', 'requires') and 'type' ('hierarchy' or 'relationship').
+9. Focus on educationally useful information.
+10. Do not include unrelated information.
+11. Do not invent facts.
 
 The response must contain:
-- A list of nodes. Every node must have a unique string ID, a descriptive label, and an importance_score (0.0 to 1.0).
+- A list of nodes. Every node must have a unique string ID, a descriptive label, a semantic type, and an importance_score (0.0 to 1.0).
 - A list of edges connecting the nodes.
 
 Every node must have a unique string ID.
@@ -106,6 +114,10 @@ Return only the structured mind map data.
                                     "label": {
                                         "type": "string"
                                     },
+                                    "type": {
+                                        "type": "string",
+                                        "description": "Semantic type: ROOT, TOPIC, CONCEPT, TASK, INSIGHT, AI_SUGGESTION"
+                                    },
                                     "importance_score": {
                                         "type": "number",
                                         "description": "Normalized importance score between 0.0 and 1.0"
@@ -126,6 +138,12 @@ Return only the structured mind map data.
                                         "type": "string"
                                     },
                                     "target": {
+                                        "type": "string"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "type": {
                                         "type": "string"
                                     }
                                 },
@@ -168,10 +186,10 @@ Return only the structured mind map data.
 
         return response.parsed
 
-    def find_connections(self, concept: str, other_nodes: list[dict]) -> list[str]:
+    def find_connections(self, concept: str, other_nodes: list[dict]) -> list[dict]:
         """
         Identify which nodes from the provided list are logically related to the concept.
-        Returns a list of node IDs.
+        Returns a list of relationship objects: [{"target_id": "...", "label": "influences", "type": "ai_suggestion"}].
         """
         nodes_context = "\n".join([f"- {n['id']}: {n['label']}" for n in other_nodes])
         
@@ -181,8 +199,13 @@ Return only the structured mind map data.
         And the following list of other concepts in the mind map:
         {nodes_context}
         
-        Which of these other concepts have a direct and strong logical connection to '{concept}'?
-        Return ONLY the IDs of the related concepts. If none are related, return an empty array.
+        Which of these other concepts have a direct, strong logical connection or cross-cutting relationship to '{concept}'?
+        For each related concept, provide:
+        - target_id: The ID of the related node
+        - label: A concise verb or relationship phrase (e.g. 'influences', 'enables', 'relates to', 'depends on', 'impacts')
+        - type: 'ai_suggestion'
+
+        If none are related, return an empty array.
         """
 
         response = self.client.models.generate_content(
@@ -193,13 +216,35 @@ Return only the structured mind map data.
                 "response_schema": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "type": "object",
+                        "properties": {
+                            "target_id": {"type": "string"},
+                            "label": {"type": "string"},
+                            "type": {"type": "string"}
+                        },
+                        "required": ["target_id"]
                     }
                 }
             },
         )
 
-        return response.parsed
+        raw = response.parsed
+        results = []
+        if isinstance(raw, list):
+            for item in raw:
+                if isinstance(item, dict) and item.get("target_id"):
+                    results.append({
+                        "target_id": str(item["target_id"]),
+                        "label": str(item.get("label") or "relates to").strip()[:50],
+                        "type": "ai_suggestion"
+                    })
+                elif isinstance(item, str) and item.strip():
+                    results.append({
+                        "target_id": item.strip(),
+                        "label": "relates to",
+                        "type": "ai_suggestion"
+                    })
+        return results
 
     def chat_modify_mind_map(
         self,
@@ -313,108 +358,169 @@ Return only the structured mind map data.
 
     def validate_mind_map(self, mind_map: dict) -> dict:
         """
-        Validate the structure and relationships of an AI-generated
-        mind map.
+        Robustly validate and sanitize an AI-generated mind map.
+        Guarantees:
+        - Non-empty nodes list (no empty responses)
+        - Labels are non-empty and truncated to <= 255 chars (no DB overflows)
+        - Duplicate node IDs are deduplicated and edges remapped
+        - Dangling edges and self-loops are dropped
+        - Graph cycles are detected and broken (ensures hierarchy is DAG)
+        - Importance scores are clamped to [0.0, 1.0]
+        - Semantic types are validated and inferred from depth if missing
         """
-
-        # --------------------------------------------------
-        # Validate top-level structure
-        # --------------------------------------------------
-
         if not isinstance(mind_map, dict):
             raise ValueError("Mind map must be a dictionary.")
 
-        if "nodes" not in mind_map:
-            raise ValueError("Mind map must contain 'nodes'.")
-
-        if "edges" not in mind_map:
-            raise ValueError("Mind map must contain 'edges'.")
-
-        nodes = mind_map["nodes"]
-        edges = mind_map["edges"]
+        nodes = mind_map.get("nodes")
+        edges = mind_map.get("edges")
 
         if not isinstance(nodes, list):
             raise ValueError("'nodes' must be a list.")
-
         if not isinstance(edges, list):
             raise ValueError("'edges' must be a list.")
+        if len(nodes) == 0:
+            raise ValueError("AI generated empty nodes list.")
 
-        # --------------------------------------------------
-        # Validate nodes
-        # --------------------------------------------------
+        valid_types = {"root", "topic", "concept", "task", "insight", "ai_suggestion"}
 
+        # 1. Sanitize and deduplicate nodes
         node_ids = set()
+        sanitized_nodes = []
+        id_remap = {}
 
-        for node in nodes:
+        for i, node in enumerate(nodes):
             if not isinstance(node, dict):
-                raise ValueError("Each node must be an object.")
+                continue
 
-            node_id = node.get("id")
-            label = node.get("label")
+            raw_id = str(node.get("id", f"node_{i}")).strip()
+            if not raw_id:
+                raw_id = f"node_{i}"
 
-            if not isinstance(node_id, str) or not node_id.strip():
-                raise ValueError("Every node must have a valid 'id'.")
+            clean_id = raw_id
+            suffix = 1
+            while clean_id in node_ids:
+                clean_id = f"{raw_id}_{suffix}"
+                suffix += 1
+            id_remap[raw_id] = clean_id
+            node_ids.add(clean_id)
 
-            if not isinstance(label, str) or not label.strip():
-                raise ValueError(
-                    f"Node '{node_id}' must have a valid 'label'."
-                )
+            label = str(node.get("label", "")).strip()
+            if not label:
+                label = "Untitled Concept"
+            if len(label) > 255:
+                label = label[:250] + "..."
 
-            if node_id in node_ids:
-                raise ValueError(
-                    f"Duplicate node ID found: '{node_id}'."
-                )
+            raw_type = str(node.get("type", "")).strip().lower()
+            if raw_type not in valid_types:
+                raw_type = None
 
-            node_ids.add(node_id)
-
-            # Validate and clamp importance_score
-            score = node.get("importance_score")
-            if score is None:
-                node["importance_score"] = 1.0 if len(node_ids) == 1 else 0.8
+            raw_score = node.get("importance_score")
+            if raw_score is None:
+                clean_score = 1.0 if len(sanitized_nodes) == 0 else 0.8
             else:
                 try:
-                    val = float(score)
-                    node["importance_score"] = round(max(0.0, min(1.0, val)), 2)
+                    clean_score = round(max(0.0, min(1.0, float(raw_score))), 2)
                 except (ValueError, TypeError):
-                    node["importance_score"] = 0.8
+                    clean_score = 0.8
 
-        # --------------------------------------------------
-        # Validate edges
-        # --------------------------------------------------
+            sanitized_nodes.append({
+                "id": clean_id,
+                "label": label,
+                "type": raw_type,
+                "importance_score": clean_score,
+            })
+
+        # 2. Sanitize edges & detect/break cycles
+        sanitized_edges = []
+        seen_edge_pairs = set()
+        adj = {n["id"]: [] for n in sanitized_nodes}
+        in_degrees = {n["id"]: 0 for n in sanitized_nodes}
 
         for edge in edges:
             if not isinstance(edge, dict):
-                raise ValueError("Each edge must be an object.")
+                continue
 
-            source = edge.get("source")
-            target = edge.get("target")
+            raw_source = str(edge.get("source", "")).strip()
+            raw_target = str(edge.get("target", "")).strip()
 
-            if not isinstance(source, str) or not source.strip():
-                raise ValueError(
-                    "Every edge must have a valid 'source'."
-                )
+            source = id_remap.get(raw_source, raw_source)
+            target = id_remap.get(raw_target, raw_target)
 
-            if not isinstance(target, str) or not target.strip():
-                raise ValueError(
-                    "Every edge must have a valid 'target'."
-                )
+            if not source or not target or source == target:
+                continue
+            if source not in node_ids or target not in node_ids:
+                continue
+            if (source, target) in seen_edge_pairs:
+                continue
 
-            if source not in node_ids:
-                raise ValueError(
-                    f"Edge source '{source}' does not exist in nodes."
-                )
+            # Check for cycle via DFS
+            def creates_cycle(curr, dest, visited=None):
+                if visited is None:
+                    visited = set()
+                if curr == dest:
+                    return True
+                visited.add(curr)
+                for neighbor in adj.get(curr, []):
+                    if neighbor not in visited:
+                        if creates_cycle(neighbor, dest, visited):
+                            return True
+                return False
 
-            if target not in node_ids:
-                raise ValueError(
-                    f"Edge target '{target}' does not exist in nodes."
-                )
+            if creates_cycle(target, source):
+                continue  # Break cycle by dropping back-edge
 
-            if source == target:
-                raise ValueError(
-                    f"Self-referencing edge detected for node '{source}'."
-                )
+            seen_edge_pairs.add((source, target))
+            adj[source].append(target)
+            in_degrees[target] += 1
 
-        return mind_map
+            label = edge.get("label")
+            if label is not None:
+                label = str(label).strip()
+                if len(label) > 255:
+                    label = label[:250] + "..."
+                if not label:
+                    label = None
+
+            edge_type = str(edge.get("type", "hierarchy")).strip().lower()
+            if edge_type not in {"hierarchy", "relationship", "ai_suggestion"}:
+                edge_type = "hierarchy"
+
+            sanitized_edges.append({
+                "source": source,
+                "target": target,
+                "label": label,
+                "type": edge_type,
+            })
+
+        # 3. Infer missing types based on depth
+        depth_map = {}
+        roots = [n["id"] for n in sanitized_nodes if in_degrees.get(n["id"], 0) == 0]
+        if not roots and sanitized_nodes:
+            roots = [sanitized_nodes[0]["id"]]
+
+        for r in roots:
+            queue = [(r, 0)]
+            while queue:
+                curr_id, d = queue.pop(0)
+                if curr_id not in depth_map or d < depth_map[curr_id]:
+                    depth_map[curr_id] = d
+                    for child_id in adj.get(curr_id, []):
+                        queue.append((child_id, d + 1))
+
+        for node in sanitized_nodes:
+            if not node.get("type"):
+                d = depth_map.get(node["id"], 1)
+                if d == 0:
+                    node["type"] = "root"
+                elif d == 1:
+                    node["type"] = "topic"
+                else:
+                    node["type"] = "concept"
+
+        return {
+            "nodes": sanitized_nodes,
+            "edges": sanitized_edges,
+        }
 
     def create_mind_map(self, topic: str, depth: int = 3, retrieved_context: str | None = None) -> dict:
         """

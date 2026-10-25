@@ -251,6 +251,10 @@ class CollaborationService:
             except (ValueError, TypeError):
                 pass
 
+        if "type" in fields and fields["type"]:
+            node_crdt.node_type = str(fields["type"])
+            applied_fields["type"] = node_crdt.node_type
+
         if not applied_fields:
             return None
 
@@ -262,6 +266,8 @@ class CollaborationService:
             if db_node:
                 if "label" in applied_fields:
                     db_node.label = applied_fields["label"]
+                if "type" in applied_fields:
+                    db_node.type = applied_fields["type"]
                 if "position_x" in applied_fields:
                     db_node.position_x = applied_fields["position_x"]
                 if "position_y" in applied_fields:

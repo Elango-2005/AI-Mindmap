@@ -272,13 +272,15 @@ class AIMindMapService:
                 else:
                     clean_score = 1.0
 
+                node_type = str(node_data.get("type") or "default").lower().strip()
                 if node_ai_id in existing_node_dict:
                     # UPDATE existing node
                     node = existing_node_dict[node_ai_id]
                     node.label = node_data["label"]
+                    if node_type != "default":
+                        node.type = node_type
                     if raw_score is not None:
                         node.importance_score = clean_score
-                    # Optionally update position if AI changes it, but usually AI just leaves it to frontend layout
                     kept_node_ids.add(node_ai_id)
                     node_id_mapping[node_ai_id] = node.id
                     created_nodes.append(node)
@@ -287,7 +289,7 @@ class AIMindMapService:
                     node = Node(
                         mind_map_id=mind_map_id,
                         label=node_data["label"],
-                        type="default",
+                        type=node_type,
                         position_x=pos_x,
                         position_y=pos_y,
                         importance_score=clean_score,
@@ -309,13 +311,22 @@ class AIMindMapService:
                 source_uuid = node_id_mapping[edge_data["source"]]
                 target_uuid = node_id_mapping[edge_data["target"]]
 
+                edge_label = edge_data.get("label")
+                if edge_label is not None:
+                    edge_label = str(edge_label).strip()
+                    if len(edge_label) > 255:
+                        edge_label = edge_label[:250] + "..."
+                    if not edge_label:
+                        edge_label = None
+                edge_type = str(edge_data.get("type") or "default").lower().strip()
+
                 edge = Edge(
                     mind_map_id=mind_map_id,
                     source=source_uuid,
                     target=target_uuid,
-                    label=None,
-                    type="default",
-                    animated=False,
+                    label=edge_label,
+                    type=edge_type,
+                    animated=(edge_type == "ai_suggestion"),
                 )
                 self.db.add(edge)
                 self.db.flush()
@@ -367,10 +378,11 @@ class AIMindMapService:
                 else:
                     clean_score = 1.0
 
+                node_type = str(node_data.get("type") or "default").lower().strip()
                 node = Node(
                     mind_map_id=mind_map_id,
                     label=node_data["label"],
-                    type="default",
+                    type=node_type,
                     position_x=0.0,
                     position_y=0.0,
                     importance_score=clean_score,
@@ -390,13 +402,22 @@ class AIMindMapService:
                 source_uuid = node_id_mapping[edge_data["source"]]
                 target_uuid = node_id_mapping[edge_data["target"]]
 
+                edge_label = edge_data.get("label")
+                if edge_label is not None:
+                    edge_label = str(edge_label).strip()
+                    if len(edge_label) > 255:
+                        edge_label = edge_label[:250] + "..."
+                    if not edge_label:
+                        edge_label = None
+                edge_type = str(edge_data.get("type") or "default").lower().strip()
+
                 edge = Edge(
                     mind_map_id=mind_map_id,
                     source=source_uuid,
                     target=target_uuid,
-                    label=None,
-                    type="default",
-                    animated=False,
+                    label=edge_label,
+                    type=edge_type,
+                    animated=(edge_type == "ai_suggestion"),
                 )
 
                 self.db.add(edge)

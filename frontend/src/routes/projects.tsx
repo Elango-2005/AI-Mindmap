@@ -261,88 +261,129 @@ function Projects() {
             </p>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-            {filteredAndSortedProjects.map((project, i) => {
-              const isAiGen = project.description?.includes("Auto-generated") || project.description?.includes("AI");
-              return (
-                <Link
-                  key={project.id}
-                  to="/workspace/$mindMapId"
-                  params={{ mindMapId: project.mind_maps?.[0]?.id || "" }}
-                  className="group relative flex flex-col bg-surface-container-lowest border border-outline-variant/30 rounded-2xl hover:border-primary/30 hover:shadow-level-1 transition-all"
-                >
-                  <div className="h-44 rounded-t-2xl bg-surface-container-low border-b border-outline-variant/20 overflow-hidden relative shrink-0">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
-                      style={{ backgroundImage: `url('${PROJECT_THUMBS[i % PROJECT_THUMBS.length]}')` }}
-                      role="img"
-                    />
-                    {isAiGen && (
-                      <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1 border border-outline-variant/20 shadow-sm">
-                        <Icon name="auto_awesome" className="text-[12px] text-accent-violet" />
-                        <span className="text-xs font-semibold text-on-surface uppercase tracking-wider">AI Gen</span>
+          <section aria-label="Projects Collection" className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/20">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-outline">
+                  {filterBy === "ai" ? "AI Generated Maps" : filterBy === "manual" ? "Manual Maps" : "All Projects"}
+                </h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
+                  {filteredAndSortedProjects.length}
+                </span>
+              </div>
+              {searchQuery && (
+                <span className="text-xs text-on-surface-variant">
+                  Showing results for &ldquo;<span className="text-on-surface font-medium">{searchQuery}</span>&rdquo;
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredAndSortedProjects.map((project, i) => {
+                const isAiGen = project.description?.includes("Auto-generated") || project.description?.includes("AI");
+                return (
+                  <Link
+                    key={project.id}
+                    to="/workspace/$mindMapId"
+                    params={{ mindMapId: project.mind_maps?.[0]?.id || "" }}
+                    className="group relative flex flex-col bg-surface-container-lowest border border-outline-variant/30 rounded-2xl hover:border-primary/40 hover:shadow-level-2 transition-all duration-200 overflow-hidden"
+                  >
+                    <div className="h-44 rounded-t-2xl bg-surface-container-low border-b border-outline-variant/20 overflow-hidden relative shrink-0">
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                        style={{ backgroundImage: `url('${project.thumbnail || PROJECT_THUMBS[i % PROJECT_THUMBS.length]}')` }}
+                        role="img"
+                      />
+                      {isAiGen && (
+                        <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1 border border-outline-variant/20 shadow-sm">
+                          <Icon name="auto_awesome" className="text-[12px] text-accent-violet" />
+                          <span className="text-xs font-semibold text-on-surface uppercase tracking-wider">AI Gen</span>
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                            <button className="bg-surface/95 backdrop-blur-md p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:text-primary hover:shadow-sm transition-all">
+                              <Icon name="more_vert" className="text-[16px]" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-level-2">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: "/workspace/$mindMapId", params: { mindMapId: project.mind_maps?.[0]?.id || "" } }); }}>
+                              <Icon name="open_in_new" className="mr-2 text-[16px]" /> Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}>
+                              <Icon name="edit" className="mr-2 text-[16px]" /> Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-error focus:text-error focus:bg-error-container/30"
+                              onClick={(e) => handleDeleteProject(project.id, e as any)}
+                            >
+                              <Icon name="delete" className="mr-2 text-[16px]" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    )}
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                          <button className="bg-surface/95 backdrop-blur-md p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:text-primary hover:shadow-sm transition-all">
-                            <Icon name="more_vert" className="text-[16px]" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-level-2">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: "/workspace/$mindMapId", params: { mindMapId: project.mind_maps?.[0]?.id || "" } }); }}>
-                            <Icon name="open_in_new" className="mr-2 text-[16px]" /> Open
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameValue(project.title); setIsRenaming(project.id); }}>
-                            <Icon name="edit" className="mr-2 text-[16px]" /> Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-error focus:text-error focus:bg-error-container/30"
-                            onClick={(e) => handleDeleteProject(project.id, e as any)}
-                          >
-                            <Icon name="delete" className="mr-2 text-[16px]" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
-                  </div>
-                  
-                  <div className="p-4 flex flex-col flex-1">
-                    {isRenaming === project.id ? (
-                      <div className="mb-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                        <form onSubmit={(e) => handleRenameSubmit(project.id, e)} className="flex items-center gap-2">
-                          <input
-                            autoFocus
-                            type="text"
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={(e) => handleRenameSubmit(project.id, e)}
-                            onKeyDown={(e) => { if (e.key === 'Escape') setIsRenaming(null); }}
-                            className="w-full bg-surface border border-primary/50 rounded-md px-2 py-1 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                          />
-                        </form>
-                      </div>
-                    ) : (
-                      <h3 className="text-base text-on-surface font-semibold mb-1 truncate group-hover:text-primary transition-colors" title={project.title}>
-                        {project.title}
-                      </h3>
-                    )}
                     
-                    <div className="flex items-center justify-between text-xs text-on-surface-variant mt-auto pt-3 border-t border-outline-variant/10">
-                      <span className="flex items-center gap-1.5" title="Last modified">
-                        <Icon name="update" className="text-[14px]" />
-                        {new Date(project.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
+                    <div className="p-4 flex flex-col flex-1">
+                      {isRenaming === project.id ? (
+                        <div className="mb-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <form onSubmit={(e) => handleRenameSubmit(project.id, e)} className="flex items-center gap-2">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={(e) => handleRenameSubmit(project.id, e)}
+                              onKeyDown={(e) => { if (e.key === 'Escape') setIsRenaming(null); }}
+                              className="w-full bg-surface border border-primary/50 rounded-md px-2 py-1 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+                            />
+                          </form>
+                        </div>
+                      ) : (
+                        <h3
+                          className="text-base text-on-surface font-semibold mb-1 line-clamp-2 min-h-[2.5rem] leading-snug group-hover:text-primary transition-colors"
+                          title={project.title}
+                        >
+                          {project.title}
+                        </h3>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-xs text-on-surface-variant mt-auto pt-3 border-t border-outline-variant/10">
+                        <span className="flex items-center gap-1.5" title="Last modified">
+                          <Icon name="update" className="text-[14px]" />
+                          {new Date(project.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-outline font-medium flex items-center gap-1">
+                          <Icon name="account_tree" className="text-[14px]" />
+                          <span>Mind Map</span>
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         ) : (
-          <div className="flex flex-col bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm">
+          <section aria-label="Projects Table" className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/20">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-outline">
+                  {filterBy === "ai" ? "AI Generated Maps" : filterBy === "manual" ? "Manual Maps" : "All Projects"}
+                </h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
+                  {filteredAndSortedProjects.length}
+                </span>
+              </div>
+              {searchQuery && (
+                <span className="text-xs text-on-surface-variant">
+                  Showing results for &ldquo;<span className="text-on-surface font-medium">{searchQuery}</span>&rdquo;
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm">
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 p-4 border-b border-outline-variant/30 bg-surface-container-low text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
               <div>Name</div>
               <div className="w-32 hidden sm:block">Type</div>
@@ -426,7 +467,8 @@ function Projects() {
                 );
               })}
             </div>
-          </div>
+            </div>
+          </section>
         )}
       </div>
     </AppLayout>

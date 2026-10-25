@@ -176,10 +176,20 @@ class NodeService:
         child_score = round(max(0.2, min(0.9, parent_score * 0.8)), 2)
 
         for i, concept in enumerate(sub_concepts):
-            # Create Node
+            clean_concept = concept.strip()
+            lower_concept = clean_concept.lower()
+            if lower_concept.startswith(("[ ]", "[x]", "todo:", "task:", "action:")) or any(lower_concept.startswith(v) for v in ["implement ", "deploy ", "review ", "test ", "create ", "build ", "setup "]):
+                sem_type = "task"
+            elif lower_concept.startswith(("insight:", "key:", "note:", "takeaway:")):
+                sem_type = "insight"
+            elif lower_concept.startswith(("ai:", "suggestion:", "proposal:")):
+                sem_type = "ai_suggestion"
+            else:
+                sem_type = "concept"
+
             new_node_data = NodeCreate(
-                label=concept,
-                type="default",
+                label=clean_concept,
+                type=sem_type,
                 position_x=node.position_x + offset_x,
                 position_y=node.position_y + (i * offset_y),
                 importance_score=child_score,
@@ -194,8 +204,9 @@ class NodeService:
             new_edge_data = EdgeCreate(
                 source=str(node.id),
                 target=str(new_node.id),
-                type="default",
-                animated=True,
+                label=None,
+                type="hierarchy",
+                animated=False,
             )
             new_edge = self.edge_repository.create(
                 mind_map_id=node.mind_map_id,
@@ -244,18 +255,28 @@ class NodeService:
         nodes_context = [{"id": str(n.id), "label": n.label} for n in unconnected_nodes]
         
         try:
-            related_ids = self.ai_service.find_connections(node.label, nodes_context)
+            related_connections = self.ai_service.find_connections(node.label, nodes_context)
         except Exception as e:
             raise ValueError("Failed to find connections via AI.") from e
 
         created_edges = []
-        for target_id_str in related_ids:
+        for conn in related_connections:
+            if isinstance(conn, dict):
+                target_id_str = str(conn.get("target_id", "")).strip()
+                rel_label = conn.get("label") or "relates to"
+                rel_type = conn.get("type") or "ai_suggestion"
+            else:
+                target_id_str = str(conn).strip()
+                rel_label = "relates to"
+                rel_type = "ai_suggestion"
+
             # Verify the ID is valid and in our unconnected list
             if any(str(n.id) == target_id_str for n in unconnected_nodes):
                 new_edge_data = EdgeCreate(
                     source=str(node.id),
                     target=target_id_str,
-                    type="default",
+                    label=rel_label,
+                    type=rel_type,
                     animated=True,
                 )
                 new_edge = self.edge_repository.create(

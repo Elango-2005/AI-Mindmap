@@ -14,6 +14,8 @@ interface OutlineNode {
   id: string;
   label: string;
   depth: number;
+  semanticType?: string | undefined;
+  iconName?: string | undefined;
   children: OutlineNode[];
 }
 
@@ -61,10 +63,13 @@ export function OutlinePanel({
         if (childNode) children.push(childNode);
       }
 
+      const nData = node.data as any;
       return {
         id: node.id,
-        label: (node.data?.label as string) || "Untitled Node",
+        label: (nData?.label as string) || "Untitled Node",
         depth,
+        semanticType: nData?.semanticType as string | undefined,
+        iconName: nData?.visualConfig?.iconName as string | undefined,
         children,
       };
     }
@@ -113,15 +118,19 @@ export function OutlinePanel({
             {hasChildren ? (
               <button
                 onClick={(e) => toggleCollapse(item.id, e)}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-container-high text-outline hover:text-on-surface"
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-container-high text-outline hover:text-on-surface shrink-0"
               >
                 <Icon
                   name={isCollapsed ? "chevron_right" : "expand_more"}
                   className="text-[16px]"
                 />
               </button>
+            ) : item.iconName ? (
+              <span className="w-5 h-5 flex items-center justify-center shrink-0">
+                <Icon name={item.iconName} className="text-[14px] opacity-75" />
+              </span>
             ) : (
-              <span className="w-5 h-5 flex items-center justify-center">
+              <span className="w-5 h-5 flex items-center justify-center shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-outline-variant/60" />
               </span>
             )}
