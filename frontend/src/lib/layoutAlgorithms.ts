@@ -1,5 +1,6 @@
-import { Node as FlowNode, Edge as FlowEdge, Position } from "@xyflow/react";
-import { SemanticGraph, SemanticNode, SemanticEdge, LayoutMode } from "@/types/semanticGraph";
+import type { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import { Position } from "@xyflow/react";
+import type { SemanticGraph, SemanticNode, SemanticEdge, LayoutMode } from "../types/semanticGraph.ts";
 
 export type { LayoutMode };
 export type LayoutDirection = LayoutMode | "balanced";
@@ -21,11 +22,98 @@ export interface LayoutBounds {
 }
 
 /**
+ * Intelligently resolves the optimal source and target handles between two nodes
+ * based on layout mode and relative spatial geometry.
+ *
+ * Rules:
+ * - Horizontal: Parent RIGHT -> Child LEFT
+ * - Vertical: Parent BOTTOM -> Child TOP
+ * - Radial:
+ *   - Child to right (dx >= 0): Parent RIGHT -> Child LEFT
+ *   - Child to left (dx < 0): Parent LEFT -> Child RIGHT
+ *   - Child below (dominant dy > 0): Parent BOTTOM -> Child TOP
+ *   - Child above (dominant dy < 0): Parent TOP -> Child BOTTOM
+ */
+export function determineOptimalHandles(
+  sourcePos: { x: number; y: number },
+  targetPos: { x: number; y: number },
+  mode?: LayoutMode | "horizontal" | "vertical" | "radial" | "balanced"
+): {
+  sourceHandle: string;
+  targetHandle: string;
+  sourcePosition: Position;
+  targetPosition: Position;
+} {
+  if (mode === "horizontal") {
+    return {
+      sourceHandle: "source-right",
+      targetHandle: "target-left",
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    };
+  }
+
+  if (mode === "vertical") {
+    return {
+      sourceHandle: "source-bottom",
+      targetHandle: "target-top",
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+    };
+  }
+
+  // Radial / Balanced / Relative coordinate analysis
+  const dx = targetPos.x - sourcePos.x;
+  const dy = targetPos.y - sourcePos.y;
+
+  // In mind maps, nodes are wide horizontal cards (160-260px wide, ~40px high).
+  // Left/Right connections provide smooth, organic bezier curves unless the child
+  // is placed directly above or below.
+  if (Math.abs(dx) >= Math.abs(dy) * 0.55) {
+    if (dx >= 0) {
+      // Child is to the right
+      return {
+        sourceHandle: "source-right",
+        targetHandle: "target-left",
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      };
+    } else {
+      // Child is to the left
+      return {
+        sourceHandle: "source-left",
+        targetHandle: "target-right",
+        sourcePosition: Position.Left,
+        targetPosition: Position.Right,
+      };
+    }
+  } else {
+    if (dy >= 0) {
+      // Child is below
+      return {
+        sourceHandle: "source-bottom",
+        targetHandle: "target-top",
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
+      };
+    } else {
+      // Child is above
+      return {
+        sourceHandle: "source-top",
+        targetHandle: "target-bottom",
+        sourcePosition: Position.Top,
+        targetPosition: Position.Bottom,
+      };
+    }
+  }
+}
+
+/**
  * Computes deterministic 2D canvas coordinates for graph nodes.
  * Pure layout calculation with zero AI logic, perfectly reproducible given identical inputs.
  *
  * Supported modes:
- * - 'radial': 360-degree organic radial mind map with proportional angular wedges
+ * - 'radial': Balanced 2-sided mind map matching the visual reference design
  * - 'horizontal': Left-to-right tree with collision-free vertical subtree allocation
  * - 'vertical': Top-to-bottom hierarchy with collision-free horizontal subtree allocation
  */
@@ -40,7 +128,6 @@ export function computeLayoutPositions(
   const normalizedMode: LayoutMode = mode === "balanced" ? "radial" : mode;
 
   // 1. Separate hierarchy edges (parent -> child) from cross-branch relationship edges
-  // Cross-branch edges and AI suggestions must not distort tree structure
   const nodeMap = new Map<string, (typeof nodes)[0]>();
   nodes.forEach((n) => nodeMap.set(n.id, n));
 
@@ -58,7 +145,6 @@ export function computeLayoutPositions(
     return edgeType !== "relationship" && edgeType !== "ai_suggestion";
   });
 
-  // Track parent-child tree links using BFS from candidate roots to guarantee DAG (no cycles)
   const candidateRoots = nodes.filter((n) => {
     const isExplicitRoot = n.data?.semanticType === "root" || n.data?.type === "root";
     return isExplicitRoot;
@@ -92,7 +178,7 @@ export function computeLayoutPositions(
   while (queue.length > 0) {
     const currId = queue.shift()!;
     const rawChildren = adj.get(currId) || [];
-    // Sort children deterministically by id/importance for repeatable output
+    // Sort children deterministically by importance / id for repeatable output
     const sortedChildren = [...rawChildren].sort((a, b) => {
       const nodeA = nodeMap.get(a);
       const nodeB = nodeMap.get(b);
@@ -163,9 +249,13 @@ export function computeLayoutPositions(
 }
 
 /**
- * 360-Degree Radial Layout Engine
- * Places root at center (0, 0), allocates angular sectors based on subtree leaf weight,
- * and expands outward organically with collision avoidance.
+ * Balanced 2-Sided Radial Mind-Map Engine
+ * Matches the approved MindVault visual reference:
+ * - Root node at center (0, 0)
+ * - Topics partitioned into Right and Left hemispheres (symmetrical progression)
+ * - Subtrees expand horizontally (+X for right, -X for left)
+ * - Vertical slots allocate exact collision-free space for all leaves
+ * - Natural S-curve Bezier connections from Root to Topics and Topics to Children
  */
 function layoutRadialEngine(
   rootId: string,
@@ -173,11 +263,11 @@ function layoutRadialEngine(
   leafWeights: Map<string, number>,
   positions: Map<string, NodePosition>
 ) {
-  const R_BASE = 280; // Distance from root to topic nodes
-  const R_STEP = 230; // Distance per child depth
-  const MIN_ARC_SEPARATION = 75; // Minimum linear distance along the arc to prevent node collisions
+  const SPACING_X_TOPIC = 310; // Distance from root to topic
+  const SPACING_X_SUB = 260;   // Distance per child depth level
+  const SLOT_HEIGHT = 85;       // Vertical slot per leaf node
 
-  // Root at origin
+  // Place root at (0, 0)
   positions.set(rootId, {
     x: 0,
     y: 0,
@@ -188,112 +278,105 @@ function layoutRadialEngine(
   const topics = treeAdj.get(rootId) || [];
   if (topics.length === 0) return;
 
-  const totalTopicWeight = topics.reduce(
-    (sum, tId) => sum + (leafWeights.get(tId) || 1),
-    0
-  );
+  // Partition topics into right and left groups
+  const rightTopics: string[] = [];
+  const leftTopics: string[] = [];
 
-  let currentAngle = -Math.PI / 2; // Start from top for visually balanced distribution
+  if (topics.length === 1) {
+    rightTopics.push(topics[0]);
+  } else {
+    // Symmetrical split: first half right, second half left
+    const half = Math.ceil(topics.length / 2);
+    for (let i = 0; i < topics.length; i++) {
+      if (i < half) {
+        rightTopics.push(topics[i]);
+      } else {
+        leftTopics.push(topics[i]);
+      }
+    }
+  }
 
-  topics.forEach((topicId) => {
-    const weight = leafWeights.get(topicId) || 1;
-    const sectorAngle = (weight / totalTopicWeight) * (2 * Math.PI);
-    const centerAngle = currentAngle + sectorAngle / 2;
-
-    const topicX = Math.round(R_BASE * Math.cos(centerAngle));
-    const topicY = Math.round(R_BASE * Math.sin(centerAngle));
-
-    const isRightHemisphere = Math.cos(centerAngle) >= 0;
-    positions.set(topicId, {
-      x: topicX,
-      y: topicY,
-      sourcePosition: isRightHemisphere ? Position.Right : Position.Left,
-      targetPosition: isRightHemisphere ? Position.Left : Position.Right,
-    });
-
-    // Recursively layout topic children within its allocated angular sector
-    layoutRadialChildren(
-      topicId,
-      2,
-      currentAngle,
-      currentAngle + sectorAngle,
-      R_BASE + R_STEP,
-      treeAdj,
-      leafWeights,
-      positions,
-      R_STEP,
-      MIN_ARC_SEPARATION
+  // 1. Right Hemisphere Layout (+X)
+  if (rightTopics.length > 0) {
+    const totalRightLeaves = rightTopics.reduce(
+      (sum, id) => sum + (leafWeights.get(id) || 1),
+      0
     );
+    let currentY = -((totalRightLeaves - 1) * SLOT_HEIGHT) / 2;
 
-    currentAngle += sectorAngle;
-  });
-}
+    function placeRightNode(nodeId: string, depth: number): number {
+      const children = treeAdj.get(nodeId) || [];
+      const posX = SPACING_X_TOPIC + (depth - 1) * SPACING_X_SUB;
 
-function layoutRadialChildren(
-  parentId: string,
-  depth: number,
-  sectorMin: number,
-  sectorMax: number,
-  baseRadius: number,
-  treeAdj: Map<string, string[]>,
-  leafWeights: Map<string, number>,
-  positions: Map<string, NodePosition>,
-  rStep: number,
-  minArcSeparation: number
-) {
-  const children = treeAdj.get(parentId) || [];
-  if (children.length === 0) return;
+      if (children.length === 0) {
+        const posY = currentY;
+        positions.set(nodeId, {
+          x: Math.round(posX),
+          y: Math.round(posY),
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        });
+        currentY += SLOT_HEIGHT;
+        return posY;
+      }
 
-  const sectorSpan = sectorMax - sectorMin;
-  const totalWeight = children.reduce(
-    (sum, cId) => sum + (leafWeights.get(cId) || 1),
-    0
-  );
+      const childYs = children.map((c) => placeRightNode(c, depth + 1));
+      const avgY = (childYs[0] + childYs[childYs.length - 1]) / 2;
 
-  let curAngle = sectorMin;
-
-  children.forEach((childId, idx) => {
-    const weight = leafWeights.get(childId) || 1;
-    const childSpan = (weight / totalWeight) * sectorSpan;
-    const childAngle = curAngle + childSpan / 2;
-
-    // Check arc length at current radius: Arc = Radius * Angle
-    let effectiveRadius = baseRadius;
-    const arcLength = baseRadius * childSpan;
-    if (arcLength < minArcSeparation) {
-      // Scale radius outward or alternate rings to guarantee ample clearance
-      const requiredR = minArcSeparation / Math.max(0.06, childSpan);
-      effectiveRadius = Math.max(baseRadius, Math.min(requiredR, baseRadius * 1.6));
-      // Stagger alternating children on dense branches
-      if (idx % 2 === 1) effectiveRadius += 45;
+      positions.set(nodeId, {
+        x: Math.round(posX),
+        y: Math.round(avgY),
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      });
+      return avgY;
     }
 
-    const x = Math.round(effectiveRadius * Math.cos(childAngle));
-    const y = Math.round(effectiveRadius * Math.sin(childAngle));
-
-    const isRightHemisphere = Math.cos(childAngle) >= 0;
-    positions.set(childId, {
-      x,
-      y,
-      sourcePosition: isRightHemisphere ? Position.Right : Position.Left,
-      targetPosition: isRightHemisphere ? Position.Left : Position.Right,
+    rightTopics.forEach((topicId) => {
+      placeRightNode(topicId, 1);
     });
+  }
 
-    layoutRadialChildren(
-      childId,
-      depth + 1,
-      curAngle,
-      curAngle + childSpan,
-      effectiveRadius + rStep,
-      treeAdj,
-      leafWeights,
-      positions,
-      rStep,
-      minArcSeparation
+  // 2. Left Hemisphere Layout (-X)
+  if (leftTopics.length > 0) {
+    const totalLeftLeaves = leftTopics.reduce(
+      (sum, id) => sum + (leafWeights.get(id) || 1),
+      0
     );
+    let currentY = -((totalLeftLeaves - 1) * SLOT_HEIGHT) / 2;
 
-    curAngle += childSpan;
-  });
+    function placeLeftNode(nodeId: string, depth: number): number {
+      const children = treeAdj.get(nodeId) || [];
+      const posX = -(SPACING_X_TOPIC + (depth - 1) * SPACING_X_SUB);
+
+      if (children.length === 0) {
+        const posY = currentY;
+        positions.set(nodeId, {
+          x: Math.round(posX),
+          y: Math.round(posY),
+          sourcePosition: Position.Left,
+          targetPosition: Position.Right,
+        });
+        currentY += SLOT_HEIGHT;
+        return posY;
+      }
+
+      const childYs = children.map((c) => placeLeftNode(c, depth + 1));
+      const avgY = (childYs[0] + childYs[childYs.length - 1]) / 2;
+
+      positions.set(nodeId, {
+        x: Math.round(posX),
+        y: Math.round(avgY),
+        sourcePosition: Position.Left,
+        targetPosition: Position.Right,
+      });
+      return avgY;
+    }
+
+    leftTopics.forEach((topicId) => {
+      placeLeftNode(topicId, 1);
+    });
+  }
 }
 
 /**
@@ -306,8 +389,9 @@ function layoutHorizontalEngine(
   leafWeights: Map<string, number>,
   positions: Map<string, NodePosition>
 ) {
-  const SPACING_X = 280; // Distance between hierarchy levels
-  const SLOT_HEIGHT = 90; // Vertical height allocated per leaf node
+  const SPACING_X_TOPIC = 310;
+  const SPACING_X_SUB = 260;
+  const SLOT_HEIGHT = 85;
 
   positions.set(rootId, {
     x: 0,
@@ -324,12 +408,12 @@ function layoutHorizontalEngine(
 
   function placeHorizontalNode(nodeId: string, depth: number): number {
     const children = treeAdj.get(nodeId) || [];
-    const posX = depth * SPACING_X;
+    const posX = SPACING_X_TOPIC + (depth - 1) * SPACING_X_SUB;
 
     if (children.length === 0) {
       const posY = currentY;
       positions.set(nodeId, {
-        x: posX,
+        x: Math.round(posX),
         y: Math.round(posY),
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -338,14 +422,11 @@ function layoutHorizontalEngine(
       return posY;
     }
 
-    const childYs: number[] = [];
-    for (const child of children) {
-      childYs.push(placeHorizontalNode(child, depth + 1));
-    }
-
+    const childYs = children.map((c) => placeHorizontalNode(c, depth + 1));
     const avgY = (childYs[0] + childYs[childYs.length - 1]) / 2;
+
     positions.set(nodeId, {
-      x: posX,
+      x: Math.round(posX),
       y: Math.round(avgY),
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
@@ -368,21 +449,22 @@ function layoutVerticalEngine(
   leafWeights: Map<string, number>,
   positions: Map<string, NodePosition>
 ) {
-  const SPACING_Y = 160; // Distance between hierarchy levels
-  const SLOT_WIDTH = 230; // Horizontal width allocated per leaf node
+  const SPACING_Y_TOPIC = 190;
+  const SPACING_Y_SUB = 160;
+  const SLOT_WIDTH = 250;
 
   const totalLeaves = leafWeights.get(rootId) || 1;
   let currentX = -((totalLeaves - 1) * SLOT_WIDTH) / 2;
 
   function placeVerticalNode(nodeId: string, depth: number): number {
     const children = treeAdj.get(nodeId) || [];
-    const posY = depth * SPACING_Y;
+    const posY = depth === 0 ? 0 : SPACING_Y_TOPIC + (depth - 1) * SPACING_Y_SUB;
 
     if (children.length === 0) {
       const posX = currentX;
       positions.set(nodeId, {
         x: Math.round(posX),
-        y: posY,
+        y: Math.round(posY),
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
       });
@@ -390,15 +472,12 @@ function layoutVerticalEngine(
       return posX;
     }
 
-    const childXs: number[] = [];
-    for (const child of children) {
-      childXs.push(placeVerticalNode(child, depth + 1));
-    }
-
+    const childXs = children.map((c) => placeVerticalNode(c, depth + 1));
     const avgX = (childXs[0] + childXs[childXs.length - 1]) / 2;
+
     positions.set(nodeId, {
       x: Math.round(avgX),
-      y: posY,
+      y: Math.round(posY),
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
     });
@@ -440,7 +519,8 @@ export function getGraphBounds(positions: Map<string, NodePosition>): LayoutBoun
 
 /**
  * Applies deterministic automatic layout to React Flow nodes and edges.
- * Updates node positions, handles, and preserves edge objects.
+ * Pipeline:
+ *   Graph -> Layout -> Node Positions -> Handle Direction -> Edges
  */
 export function applyLayout(
   nodes: FlowNode[],
@@ -463,7 +543,24 @@ export function applyLayout(
     };
   });
 
-  return { nodes: updatedNodes, edges };
+  // Determine edge handles based on updated node positions and layout direction
+  const nodePosMap = new Map<string, { x: number; y: number }>();
+  updatedNodes.forEach((n) => nodePosMap.set(n.id, n.position));
+
+  const updatedEdges: FlowEdge[] = edges.map((edge) => {
+    const sPos = nodePosMap.get(edge.source);
+    const tPos = nodePosMap.get(edge.target);
+    if (!sPos || !tPos) return edge;
+
+    const handles = determineOptimalHandles(sPos, tPos, direction);
+    return {
+      ...edge,
+      sourceHandle: handles.sourceHandle,
+      targetHandle: handles.targetHandle,
+    };
+  });
+
+  return { nodes: updatedNodes, edges: updatedEdges };
 }
 
 /**
@@ -485,8 +582,27 @@ export function applySemanticLayout(
     };
   });
 
+  const nodePosMap = new Map<string, { x: number; y: number }>();
+  updatedNodes.forEach((n) => nodePosMap.set(n.id, n.position));
+
+  const updatedEdges: SemanticEdge[] = graph.edges.map((edge) => {
+    const sPos = nodePosMap.get(edge.source);
+    const tPos = nodePosMap.get(edge.target);
+    if (!sPos || !tPos) return edge;
+
+    const handles = determineOptimalHandles(sPos, tPos, mode);
+    return {
+      ...edge,
+      metadata: {
+        ...(edge.metadata || {}),
+        sourceHandle: handles.sourceHandle,
+        targetHandle: handles.targetHandle,
+      },
+    };
+  });
+
   return {
     nodes: updatedNodes,
-    edges: graph.edges,
+    edges: updatedEdges,
   };
 }

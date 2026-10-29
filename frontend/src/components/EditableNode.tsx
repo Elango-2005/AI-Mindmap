@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { Handle, Position, useReactFlow, NodeToolbar } from "@xyflow/react";
 
 import { updateNode, createNode, deleteNode, expandNode, summarizeNode } from "@/api/nodes";
-
 import { createEdge } from "@/api/edges";
 
 import { DEFAULT_THEME } from "@/lib/graphColoring";
@@ -110,37 +109,28 @@ export function EditableNode({
 
 
   useEffect(() => {
-
     if (!selected || isEditing) return;
 
-
-
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-
       if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
-
       if (e.key === "Tab") {
-
         e.preventDefault();
-
         handleAddChild();
-
       } else if (e.key === "Enter") {
-
         e.preventDefault();
-
-        handleAddSibling();
-
+        if (e.shiftKey) {
+          handleAddSibling();
+        } else {
+          setIsEditing(true);
+        }
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        handleDelete();
       }
-
     };
 
-
-
     window.addEventListener("keydown", handleGlobalKeyDown);
-
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-
   }, [selected, isEditing, data.mindMapId, id, depth, theme, positionAbsoluteX, positionAbsoluteY]);
 
 
@@ -509,7 +499,7 @@ export function EditableNode({
 
       const childDepth = depth + 1;
 
-      const childType: SemanticNodeType = childDepth === 1 ? "topic" : "concept";
+      const childType: SemanticNodeType = childDepth === 1 ? "topic" : childDepth === 2 ? "concept" : "detail";
 
       const branchId = data.branchId || (childDepth === 1 ? undefined : id);
 
@@ -689,7 +679,7 @@ export function EditableNode({
 
     try {
 
-      const siblingType: SemanticNodeType = data.semanticType || (depth === 1 ? "topic" : "concept");
+      const siblingType: SemanticNodeType = data.semanticType || (depth === 1 ? "topic" : depth === 2 ? "concept" : "detail");
 
       const branchId = data.branchId || (depth === 1 ? undefined : parentEdge.source);
 
@@ -1197,90 +1187,90 @@ export function EditableNode({
 
 
 
-  const visualConfig = data.visualConfig;
+  const nodeType: SemanticNodeType =
+    (data.isAiSuggestion ? "ai_suggestion" : undefined) ||
+    (data.semanticType as SemanticNodeType) ||
+    (depth === 0
+      ? "root"
+      : depth === 1
+      ? "topic"
+      : depth === 2
+      ? "concept"
+      : "detail");
+
+  const visualConfig =
+    data.visualConfig ||
+    resolveNodeVisualConfig(
+      {
+        id,
+        title: data.label,
+        type: nodeType,
+        depth,
+        parentId: data.parentId || null,
+        branchId: data.branchId || null,
+        importanceScore: data.importanceScore ?? 1.0,
+        position: { x: positionAbsoluteX || 0, y: positionAbsoluteY || 0 },
+        metadata: data.metadata,
+        styleOverride: data.styleOverride,
+      },
+      theme,
+      selected
+    );
 
   const rawLabel = data.label || "";
 
   const isTaskNode =
-
     visualConfig?.showCheckbox ||
-
-    data.semanticType === "task" ||
-
+    nodeType === "task" ||
     rawLabel.startsWith("[ ]") ||
-
     rawLabel.startsWith("[x]") ||
-
     rawLabel.startsWith("[X]");
 
-
-
   const isTaskCompleted =
-
     visualConfig?.isCompleted ||
-
     rawLabel.startsWith("[x]") ||
-
     rawLabel.startsWith("[X]") ||
-
     data.metadata?.status === "done";
-
-
 
   const displayLabel = isTaskNode ? rawLabel.replace(/^\[[ xX]\]\s*/, "") : rawLabel;
 
-
-
   const shapeClasses =
-
     visualConfig?.shapeClasses ||
-
     (depth === 0
-
-      ? "rounded-full py-3 px-6 min-w-[160px] max-w-[280px] shadow-md border-2"
-
+      ? "rounded-full py-3 px-6 min-w-[170px] max-w-[340px] shadow-lg shadow-indigo-950/20 border"
       : depth === 1
-
-      ? "rounded-xl py-2.5 px-4 min-w-[120px] max-w-[240px] shadow-xs border-2"
-
-      : "rounded-lg py-2 px-3.5 min-w-[90px] max-w-[220px] border shadow-2xs");
-
-
+      ? "rounded-2xl py-2.5 px-4 min-w-[130px] max-w-[280px] shadow-xs hover:shadow-sm border-2"
+      : depth === 2
+      ? "rounded-xl py-1.5 px-3.5 min-w-[100px] max-w-[260px] border shadow-2xs hover:shadow-xs"
+      : "rounded-lg py-1 px-2.5 min-w-[85px] max-w-[240px] border shadow-2xs hover:shadow-xs");
 
   const textClasses =
-
     visualConfig?.typographyClasses ||
-
     (depth === 0
-
-      ? "text-headline-sm font-semibold tracking-tight text-center"
-
+      ? "text-[16px] md:text-[17px] font-bold tracking-tight text-center"
       : depth === 1
-
-      ? "text-title-sm font-semibold text-center"
-
-      : "text-ui font-medium text-center");
-
-
+      ? "text-[14px] font-semibold text-left leading-snug"
+      : depth === 2
+      ? "text-[13px] font-medium text-left leading-snug"
+      : "text-[12px] font-normal text-left leading-snug");
 
   const bgClass = visualConfig?.bgClasses || theme.bg;
 
-
-
   const borderClass = selected
-
-    ? "border-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-background"
-
+    ? `${visualConfig?.borderClasses || theme.border} ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md`
     : (visualConfig?.borderClasses || theme.border);
 
-
-
   const textColorClass = visualConfig?.textColorClasses || theme.text;
+  const branchAccentColor =
+    visualConfig?.accentStroke ||
+    visualConfig?.dotColor ||
+    theme?.stroke ||
+    "#2563eb";
 
   const hasChildren = Boolean(data.hasChildren);
   const isCollapsed = Boolean(data.isCollapsed);
   const childrenCount = Number(data.childrenCount || 0);
-  const isAiSuggestion = data.semanticType === "ai_suggestion";
+  const isAiSuggestion = nodeType === "ai_suggestion" || Boolean(data.isAiSuggestion);
 
   const collapseBadgePositionClass =
     effectiveSourcePos === Position.Left
@@ -1291,273 +1281,261 @@ export function EditableNode({
       ? "-top-3.5 left-1/2 -translate-x-1/2"
       : "-right-3.5 top-1/2 -translate-y-1/2";
 
-
-
   return (
-
     <ContextMenu>
-
       <ContextMenuTrigger disabled={isEditing}>
-
         <NodeToolbar
-
           isVisible={selected && !isEditing}
-
           position={Position.Top}
-
-          className="flex items-center gap-1 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-xl p-1 shadow-level-2 mb-2 transition-all"
-
+          className="flex items-center gap-1 bg-white/95 dark:bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-xl p-1 shadow-md mb-2 transition-all"
         >
-
           <button
-
+            type="button"
             onClick={handleAddChild}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger"
-
-            title="Add Child"
-
+            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+            title="Add Child (Tab)"
+            aria-label="Add child node"
           >
-
-            <Icon name="add_circle" className="text-[16px]" />
-
+            <Icon name="add" className="text-[18px]" />
           </button>
-
           <button
-
-            onClick={handleAddSibling}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger"
-
-            title="Add Sibling"
-
-          >
-
-            <Icon name="queue" className="text-[16px]" />
-
-          </button>
-
-          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-
-          <button
-
+            type="button"
             onClick={() => setIsEditing(true)}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors"
-
-            title="Rename"
-
+            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+            title="Edit Node (Enter)"
+            aria-label="Edit node"
           >
-
             <Icon name="edit" className="text-[16px]" />
-
           </button>
-
-          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-
           <button
-
-            onClick={handleAIExpand}
-
-            disabled={isProcessingAI}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-accent-violet/10 text-accent-violet rounded-lg transition-colors disabled:opacity-50"
-
-            title="AI Expand"
-
+            type="button"
+            onClick={() => data.onStartConnect?.(id)}
+            className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+            title="Connect to Node"
+            aria-label="Connect to node"
           >
-
-            <Icon
-
-              name={isProcessingAI ? "sync" : "auto_awesome"}
-
-              className={`text-[16px] ${isProcessingAI ? "animate-spin" : ""}`}
-
-            />
-
+            <Icon name="link" className="text-[17px]" />
           </button>
-
           <button
-
-            onClick={handleAISummarize}
-
-            disabled={isProcessingAI}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-accent-blue/10 text-accent-blue rounded-lg transition-colors disabled:opacity-50"
-
-            title="AI Summarize"
-
-          >
-
-            <Icon name="summarize" className="text-[16px]" />
-
-          </button>
-
-          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-
-          <button
-
+            type="button"
             onClick={() => data.onOpenInspector?.(id)}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-primary/10 text-primary rounded-lg transition-colors tooltip-trigger"
-
-            title="Style & Appearance"
-
+            className="w-8 h-8 flex items-center justify-center hover:bg-primary/10 text-primary rounded-lg transition-colors focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+            title="Open Inspector"
+            aria-label="Open Inspector"
           >
-
-            <Icon name="palette" className="text-[16px]" />
-
+            <Icon name="tune" className="text-[16px]" />
           </button>
-
           {hasChildren && (
-            <>
-              <button
-                onClick={() => data.onToggleCollapse?.(id)}
-                className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors tooltip-trigger"
-                title={isCollapsed ? `Expand branch (+${childrenCount})` : "Collapse branch"}
-              >
-                <Icon name={isCollapsed ? "unfold_more" : "unfold_less"} className="text-[16px]" />
-              </button>
-              <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
-            </>
+            <button
+              type="button"
+              onClick={() => data.onToggleCollapse?.(id)}
+              className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-low hover:text-primary text-on-surface-variant rounded-lg transition-colors focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+              title={isCollapsed ? `Expand branch (+${childrenCount})` : "Collapse branch"}
+              aria-label={isCollapsed ? "Expand branch" : "Collapse branch"}
+            >
+              <Icon name={isCollapsed ? "unfold_more" : "unfold_less"} className="text-[16px]" />
+            </button>
           )}
-
+          <div className="w-px h-4 bg-outline-variant/50 mx-0.5" />
           <button
-
+            type="button"
             onClick={handleDelete}
-
-            className="w-8 h-8 flex items-center justify-center hover:bg-error-container hover:text-error text-outline rounded-lg transition-colors"
-
-            title="Delete"
-
+            className="w-8 h-8 flex items-center justify-center hover:bg-error-container hover:text-error text-outline rounded-lg transition-colors focus:ring-2 focus:ring-error focus:outline-none cursor-pointer"
+            title="Delete Node (Del)"
+            aria-label="Delete node"
           >
-
             <Icon name="delete" className="text-[16px]" />
-
           </button>
-
         </NodeToolbar>
 
-
-
         <div
-
           className={`flex flex-col items-center justify-center transition-all duration-200 select-none group cursor-pointer ${shapeClasses} ${bgClass} ${borderClass}`}
-
           onDoubleClick={() => setIsEditing(true)}
-
         >
-
+          {/* Target Handles (4 directions) */}
           <Handle
-
             type="target"
-
+            position={Position.Left}
+            id="target-left"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="target"
+            position={Position.Right}
+            id="target-right"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="target"
+            position={Position.Top}
+            id="target-top"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="target"
+            position={Position.Bottom}
+            id="target-bottom"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="target"
             position={effectiveTargetPos}
-
-            className="opacity-0 group-hover:opacity-100 transition-opacity w-3 h-3 bg-primary"
-
+            className="opacity-0 pointer-events-none"
           />
 
           {isAiSuggestion && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-accent-violet uppercase tracking-wider mb-1 select-none">
+            <div className="flex items-center gap-1 text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1 select-none w-full justify-start">
               <Icon name="auto_awesome" className="text-[12px]" />
               <span>AI Suggestion</span>
             </div>
           )}
 
-
-
           {isEditing ? (
-
-            <input
-
-              ref={inputRef}
-
-              value={editValue}
-
-              onChange={(e) => setEditValue(e.target.value)}
-
-              onBlur={handleSave}
-
-              onKeyDown={handleKeyDown}
-
-              className={`nodrag nowheel outline-none border-none bg-transparent text-center w-full px-1 ${textClasses} ${textColorClass}`}
-
-            />
-
-          ) : (
-
-            <div className={`text-center break-words w-full ${textClasses} ${textColorClass} flex items-center justify-center gap-1.5`}>
-
-              {isProcessingAI && <Icon name="sync" className="animate-spin text-[14px] opacity-70 shrink-0" />}
-
-
-
-              {isTaskNode ? (
-
-                <button
-
-                  type="button"
-
-                  onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    handleToggleTask();
-
-                  }}
-
-                  className="w-4 h-4 flex items-center justify-center shrink-0 text-primary hover:text-primary-container transition-colors cursor-pointer"
-
-                  title={isTaskCompleted ? "Mark incomplete" : "Mark complete"}
-
-                >
-
-                  <Icon
-
-                    name={isTaskCompleted ? "check_box" : "check_box_outline_blank"}
-
-                    className="text-[16px]"
-
-                  />
-
-                </button>
-
-              ) : visualConfig?.iconName ? (
-
+            <div className={`flex items-center gap-2 w-full ${nodeType === "root" ? "justify-center" : "justify-start"}`}>
+              {nodeType === "root" && (
                 <Icon
-
-                  name={visualConfig.iconName}
-
-                  className={visualConfig.iconClasses || "text-[16px] shrink-0 opacity-80"}
-
+                  name={visualConfig?.iconName || "psychology"}
+                  className={visualConfig?.iconClasses || "text-[20px] text-white shrink-0"}
                 />
-
-              ) : null}
-
-
-
-              <span className={`break-words ${isTaskCompleted ? "line-through opacity-70" : ""}`}>
-
-                {displayLabel}
-
-              </span>
-
+              )}
+              {nodeType === "topic" && visualConfig?.iconName && (
+                <span
+                  className="shrink-0 flex items-center justify-center"
+                  style={{ color: branchAccentColor }}
+                >
+                  <Icon name={visualConfig.iconName} className="text-[18px]" />
+                </span>
+              )}
+              {nodeType === "concept" && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: visualConfig?.dotColor || branchAccentColor }}
+                />
+              )}
+              {nodeType === "detail" && (
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0 opacity-80"
+                  style={{ backgroundColor: visualConfig?.dotColor || branchAccentColor }}
+                />
+              )}
+              {nodeType === "insight" && (
+                <Icon
+                  name="lightbulb"
+                  className="text-[16px] text-amber-600 dark:text-amber-400 shrink-0"
+                />
+              )}
+              <input
+                ref={inputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                className={`nodrag nowheel outline-none border-none bg-transparent w-full px-0 ${
+                  nodeType === "root" ? "text-center" : "text-left"
+                } ${textClasses} ${textColorClass}`}
+              />
             </div>
+          ) : (
+            <div
+              className={`break-words w-full ${textClasses} ${textColorClass} flex items-center ${
+                nodeType === "root" ? "justify-center gap-2.5" : "justify-start gap-2"
+              }`}
+            >
+              {isProcessingAI && (
+                <Icon name="sync" className="animate-spin text-[14px] opacity-70 shrink-0 mr-1" />
+              )}
 
+              {/* 1. ROOT NODE: Centered white brain/psychology icon */}
+              {nodeType === "root" && !isProcessingAI && (
+                <Icon
+                  name={visualConfig?.iconName || "psychology"}
+                  className={visualConfig?.iconClasses || "text-[20px] text-white shrink-0"}
+                />
+              )}
+
+              {/* 2. TOPIC NODE: Contextual semantic icon tinted with branch stroke */}
+              {nodeType === "topic" && !isProcessingAI && visualConfig?.iconName && (
+                <span
+                  className="shrink-0 flex items-center justify-center"
+                  style={{ color: branchAccentColor }}
+                >
+                  <Icon
+                    name={visualConfig.iconName}
+                    className={visualConfig.iconClasses || "text-[18px]"}
+                  />
+                </span>
+              )}
+
+              {/* 3. CONCEPT NODE: Solid circular bullet dot matching branch color */}
+              {nodeType === "concept" && !isProcessingAI && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: visualConfig?.dotColor || branchAccentColor }}
+                />
+              )}
+
+              {/* 4. DETAIL NODE: Tiny circular bullet dot */}
+              {nodeType === "detail" && !isProcessingAI && (
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0 opacity-80"
+                  style={{ backgroundColor: visualConfig?.dotColor || branchAccentColor }}
+                />
+              )}
+
+              {/* 5. TASK NODE: Interactive checkbox */}
+              {isTaskNode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleTask();
+                  }}
+                  className="w-4 h-4 flex items-center justify-center shrink-0 text-primary hover:text-primary-container transition-colors cursor-pointer"
+                  title={isTaskCompleted ? "Mark incomplete" : "Mark complete"}
+                >
+                  <Icon
+                    name={isTaskCompleted ? "check_box" : "check_box_outline_blank"}
+                    className="text-[16px]"
+                  />
+                </button>
+              )}
+
+              {/* 6. INSIGHT NODE: Warm lightbulb icon */}
+              {nodeType === "insight" && !isTaskNode && !isProcessingAI && (
+                <Icon
+                  name="lightbulb"
+                  className="text-[16px] text-amber-600 dark:text-amber-400 shrink-0"
+                />
+              )}
+
+              {/* 7. AI SUGGESTION NODE: Sparkle icon */}
+              {nodeType === "ai_suggestion" && !isProcessingAI && (
+                <Icon
+                  name="auto_awesome"
+                  className="text-[14px] text-violet-600 dark:text-violet-400 shrink-0"
+                />
+              )}
+
+              {/* Text Label */}
+              <span
+                className={`break-words flex-1 ${
+                  nodeType === "root" ? "text-center" : "text-left"
+                } ${isTaskCompleted ? "line-through opacity-70" : ""}`}
+              >
+                {displayLabel}
+              </span>
+            </div>
           )}
-
-
 
           {isAiSuggestion && !isEditing && (
             <div
-              className="flex items-center justify-center gap-1.5 mt-2 pt-1.5 border-t border-accent-violet/20 w-full"
+              className="flex items-center justify-center gap-1.5 mt-2 pt-1.5 border-t border-violet-400/20 w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 type="button"
                 onClick={handleAcceptSuggestion}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent-violet/15 hover:bg-accent-violet text-accent-violet hover:text-white text-[11px] font-semibold transition-all cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-600/15 hover:bg-violet-600 text-violet-700 dark:text-violet-300 hover:text-white text-[11px] font-semibold transition-all cursor-pointer"
                 title="Accept suggestion and add to map"
               >
                 <Icon name="check" className="text-[13px]" />
@@ -1566,7 +1544,7 @@ export function EditableNode({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-error/15 text-on-surface-variant hover:text-error text-[11px] font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-error/15 text-slate-500 hover:text-error text-[11px] font-medium transition-colors cursor-pointer"
                 title="Dismiss suggestion"
               >
                 <Icon name="close" className="text-[13px]" />
@@ -1575,14 +1553,35 @@ export function EditableNode({
             </div>
           )}
 
+          {/* Source Handles (4 directions) */}
           <Handle
-
             type="source"
-
+            position={Position.Right}
+            id="source-right"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="source"
+            position={Position.Left}
+            id="source-left"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="source-bottom"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="source"
+            position={Position.Top}
+            id="source-top"
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-2.5 h-2.5 bg-primary border-2 border-surface rounded-full shadow-xs"
+          />
+          <Handle
+            type="source"
             position={effectiveSourcePos}
-
-            className="opacity-0 group-hover:opacity-100 transition-opacity w-3 h-3 bg-primary"
-
+            className="opacity-0 pointer-events-none"
           />
 
           {/* Branch Collapse/Expand Trigger & Badge */}

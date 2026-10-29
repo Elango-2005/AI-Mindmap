@@ -1,30 +1,20 @@
-import { Node as FlowNode, Edge as FlowEdge, MarkerType } from "@xyflow/react";
+import { determineOptimalHandles } from "./layoutAlgorithms.ts";
+import type { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import { MarkerType } from "@xyflow/react";
 
 import {
-
-  SemanticNodeType,
-
   SEMANTIC_NODE_TYPES,
-
-  SemanticEdgeType,
-
   SEMANTIC_EDGE_TYPES,
-
-  SemanticNode,
-
-  SemanticEdge,
-
-  SemanticGraph,
-
-  MapTheme,
-
-  NodeVisualConfig,
-
-  NodeStyleOverride,
-
-  ThemeKey,
-
-} from "@/types/semanticGraph";
+  type SemanticNodeType,
+  type SemanticEdgeType,
+  type SemanticNode,
+  type SemanticEdge,
+  type SemanticGraph,
+  type MapTheme,
+  type NodeVisualConfig,
+  type NodeStyleOverride,
+  type ThemeKey,
+} from "../types/semanticGraph.ts";
 
 import {
 
@@ -36,7 +26,7 @@ import {
 
   type BranchTheme,
 
-} from "@/lib/graphColoring";
+} from "./graphColoring.ts";
 
 
 
@@ -58,6 +48,7 @@ export function normalizeSemanticType(
     if (clean === "root") return SEMANTIC_NODE_TYPES.ROOT;
     if (clean === "topic" || clean === "main" || clean === "pillar") return SEMANTIC_NODE_TYPES.TOPIC;
     if (clean === "concept" || clean === "subtopic") return SEMANTIC_NODE_TYPES.CONCEPT;
+    if (clean === "detail" || clean === "subconcept" || clean === "leaf" || clean === "item") return SEMANTIC_NODE_TYPES.DETAIL;
     if (clean === "task" || clean === "action" || clean === "todo" || clean === "deliverable") return SEMANTIC_NODE_TYPES.TASK;
     if (clean === "insight" || clean === "finding" || clean === "observation" || clean === "takeaway") return SEMANTIC_NODE_TYPES.INSIGHT;
     if (clean === "ai_suggestion" || clean === "suggestion" || clean === "proposal" || clean === "recommendation" || clean === "ai") {
@@ -114,7 +105,70 @@ export function normalizeSemanticType(
   // Safe fallback based strictly on hierarchy depth
   if (depth === 0) return SEMANTIC_NODE_TYPES.ROOT;
   if (depth === 1) return SEMANTIC_NODE_TYPES.TOPIC;
-  return SEMANTIC_NODE_TYPES.CONCEPT;
+  if (depth === 2) return SEMANTIC_NODE_TYPES.CONCEPT;
+  return SEMANTIC_NODE_TYPES.DETAIL;
+}
+
+/**
+ * Contextual icon inference for nodes.
+ * Adheres strictly to MindVault iconography rules:
+ * - Root: central brain/psychology icon
+ * - Topic: contextual semantic icon based on topic keywords (storage, cube, sparkle, chart, settings, cloud, etc.)
+ * - Concept: bullet dot (no separate icon)
+ * - Detail: bullet dot (no separate icon)
+ * - Task: checkbox (no separate icon)
+ * - Insight: lightbulb
+ * - Suggestion: sparkle
+ */
+export function inferSemanticIcon(title: string, type?: SemanticNodeType): string | undefined {
+  if (type === "root") return "psychology";
+  if (type === "task") return undefined;
+  if (type === "insight") return "lightbulb";
+  if (type === "ai_suggestion") return "auto_awesome";
+  if (type === "concept" || type === "detail") return undefined;
+
+  const t = (title || "").toLowerCase();
+  if (t.includes("data") || t.includes("database") || t.includes("store") || t.includes("sql") || t.includes("storage") || t.includes("dataset") || t.includes("warehouse")) {
+    return "storage";
+  }
+  if (t.includes("generative") || t.includes("llm") || t.includes("gpt") || t.includes("prompt") || t.includes("nlp") || t.includes("language") || t.includes("chat")) {
+    return "view_in_ar";
+  }
+  if (t.includes("deep learning") || t.includes("neural") || t.includes("vision") || t.includes("cnn") || t.includes("transformer") || t.includes("network") || t.includes("architecture")) {
+    return "auto_awesome";
+  }
+  if (t.includes("machine learning") || t.includes("stat") || t.includes("analytics") || t.includes("metric") || t.includes("chart") || t.includes("algorithm") || t.includes("supervised") || t.includes("unsupervised")) {
+    return "bar_chart";
+  }
+  if (t.includes("ops") || t.includes("serving") || t.includes("production") || t.includes("pipeline") || t.includes("system") || t.includes("deploy") || t.includes("scale") || t.includes("mlops")) {
+    return "settings";
+  }
+  if (t.includes("tool") || t.includes("cloud") || t.includes("framework") || t.includes("infra") || t.includes("docker") || t.includes("k8s") || t.includes("kubernetes")) {
+    return "cloud";
+  }
+  if (t.includes("security") || t.includes("auth") || t.includes("privacy") || t.includes("guardrail") || t.includes("safe")) {
+    return "shield";
+  }
+  if (t.includes("research") || t.includes("study") || t.includes("analysis") || t.includes("find") || t.includes("explore")) {
+    return "search";
+  }
+  if (t.includes("learn") || t.includes("doc") || t.includes("book") || t.includes("guide") || t.includes("course") || t.includes("read")) {
+    return "menu_book";
+  }
+  if (t.includes("project") || t.includes("plan") || t.includes("roadmap") || t.includes("strategy") || t.includes("milestone")) {
+    return "folder";
+  }
+  if (t.includes("team") || t.includes("user") || t.includes("people") || t.includes("customer") || t.includes("community")) {
+    return "group";
+  }
+  if (t.includes("code") || t.includes("api") || t.includes("dev") || t.includes("software") || t.includes("backend") || t.includes("frontend")) {
+    return "code";
+  }
+  if (t.includes("money") || t.includes("cost") || t.includes("finance") || t.includes("budget") || t.includes("pricing") || t.includes("roi")) {
+    return "payments";
+  }
+
+  return "category";
 }
 
 /**
@@ -599,849 +653,506 @@ export function buildSemanticGraph(rawNodes: any[], rawEdges: any[]): SemanticGr
  */
 
 export function resolveNodeVisualConfig(
-
   node: SemanticNode,
-
   themePalette: MapTheme | ThemeKey,
-
   isSelected: boolean = false,
-
   override?: NodeStyleOverride
-
 ): NodeVisualConfig {
-
   const themeKey =
-
     typeof themePalette === "string"
-
       ? normalizeThemeKey(themePalette)
-
       : normalizeThemeKey(themePalette.id);
-
-
 
   const theme = THEME_PALETTES[themeKey] || THEME_PALETTES.modern;
 
-
-
   const branchThemes =
-
     theme.branches && theme.branches.length > 0
-
       ? theme.branches
-
       : THEME_PALETTES.modern.branches;
-
   const rootTheme = theme.root || THEME_PALETTES.modern.root;
 
-
-
   // Derive branch color assignment using consistent hash from branchId
-
   let assignedPalette: BranchTheme = DEFAULT_THEME;
-
   if (node.depth === 0 || node.type === "root") {
-
     assignedPalette = rootTheme;
-
   } else if (node.branchId) {
-
     let hash = 0;
-
     for (let i = 0; i < node.branchId.length; i++) {
-
       hash = (hash << 5) - hash + node.branchId.charCodeAt(i);
-
       hash |= 0;
-
     }
-
     const index = Math.abs(hash) % branchThemes.length;
-
     assignedPalette = branchThemes[index];
-
   } else {
-
     let hash = 0;
-
     for (let i = 0; i < node.id.length; i++) {
-
       hash = (hash << 5) - hash + node.id.charCodeAt(i);
-
       hash |= 0;
-
     }
-
     const index = Math.abs(hash) % branchThemes.length;
-
     assignedPalette = branchThemes[index];
-
   }
-
-
-
-  // Branch left border accent class for child concept cards
-
-  const leftBorderAccent = assignedPalette.border.replace(/^border-/, "border-l-");
-
-
 
   const isHighImportance = node.importanceScore >= 0.85;
-
   const isLowImportance = node.importanceScore <= 0.35;
-
   let ringClasses = "";
-
   if (isHighImportance && node.depth > 0) {
-
-    ringClasses = "ring-1 ring-amber-400/50 shadow-xs border-2";
-
+    ringClasses = "ring-1 ring-amber-400/50 shadow-xs";
   } else if (isLowImportance && node.depth > 0) {
-
     ringClasses = "opacity-85";
-
   }
 
-
-
   const selectionRing = isSelected
-
     ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md border-primary"
-
     : "";
-
-
 
   let baseConfig: NodeVisualConfig;
 
-
-
   // 1. Theme-Specific Default Configuration
-
   if (themeKey === "minimal") {
-
     // MINIMAL THEME: Calm, low visual noise, mostly neutral backgrounds, subtle borders
-
     switch (node.type) {
-
       case "root":
-
         baseConfig = {
-
           shape: "pill",
-
-          shapeClasses: `rounded-full py-2.5 px-5 min-w-[150px] max-w-[260px] shadow-none border transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-headline-sm font-semibold tracking-tight text-center",
-
+          shapeClasses: `rounded-full py-2.5 px-6 min-w-[150px] max-w-[300px] shadow-none border transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[16px] font-semibold tracking-tight text-center",
           borderClasses: rootTheme.border,
-
           bgClasses: rootTheme.bg,
-
           textColorClasses: rootTheme.text,
-
+          iconName: "psychology",
+          iconClasses: "text-[20px] text-white dark:text-slate-900 shrink-0",
+          dotColor: "#ffffff",
+          accentStroke: "#ffffff",
         };
-
         break;
-
-
 
       case "topic":
-
         baseConfig = {
-
           shape: "rounded-rect",
-
-          shapeClasses: `rounded-lg py-2 px-3.5 min-w-[110px] max-w-[220px] shadow-none border transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-title-sm font-semibold text-center",
-
-          borderClasses: "border-outline-variant/60 dark:border-outline-variant/40",
-
+          shapeClasses: `rounded-xl py-2 px-3.5 min-w-[120px] max-w-[260px] shadow-none border transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[14px] font-semibold text-left",
+          borderClasses: "border-slate-300 dark:border-slate-600",
           bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
-
-          textColorClasses: "text-on-surface dark:text-on-surface",
-
+          textColorClasses: "text-slate-900 dark:text-slate-100",
+          iconName: inferSemanticIcon(node.title, "topic"),
+          iconClasses: "text-[18px] shrink-0",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
         };
-
         break;
 
-
-
-      case "task": {
-
-        const trimmed = (node.title || "").trim();
-
-        const isDone =
-
-          node.metadata?.status === "done" ||
-
-          trimmed.startsWith("[x]") ||
-
-          trimmed.startsWith("[X]");
-
-
-
+      case "detail":
         baseConfig = {
-
           shape: "card",
-
-          shapeClasses: `rounded-md py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-none transition-all duration-150 ${
-
-            isDone ? "opacity-75" : ""
-
-          } ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
-          borderClasses: isSelected
-
-            ? "border-primary ring-2 ring-primary"
-
-            : "border-outline-variant/50 dark:border-outline-variant/30 hover:border-primary/50",
-
-          bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
-
-          textColorClasses: isDone
-
-            ? "text-on-surface-variant dark:text-on-surface-variant"
-
-            : "text-on-surface dark:text-on-surface",
-
-          showCheckbox: true,
-
-          isCompleted: isDone,
-
-          iconName: isDone ? "check_box" : "check_box_outline_blank",
-
-          iconClasses: "text-[16px] text-primary shrink-0 cursor-pointer",
-
-        };
-
-        break;
-
-      }
-
-
-
-      case "insight":
-
-        baseConfig = {
-
-          shape: "callout",
-
-          shapeClasses: `rounded-md py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium italic",
-
-          borderClasses: isSelected
-
-            ? "border-primary ring-2 ring-primary"
-
-            : "border-amber-400/60 dark:border-amber-500/50",
-
-          bgClasses: "bg-amber-500/5 dark:bg-amber-500/10",
-
-          textColorClasses: "text-amber-950 dark:text-amber-100",
-
-          iconName: "lightbulb",
-
-          iconClasses: "text-[16px] text-amber-600 dark:text-amber-400 shrink-0",
-
-        };
-
-        break;
-
-
-
-      case "ai_suggestion":
-
-        baseConfig = {
-
-          shape: "badge",
-
-          shapeClasses: `rounded-md py-1.5 px-3 min-w-[110px] max-w-[240px] border border-dashed shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
-          borderClasses: isSelected
-
-            ? "border-primary ring-2 ring-primary"
-
-            : "border-accent-violet/60 dark:border-accent-violet/50",
-
-          bgClasses: "bg-accent-violet/5 dark:bg-accent-violet/10",
-
-          textColorClasses: "text-accent-violet dark:text-accent-violet",
-
-          iconName: "auto_awesome",
-
-          iconClasses: "text-[16px] text-accent-violet shrink-0",
-
-          showSparkle: true,
-
-        };
-
-        break;
-
-
-
-      case "concept":
-
-      default:
-
-        baseConfig = {
-
-          shape: "rounded-rect",
-
-          shapeClasses: `rounded-md py-1.5 px-3 min-w-[80px] max-w-[200px] border shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-normal text-center",
-
-          borderClasses: isSelected
-
-            ? "border-primary ring-2 ring-primary"
-
-            : `border-outline-variant/30 dark:border-outline-variant/20 border-l-2 ${leftBorderAccent}`,
-
+          shapeClasses: `rounded-md py-1 px-2.5 min-w-[80px] max-w-[220px] border shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[12px] font-normal text-left",
+          borderClasses: "border-slate-200/70 dark:border-slate-800/60",
           bgClasses: "bg-surface-container-lowest/80 dark:bg-surface-container-lowest/70",
-
-          textColorClasses: "text-on-surface-variant dark:text-on-surface-variant",
-
+          textColorClasses: "text-slate-600 dark:text-slate-400",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
         };
-
         break;
-
-    }
-
-  } else if (themeKey === "colorful") {
-
-    // COLORFUL THEME: Rich, distinct branch hues with tinted surfaces
-
-    switch (node.type) {
-
-      case "root":
-
-        baseConfig = {
-
-          shape: "pill",
-
-          shapeClasses: `rounded-full py-3 px-6 min-w-[160px] max-w-[280px] shadow-md border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-headline-sm font-semibold tracking-tight text-center",
-
-          borderClasses: rootTheme.border,
-
-          bgClasses: rootTheme.bg,
-
-          textColorClasses: rootTheme.text,
-
-        };
-
-        break;
-
-
-
-      case "topic":
-
-        baseConfig = {
-
-          shape: "rounded-rect",
-
-          shapeClasses: `rounded-xl py-2.5 px-4 min-w-[120px] max-w-[240px] shadow-xs border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-title-sm font-semibold text-center",
-
-          borderClasses: assignedPalette.border,
-
-          bgClasses: `${assignedPalette.bg} backdrop-blur-xs`,
-
-          textColorClasses: assignedPalette.text,
-
-        };
-
-        break;
-
-
 
       case "task": {
-
         const trimmed = (node.title || "").trim();
-
         const isDone =
-
           node.metadata?.status === "done" ||
-
           trimmed.startsWith("[x]") ||
-
           trimmed.startsWith("[X]");
 
-
-
         baseConfig = {
-
           shape: "card",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs transition-all duration-150 ${
-
-            isDone ? "opacity-75" : ""
-
-          } ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-none transition-all duration-150 ${
+            isDone ? "opacity-75 " : ""
+          }${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
           borderClasses: isSelected
-
             ? "border-primary ring-2 ring-primary"
-
-            : "border-outline-variant/60 dark:border-outline-variant/40 hover:border-primary/50",
-
+            : "border-slate-300 dark:border-slate-600 hover:border-primary/50",
           bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
-
           textColorClasses: isDone
-
-            ? "text-on-surface-variant dark:text-on-surface-variant"
-
-            : "text-on-surface dark:text-on-surface",
-
+            ? "text-slate-400 dark:text-slate-500 line-through"
+            : "text-slate-900 dark:text-slate-100",
           showCheckbox: true,
-
           isCompleted: isDone,
-
           iconName: isDone ? "check_box" : "check_box_outline_blank",
-
-          iconClasses: "text-[16px] text-primary shrink-0 cursor-pointer",
-
+          iconClasses: "text-[16px] text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer",
+          dotColor: assignedPalette.stroke,
         };
-
         break;
-
       }
 
-
-
       case "insight":
-
         baseConfig = {
-
           shape: "callout",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium italic",
-
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium italic text-left",
           borderClasses: isSelected
-
             ? "border-primary ring-2 ring-primary"
-
-            : "border-amber-400/80 dark:border-amber-500/70",
-
-          bgClasses: "bg-amber-500/15 dark:bg-amber-500/20",
-
+            : "border-amber-400/60 dark:border-amber-500/50",
+          bgClasses: "bg-amber-500/5 dark:bg-amber-500/10",
           textColorClasses: "text-amber-950 dark:text-amber-100",
-
           iconName: "lightbulb",
-
           iconClasses: "text-[16px] text-amber-600 dark:text-amber-400 shrink-0",
-
+          dotColor: "#f59e0b",
         };
-
         break;
-
-
 
       case "ai_suggestion":
-
         baseConfig = {
-
           shape: "badge",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border border-dashed shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border border-dashed shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
           borderClasses: isSelected
-
             ? "border-primary ring-2 ring-primary"
-
-            : "border-accent-violet/80 dark:border-accent-violet/70",
-
-          bgClasses: "bg-accent-violet/10 dark:bg-accent-violet/15",
-
-          textColorClasses: "text-accent-violet dark:text-accent-violet",
-
+            : "border-violet-400/60 dark:border-violet-500/50",
+          bgClasses: "bg-violet-500/5 dark:bg-violet-500/10",
+          textColorClasses: "text-violet-950 dark:text-violet-100",
           iconName: "auto_awesome",
-
-          iconClasses: "text-[16px] text-accent-violet shrink-0",
-
+          iconClasses: "text-[16px] text-violet-600 dark:text-violet-400 shrink-0",
           showSparkle: true,
-
+          dotColor: "#8b5cf6",
         };
-
         break;
 
+      case "concept":
+      default:
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[95px] max-w-[240px] border shadow-none transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
+          borderClasses: isSelected
+            ? "border-primary ring-2 ring-primary"
+            : "border-slate-200 dark:border-slate-700",
+          bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
+          textColorClasses: "text-slate-800 dark:text-slate-200",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+    }
+  } else if (themeKey === "colorful") {
+    // COLORFUL THEME: Rich, distinct branch hues with tinted surfaces
+    switch (node.type) {
+      case "root":
+        baseConfig = {
+          shape: "pill",
+          shapeClasses: `rounded-full py-3 px-6 min-w-[170px] max-w-[340px] shadow-md border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[16px] md:text-[17px] font-bold tracking-tight text-center",
+          borderClasses: rootTheme.border,
+          bgClasses: rootTheme.bg,
+          textColorClasses: rootTheme.text,
+          iconName: "psychology",
+          iconClasses: "text-[20px] text-white shrink-0",
+          dotColor: "#ffffff",
+          accentStroke: "#ffffff",
+        };
+        break;
 
+      case "topic":
+        baseConfig = {
+          shape: "rounded-rect",
+          shapeClasses: `rounded-2xl py-2.5 px-4 min-w-[130px] max-w-[280px] shadow-xs border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[14px] font-semibold text-left",
+          borderClasses: assignedPalette.border,
+          bgClasses: `${assignedPalette.bg} backdrop-blur-xs`,
+          textColorClasses: assignedPalette.text,
+          iconName: inferSemanticIcon(node.title, "topic"),
+          iconClasses: "text-[18px] shrink-0",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+
+      case "detail":
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-lg py-1 px-2.5 min-w-[85px] max-w-[240px] border shadow-2xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[12px] font-normal text-left",
+          borderClasses: assignedPalette.tintBorder || "border-slate-200",
+          bgClasses: "bg-surface-container-lowest/80 dark:bg-surface-container-lowest/70",
+          textColorClasses: "text-on-surface-variant dark:text-on-surface-variant",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+
+      case "task": {
+        const trimmed = (node.title || "").trim();
+        const isDone =
+          node.metadata?.status === "done" ||
+          trimmed.startsWith("[x]") ||
+          trimmed.startsWith("[X]");
+
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs transition-all duration-150 ${
+            isDone ? "opacity-75 " : ""
+          }${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
+          borderClasses: isSelected
+            ? "border-primary ring-2 ring-primary"
+            : "border-outline-variant/60 dark:border-outline-variant/40 hover:border-primary/50",
+          bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
+          textColorClasses: isDone
+            ? "text-on-surface-variant dark:text-on-surface-variant line-through"
+            : "text-on-surface dark:text-on-surface",
+          showCheckbox: true,
+          isCompleted: isDone,
+          iconName: isDone ? "check_box" : "check_box_outline_blank",
+          iconClasses: "text-[16px] text-primary shrink-0 cursor-pointer",
+          dotColor: assignedPalette.stroke,
+        };
+        break;
+      }
+
+      case "insight":
+        baseConfig = {
+          shape: "callout",
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium italic text-left",
+          borderClasses: isSelected
+            ? "border-primary ring-2 ring-primary"
+            : "border-amber-400/80 dark:border-amber-500/70",
+          bgClasses: "bg-amber-500/15 dark:bg-amber-500/20",
+          textColorClasses: "text-amber-950 dark:text-amber-100",
+          iconName: "lightbulb",
+          iconClasses: "text-[16px] text-amber-600 dark:text-amber-400 shrink-0",
+          dotColor: "#f59e0b",
+        };
+        break;
+
+      case "ai_suggestion":
+        baseConfig = {
+          shape: "badge",
+          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border border-dashed shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
+          borderClasses: isSelected
+            ? "border-primary ring-2 ring-primary"
+            : "border-violet-500/80 dark:border-violet-400/70",
+          bgClasses: "bg-violet-500/10 dark:bg-violet-500/15",
+          textColorClasses: "text-violet-950 dark:text-violet-100",
+          iconName: "auto_awesome",
+          iconClasses: "text-[16px] text-violet-600 dark:text-violet-400 shrink-0",
+          showSparkle: true,
+          dotColor: "#8b5cf6",
+        };
+        break;
 
       case "concept":
+      default:
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-xl py-1.5 px-3 min-w-[100px] max-w-[260px] border-2 shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left",
+          borderClasses: assignedPalette.tintBorder || assignedPalette.border,
+          bgClasses: assignedPalette.tintBg || `${assignedPalette.bg} backdrop-blur-xs`,
+          textColorClasses: assignedPalette.text,
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+    }
+  } else {
+    // MODERN THEME (Default): Approved Reference Design — Restrained SaaS hierarchy
+    switch (node.type) {
+      case "root":
+        baseConfig = {
+          shape: "pill",
+          shapeClasses: `rounded-full py-3 px-6 min-w-[170px] max-w-[340px] shadow-lg shadow-indigo-950/20 border transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[16px] md:text-[17px] font-bold tracking-tight text-center",
+          borderClasses: rootTheme.border,
+          bgClasses: rootTheme.bg,
+          textColorClasses: rootTheme.text,
+          iconName: "psychology",
+          iconClasses: "text-[20px] text-white shrink-0",
+          dotColor: "#ffffff",
+          accentStroke: "#ffffff",
+        };
+        break;
+
+      case "topic":
+        baseConfig = {
+          shape: "rounded-rect",
+          shapeClasses: `rounded-2xl py-2.5 px-4 min-w-[130px] max-w-[280px] shadow-xs hover:shadow-sm border-2 transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[14px] font-semibold text-left leading-snug",
+          borderClasses: assignedPalette.border,
+          bgClasses: assignedPalette.bg,
+          textColorClasses: assignedPalette.text,
+          iconName: inferSemanticIcon(node.title, "topic"),
+          iconClasses: "text-[18px] shrink-0",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+
+      case "concept":
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-xl py-1.5 px-3 min-w-[100px] max-w-[260px] border shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left leading-snug",
+          borderClasses: isSelected
+            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
+            : (assignedPalette.tintBorder || "border-slate-200 dark:border-slate-800"),
+          bgClasses: assignedPalette.tintBg || "bg-[#f8fafc] dark:bg-slate-900/60",
+          textColorClasses: "text-slate-800 dark:text-slate-200",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+
+      case "detail":
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-lg py-1 px-2.5 min-w-[85px] max-w-[240px] border shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[12px] font-normal text-left leading-snug",
+          borderClasses: isSelected
+            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
+            : "border-slate-200/80 dark:border-slate-800/80",
+          bgClasses: "bg-slate-50/90 dark:bg-slate-900/40",
+          textColorClasses: "text-slate-600 dark:text-slate-400",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
+        };
+        break;
+
+      case "task": {
+        const trimmed = (node.title || "").trim();
+        const isDone =
+          node.metadata?.status === "done" ||
+          trimmed.startsWith("[x]") ||
+          trimmed.startsWith("[X]");
+
+        baseConfig = {
+          shape: "card",
+          shapeClasses: `rounded-xl py-1.5 px-3 min-w-[110px] max-w-[260px] border shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer ${
+            isDone ? "opacity-75 " : ""
+          }${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left leading-snug",
+          borderClasses: isSelected
+            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
+            : isDone
+            ? "border-slate-200 dark:border-slate-800"
+            : "border-slate-200 dark:border-slate-700 hover:border-primary/50",
+          bgClasses: "bg-white dark:bg-slate-900/90",
+          textColorClasses: isDone
+            ? "text-slate-400 dark:text-slate-500 line-through"
+            : "text-slate-800 dark:text-slate-200",
+          showCheckbox: true,
+          isCompleted: isDone,
+          iconName: isDone ? "check_box" : "check_box_outline_blank",
+          iconClasses: "text-[16px] text-primary shrink-0 cursor-pointer",
+          dotColor: assignedPalette.stroke,
+        };
+        break;
+      }
+
+      case "insight":
+        baseConfig = {
+          shape: "callout",
+          shapeClasses: `rounded-xl py-1.5 px-3.5 min-w-[110px] max-w-[260px] border shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium italic text-left leading-snug",
+          borderClasses: isSelected
+            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
+            : "border-amber-300/80 dark:border-amber-700/60",
+          bgClasses: "bg-amber-50/90 dark:bg-amber-950/30",
+          textColorClasses: "text-amber-950 dark:text-amber-100",
+          iconName: "lightbulb",
+          iconClasses: "text-[16px] text-amber-600 dark:text-amber-400 shrink-0",
+          dotColor: "#f59e0b",
+        };
+        break;
+
+      case "ai_suggestion":
+        baseConfig = {
+          shape: "badge",
+          shapeClasses: `rounded-xl py-2 px-3.5 min-w-[130px] max-w-[260px] border-2 border-dashed shadow-2xs transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left leading-snug",
+          borderClasses: isSelected
+            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
+            : "border-violet-400/80 dark:border-violet-500/60",
+          bgClasses: "bg-[#FAF8FF] dark:bg-violet-950/20",
+          textColorClasses: "text-violet-950 dark:text-violet-100",
+          iconName: "auto_awesome",
+          iconClasses: "text-[16px] text-violet-600 dark:text-violet-400 shrink-0",
+          showSparkle: true,
+          dotColor: "#8b5cf6",
+        };
+        break;
 
       default:
-
         baseConfig = {
-
-          shape: "rounded-rect",
-
-          shapeClasses: `rounded-lg py-2 px-3.5 min-w-[90px] max-w-[220px] border-2 shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-ui font-medium text-center",
-
-          borderClasses: assignedPalette.border,
-
-          bgClasses: `${assignedPalette.bg} backdrop-blur-xs`,
-
-          textColorClasses: assignedPalette.text,
-
-        };
-
-        break;
-
-    }
-
-  } else {
-
-    // MODERN THEME (Default): Restrained SaaS hierarchy, subtle shadows, branch accents
-
-    switch (node.type) {
-
-      case "root":
-
-        baseConfig = {
-
-          shape: "pill",
-
-          shapeClasses: `rounded-full py-3 px-6 min-w-[160px] max-w-[280px] shadow-md border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-headline-sm font-semibold tracking-tight text-center",
-
-          borderClasses: rootTheme.border,
-
-          bgClasses: rootTheme.bg,
-
-          textColorClasses: rootTheme.text,
-
-        };
-
-        break;
-
-
-
-      case "topic":
-
-        baseConfig = {
-
-          shape: "rounded-rect",
-
-          shapeClasses: `rounded-xl py-2.5 px-4 min-w-[120px] max-w-[240px] shadow-xs border-2 transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-title-sm font-semibold text-center",
-
-          borderClasses: assignedPalette.border,
-
-          bgClasses: `${assignedPalette.bg} backdrop-blur-xs`,
-
-          textColorClasses: assignedPalette.text,
-
-        };
-
-        break;
-
-
-
-      case "task": {
-
-        const trimmed = (node.title || "").trim();
-
-        const isDone =
-
-          node.metadata?.status === "done" ||
-
-          trimmed.startsWith("[x]") ||
-
-          trimmed.startsWith("[X]");
-
-
-
-        baseConfig = {
-
           shape: "card",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs transition-all duration-150 ${
-
-            isDone ? "opacity-75" : ""
-
-          } ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
+          shapeClasses: `rounded-xl py-1.5 px-3 min-w-[100px] max-w-[260px] border shadow-2xs transition-all duration-200 cursor-pointer ${ringClasses} ${selectionRing}`,
+          typographyClasses: "text-[13px] font-medium text-left leading-snug",
           borderClasses: isSelected
-
             ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
-
-            : "border-outline-variant/60 dark:border-outline-variant/40 hover:border-primary/50",
-
-          bgClasses: "bg-surface-container-lowest dark:bg-surface-container-low",
-
-          textColorClasses: isDone
-
-            ? "text-on-surface-variant dark:text-on-surface-variant"
-
-            : "text-on-surface dark:text-on-surface",
-
-          showCheckbox: true,
-
-          isCompleted: isDone,
-
-          iconName: isDone ? "check_box" : "check_box_outline_blank",
-
-          iconClasses: "text-[16px] text-primary shrink-0 cursor-pointer",
-
+            : (assignedPalette.tintBorder || "border-slate-200 dark:border-slate-800"),
+          bgClasses: assignedPalette.tintBg || "bg-[#f8fafc] dark:bg-slate-900/60",
+          textColorClasses: "text-slate-800 dark:text-slate-200",
+          accentStroke: assignedPalette.stroke,
+          dotColor: assignedPalette.dotColor || assignedPalette.stroke,
         };
-
         break;
-
-      }
-
-
-
-      case "insight":
-
-        baseConfig = {
-
-          shape: "callout",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium italic",
-
-          borderClasses: isSelected
-
-            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
-
-            : "border-amber-400/70 dark:border-amber-500/60",
-
-          bgClasses: "bg-amber-500/10 dark:bg-amber-500/15",
-
-          textColorClasses: "text-amber-950 dark:text-amber-100",
-
-          iconName: "lightbulb",
-
-          iconClasses: "text-[16px] text-amber-600 dark:text-amber-400 shrink-0",
-
-        };
-
-        break;
-
-
-
-      case "ai_suggestion":
-
-        baseConfig = {
-
-          shape: "badge",
-
-          shapeClasses: `rounded-lg py-1.5 px-3 min-w-[110px] max-w-[240px] border border-dashed shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-          typographyClasses: "text-sm font-medium",
-
-          borderClasses: isSelected
-
-            ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
-
-            : "border-accent-violet/70 dark:border-accent-violet/60",
-
-          bgClasses: "bg-accent-violet/5 dark:bg-accent-violet/10",
-
-          textColorClasses: "text-accent-violet dark:text-accent-violet",
-
-          iconName: "auto_awesome",
-
-          iconClasses: "text-[16px] text-accent-violet shrink-0",
-
-          showSparkle: true,
-
-        };
-
-        break;
-
-
-
-      case "concept":
-
-      default: {
-
-        if (node.depth <= 2) {
-
-          baseConfig = {
-
-            shape: "rounded-rect",
-
-            shapeClasses: `rounded-lg py-2 px-3.5 min-w-[90px] max-w-[220px] border shadow-2xs backdrop-blur-xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-            typographyClasses: "text-ui font-medium text-center",
-
-            borderClasses: isSelected
-
-              ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
-
-              : `border-outline-variant/40 dark:border-outline-variant/30 border-l-[3.5px] ${leftBorderAccent}`,
-
-            bgClasses: "bg-surface-container-lowest/95 dark:bg-surface-container-lowest/90",
-
-            textColorClasses: "text-on-surface dark:text-on-surface",
-
-          };
-
-        } else {
-
-          baseConfig = {
-
-            shape: "rounded-rect",
-
-            shapeClasses: `rounded-lg py-1.5 px-3 min-w-[80px] max-w-[200px] border shadow-2xs transition-all duration-150 ${ringClasses} ${selectionRing}`,
-
-            typographyClasses: "text-sm font-normal text-center",
-
-            borderClasses: isSelected
-
-              ? "border-primary shadow-glow ring-2 ring-primary ring-offset-1"
-
-              : `border-outline-variant/30 dark:border-outline-variant/20 border-l-2 ${leftBorderAccent}/60`,
-
-            bgClasses: "bg-surface-container-lowest/80 dark:bg-surface-container-lowest/70",
-
-            textColorClasses: "text-on-surface-variant dark:text-on-surface-variant",
-
-          };
-
-        }
-
-        break;
-
-      }
-
     }
-
   }
-
-
 
   // 2. Apply Explicit User Style Overrides (if any)
-
   const effectiveOverride = override || node.styleOverride;
-
   if (effectiveOverride) {
-
     // Shape Override
-
     if (effectiveOverride.shape === "pill") {
-
       baseConfig.shape = "pill";
-
       baseConfig.shapeClasses = baseConfig.shapeClasses
-
         .replace(/rounded-(xl|lg|md|2xl)/g, "rounded-full")
-
         .replace(/py-[\d\.]+/g, "py-2")
-
         .replace(/px-[\d\.]+/g, "px-5");
-
       if (!baseConfig.shapeClasses.includes("rounded-full")) {
-
         baseConfig.shapeClasses = `rounded-full ${baseConfig.shapeClasses}`;
-
       }
-
     } else if (effectiveOverride.shape === "rounded") {
-
       baseConfig.shape = "rounded-rect";
-
       baseConfig.shapeClasses = baseConfig.shapeClasses
-
         .replace(/rounded-(full|md|lg)/g, "rounded-xl")
-
         .replace(/py-[\d\.]+/g, "py-2.5")
-
         .replace(/px-[\d\.]+/g, "px-4");
-
       if (!baseConfig.shapeClasses.includes("rounded-xl")) {
-
         baseConfig.shapeClasses = `rounded-xl ${baseConfig.shapeClasses}`;
-
       }
-
     } else if (effectiveOverride.shape === "minimal") {
-
       baseConfig.shape = "badge";
-
       baseConfig.shapeClasses = baseConfig.shapeClasses
-
         .replace(/rounded-(full|xl|2xl)/g, "rounded-md")
-
-        .replace(/shadow-(md|xs|2xs)/g, "shadow-none")
-
+        .replace(/shadow-(md|xs|2xs|lg)/g, "shadow-none")
         .replace(/border-2/g, "border");
-
       if (!baseConfig.shapeClasses.includes("rounded-md")) {
-
         baseConfig.shapeClasses = `rounded-md shadow-none ${baseConfig.shapeClasses}`;
-
       }
-
     }
-
-
 
     // Color Override
-
     if (effectiveOverride.color === "neutral") {
-
       baseConfig.bgClasses = "bg-surface-container-lowest dark:bg-surface-container-low";
-
       baseConfig.borderClasses = "border-outline-variant/60 dark:border-outline-variant/40";
-
       baseConfig.textColorClasses = "text-on-surface dark:text-on-surface";
-
     } else if (effectiveOverride.color === "accent") {
-
       baseConfig.bgClasses = "bg-primary dark:bg-primary";
-
       baseConfig.borderClasses = "border-primary";
-
       baseConfig.textColorClasses = "text-on-primary dark:text-on-primary";
-
     }
-
-
 
     // Icon Override
-
     if (effectiveOverride.icon === null || effectiveOverride.icon === "none") {
-
       baseConfig.iconName = undefined;
-
     } else if (typeof effectiveOverride.icon === "string" && effectiveOverride.icon !== "auto") {
-
       baseConfig.iconName = effectiveOverride.icon;
-
       baseConfig.iconClasses = "text-[16px] text-primary shrink-0 opacity-90";
-
     }
-
   }
 
-
-
   return baseConfig;
-
 }
 
 
@@ -1555,13 +1266,10 @@ export function toReactFlowNodes(
  */
 
 export function toReactFlowEdges(
-
   semanticEdges: SemanticEdge[],
-
   semanticNodes: SemanticNode[],
-
-  themePalette: MapTheme | ThemeKey
-
+  themePalette: MapTheme | ThemeKey,
+  layoutMode?: LayoutMode | "horizontal" | "vertical" | "radial" | "balanced"
 ): FlowEdge[] {
 
   const themeKey =
@@ -1720,13 +1428,16 @@ export function toReactFlowEdges(
 
 
 
+    const sPos = sourceNode?.position || { x: 0, y: 0 };
+    const tPos = targetNode?.position || { x: 0, y: 0 };
+    const handles = determineOptimalHandles(sPos, tPos, layoutMode);
+
     return {
-
       id: edge.id,
-
       source: edge.source,
-
       target: edge.target,
+      sourceHandle: handles.sourceHandle,
+      targetHandle: handles.targetHandle,
 
       label: edge.label ?? undefined,
 
@@ -1773,20 +1484,14 @@ export function toReactFlowEdges(
  */
 
 export function toReactFlowGraph(
-
   graph: SemanticGraph,
-
   themePalette: MapTheme | ThemeKey,
-
   callbacks: Record<string, any> | ((node: SemanticNode) => Record<string, any>) = {},
-
-  overridesMap: Record<string, NodeStyleOverride> = {}
-
+  overridesMap: Record<string, NodeStyleOverride> = {},
+  layoutMode?: LayoutMode | "horizontal" | "vertical" | "radial" | "balanced"
 ): { nodes: FlowNode[]; edges: FlowEdge[] } {
-
   const nodes = toReactFlowNodes(graph.nodes, themePalette, callbacks, overridesMap);
-
-  const edges = toReactFlowEdges(graph.edges, graph.nodes, themePalette);
+  const edges = toReactFlowEdges(graph.edges, graph.nodes, themePalette, layoutMode);
 
   return { nodes, edges };
 

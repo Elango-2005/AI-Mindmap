@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
 
 
@@ -6,7 +6,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 
 
 
@@ -127,6 +127,8 @@ import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapsh
 
 
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
+import { Inspector } from "@/components/Inspector";
+import { AiAssistantPanel, type AIChatMessage, type SuggestedChangesData } from "@/components/AiAssistantPanel";
 
 
 
@@ -358,7 +360,7 @@ import type { SemanticNodeType, SemanticNode, NodeStyleOverride } from "@/types/
 
 
 
-import { applyLayout, type LayoutDirection } from "@/lib/layoutAlgorithms";
+import { applyLayout, determineOptimalHandles, type LayoutDirection } from "@/lib/layoutAlgorithms";
 
 
 
@@ -607,6 +609,7 @@ const edgeTypes = {
 
 
 function Workspace() {
+  const navigate = useNavigate();
 
 
 
@@ -924,71 +927,8 @@ function Workspace() {
 
 
 
-  const [chatMessages, setChatMessages] = useState<{
-
-
-
-
-
-
-
-    id: string;
-
-
-
-
-
-
-
-    role: 'user' | 'ai';
-
-
-
-
-
-
-
-    content: string;
-
-
-
-
-
-
-
-    mapChanges?: { nodesAdded: number; nodesDeleted: number; snapshotId?: string; isUndone?: boolean };
-
-
-
-
-
-
-
-    isError?: boolean;
-
-
-
-
-
-
-
-    failedPrompt?: string;
-
-
-
-
-
-
-
-    sources?: GroundingSource[];
-
-
-
-
-
-
-
-  }[]>([]);
+  const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
+  const [aiScope, setAiScope] = useState<"entire_map" | "node" | "branch">("entire_map");
 
 
 
@@ -8332,21 +8272,9 @@ function Workspace() {
 
 
     } else {
-
-
-
-
-
-
-
       setSelectedNodeId(node.id);
-
-
-
-
-
-
-
+      setIsAiPanelCollapsed(false);
+      setRightPanelMode("inspector");
     }
 
 
@@ -9013,7 +8941,7 @@ function Workspace() {
 
 
 
-    setTimeout(() => rfInstance?.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.5 }), 50);
+    setTimeout(() => rfInstance?.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.05 }), 50);
 
 
 
@@ -9202,21 +9130,15 @@ function Workspace() {
 
 
         onOpenInspector: (id: string) => {
-
-
-
           setSelectedNodeId(id);
-
-
-
-          setIsRightPanelOpen(true);
-
-
-
+          handleToggleAiPanel(true);
           setRightPanelMode("inspector");
-
-
-
+        },
+        onStartConnect: (id: string) => {
+          setActiveTool("connect");
+          setConnectSourceNodeId(id);
+          setSelectedNodeId(id);
+          toast.info("Source selected. Click target node to connect.");
         },
 
 
@@ -10466,21 +10388,15 @@ function Workspace() {
 
 
           onOpenInspector: (id: string) => {
-
-
-
             setSelectedNodeId(id);
-
-
-
-            setIsRightPanelOpen(true);
-
-
-
+            handleToggleAiPanel(true);
             setRightPanelMode("inspector");
-
-
-
+          },
+          onStartConnect: (id: string) => {
+            setActiveTool("connect");
+            setConnectSourceNodeId(id);
+            setSelectedNodeId(id);
+            toast.info("Source selected. Click target node to connect.");
           },
 
 
@@ -10539,7 +10455,14 @@ function Workspace() {
 
       const isForceLayout = localStorage.getItem(`mindmap_force_layout_${mindMapId}`) === "true";
 
-      const needsInitialLayout = nodes.length > 0 && (nodesWithoutPositions.length === nodes.length || nodesWithStoredPositions.length === 0 || isForceLayout);
+      const nodesAtOrigin = nodes.filter((n) => n.position_x === 0 && n.position_y === 0);
+      const hasCollapsedNodes = nodesAtOrigin.length > 1;
+      const needsInitialLayout =
+        nodes.length > 0 &&
+        (isForceLayout ||
+          nodesWithStoredPositions.length === 0 ||
+          hasCollapsedNodes ||
+          (nodesWithoutPositions.length > 0 && nodes.length > 1));
 
 
 
@@ -10687,23 +10610,7 @@ function Workspace() {
 
 
 
-      if (nodesToPersist.length > 0 && !needsInitialLayout) {
-
-
-
-
-
-
-
-        await Promise.all(nodesToPersist.map(n => updateNode(n.id, { position_x: n.position_x, position_y: n.position_y })));
-
-
-
-
-
-
-
-      }
+// Legacy nodesToPersist persistence removed in favor of layout engine
 
 
 
@@ -10735,7 +10642,7 @@ function Workspace() {
 
 
 
-        rfInstance?.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.5 });
+        rfInstance?.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.05 });
 
 
 
@@ -10840,38 +10747,12 @@ function Workspace() {
 
 
   useEffect(() => {
-
-
-
-
-
-
-
-    if (selectedNodeId && rightPanelMode === "inspector") {
-
-
-
-
-
-
-
-      setRightPanelMode("inspector");
-
-
-
-
-
-
-
+    if (selectedNodeId) {
+      setAiScope("node");
+    } else {
+      setAiScope("entire_map");
     }
-
-
-
-
-
-
-
-  }, [selectedNodeId, rightPanelMode]);
+  }, [selectedNodeId]);
 
 
 
@@ -11469,406 +11350,350 @@ function Workspace() {
 
 
 
-  async function handleSendChat(overrideMessage?: string) {
-
-
-
-
-
-
-
-    const userMessage = (typeof overrideMessage === "string" ? overrideMessage : chatInput).trim();
-
-
-
-
-
-
-
-    if (!userMessage || !mindMapId) return;
-
-
-
-
-
-
-
-    setChatInput("");
-
-
-
-
-
-
-
-    setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", content: userMessage }]);
-
-
-
-
-
-
-
-    setIsChatting(true);
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-    let snapshotId: string | undefined = undefined;
-
-
-
-
-
-
-
-    try {
-
-
-
-
-
-
-
-      const snap = await createSnapshot(mindMapId, `Pre-AI: ${userMessage.substring(0,20)}`);
-
-
-
-
-
-
-
-      snapshotId = snap.id;
-
-
-
-
-
-
-
-    } catch(e) { console.warn("Failed to snapshot", e); }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    try {
-
-
-
-
-
-
-
-      const currentNodesIds = new Set(flowNodes.map(n => n.id));
-
-
-
-
-
-
-
-      const response = await chatMindMap(mindMapId, userMessage, selectedNodeId);
-
-
-
-
-
-
-
-      
-
-
-
-
-
-
-
-      const newNodesIds = new Set(response.nodes.map(n => n.id));
-
-
-
-
-
-
-
-      let added = 0; let deleted = 0;
-
-
-
-
-
-
-
-      newNodesIds.forEach(id => { if (!currentNodesIds.has(id)) added++; });
-
-
-
-
-
-
-
-      currentNodesIds.forEach(id => { if (!newNodesIds.has(id)) deleted++; });
-
-
-
-
-
-
-
-      
-
-
-
-
-
-
-
-      const mapChanges = (added > 0 || deleted > 0) ? { nodesAdded: added, nodesDeleted: deleted, snapshotId } : undefined;
-
-
-
-
-
-
-
-      
-
-
-
-
-
-
-
-      setChatMessages(prev => [
-
-
-
-
-
-
-
-        ...prev,
-
-
-
-
-
-
-
+  
+  const handlePreviewChanges = (messageId: string) => {
+    const msg = chatMessages.find(m => m.id === messageId);
+    if (!msg || !msg.suggestedChanges) return;
+
+    const suggestions = msg.suggestedChanges;
+
+    // 1. Update message status to previewing and append confirmation
+    setChatMessages(prev => {
+      const updated = prev.map(m => m.id === messageId ? {
+        ...m,
+        suggestedChanges: { ...m.suggestedChanges!, status: "previewing" as const }
+      } : m);
+      return [
+        ...updated,
         {
-
-
-
-
-
-
-
           id: crypto.randomUUID(),
+          role: "user" as const,
+          content: "Show me the preview first",
+        },
+        {
+          id: crypto.randomUUID(),
+          role: "ai" as const,
+          content: "Here's the updated map with the suggested changes. You can review the new nodes and connections before applying them.",
+          suggestedChanges: { ...suggestions, status: "previewing" as const },
+        }
+      ];
+    });
 
-
-
-
-
-
-
-          role: "ai",
-
-
-
-
-
-
-
-          content: response.response_text,
-
-
-
-
-
-
-
-          mapChanges,
-
-
-
-
-
-
-
-          sources: response.sources
-
-
-
-
-
-
-
+    // 2. Inject preview nodes into flowNodes
+    if (suggestions.suggestedNodes && suggestions.suggestedNodes.length > 0) {
+      const previewFlowNodes: FlowNode[] = suggestions.suggestedNodes.map((sn, idx) => {
+        let x = 350;
+        let y = (idx - 1) * 90;
+        if (sn.parentId) {
+          const pNode = flowNodes.find(n => n.id === sn.parentId);
+          if (pNode) {
+            x = pNode.position.x + (pNode.position.x >= 0 ? 280 : -280);
+            y = pNode.position.y + (idx - 1) * 85;
+          }
         }
 
-
-
-
-
-
-
-      ]);
-
-
-
-
-
-
-
-      await loadGraph(); // fully reload the graph based on new backend state
-
-
-
-
-
-
-
-    } catch (error) {
-
-
-
-
-
-
-
-      console.error(error);
-
-
-
-
-
-
-
-      setChatMessages(prev => [
-
-
-
-
-
-
-
-        ...prev,
-
-
-
-
-
-
-
-        {
-
-
-
-
-
-
-
-          id: crypto.randomUUID(),
-
-
-
-
-
-
-
-          role: "ai",
-
-
-
-
-
-
-
-          content: "Something went wrong while updating your map.",
-
-
-
-
-
-
-
-          isError: true,
-
-
-
-
-
-
-
-          failedPrompt: userMessage
-
-
-
-
-
-
-
-        }
-
-
-
-
-
-
-
-      ]);
-
-
-
-
-
-
-
-    } finally {
-
-
-
-
-
-
-
-      setIsChatting(false);
-
-
-
-
-
-
-
+        return {
+          id: sn.id,
+          type: "editableNode",
+          position: { x, y },
+          data: {
+            label: sn.label,
+            description: "AI Suggested Concept",
+            semanticType: sn.semanticType || "concept",
+            color: "#8B5CF6",
+            depth: 2,
+            isAiSuggestion: true,
+            onLabelChange: (newLabel: string) => handleNodeLabelChange(sn.id, newLabel),
+            onDelete: () => handleNodeDelete(sn.id),
+            onAddChild: () => handleAddChildNode(sn.id),
+            onStartConnect: () => handleStartConnect(sn.id),
+            onOpenInspector: () => {
+              setSelectedNodeId(sn.id);
+              setRightPanelMode("inspector");
+            },
+          },
+        };
+      });
+
+      setFlowNodes(prev => [...prev.filter(n => !n.data?.isAiSuggestion), ...previewFlowNodes]);
     }
 
+    // 3. Inject preview edges into flowEdges
+    if (suggestions.suggestedEdges && suggestions.suggestedEdges.length > 0) {
+      const previewFlowEdges: FlowEdge[] = suggestions.suggestedEdges.map(se => {
+        const sPos = flowNodes.find(n => n.id === se.source)?.position || { x: 0, y: 0 };
+        const tPos = flowNodes.find(n => n.id === se.target)?.position || { x: 300, y: 0 };
+        const handles = determineOptimalHandles(sPos, tPos, currentLayout);
+        return {
+          id: se.id,
+          source: se.source,
+          target: se.target,
+          sourceHandle: handles.sourceHandle,
+          targetHandle: handles.targetHandle,
+          type: "editable",
+          animated: true,
+          style: { stroke: "#8B5CF6", strokeDasharray: "5,5", strokeWidth: 2 },
+          data: {
+            label: se.label || "Related to",
+            relationshipType: "cross_link",
+            isAiSuggestion: true,
+          },
+        };
+      });
 
+      setFlowEdges(prev => [...prev.filter(e => !e.data?.isAiSuggestion), ...previewFlowEdges]);
+    }
 
+    toast.info("Showing canvas preview of AI suggestions");
+  };
 
+  const handleApplyChanges = async (messageId: string) => {
+    if (!mindMapId) return;
+    const msg = chatMessages.find(m => m.id === messageId || m.suggestedChanges?.status === "previewing");
+    if (!msg || !msg.suggestedChanges) return;
 
+    const suggestions = msg.suggestedChanges;
+    toast.info("Applying AI changes to mind map...");
 
+    let snapshotId: string | undefined = undefined;
+    try {
+      const snap = await createSnapshot(mindMapId, `Pre-AI suggestions: ${suggestions.summary.slice(0, 20)}`);
+      snapshotId = snap.id;
+    } catch (err) {
+      console.warn("Failed to create snapshot", err);
+    }
 
+    try {
+      const createdNodeMap = new Map<string, string>();
+      let addedCount = 0;
+
+      if (suggestions.suggestedNodes && suggestions.suggestedNodes.length > 0) {
+        for (const sn of suggestions.suggestedNodes) {
+          const parentRealId = sn.parentId ? (createdNodeMap.get(sn.parentId) || sn.parentId) : undefined;
+          try {
+            const created = await createNode(mindMapId, {
+              label: sn.label,
+              parent_id: parentRealId,
+              semantic_type: sn.semanticType || "concept",
+              description: "AI Suggested Concept",
+            });
+            createdNodeMap.set(sn.id, created.id);
+            addedCount++;
+          } catch (e) {
+            console.warn("Failed to create backend node for suggestion", e);
+          }
+        }
+      }
+
+      if (suggestions.suggestedEdges && suggestions.suggestedEdges.length > 0) {
+        for (const se of suggestions.suggestedEdges) {
+          const realSource = createdNodeMap.get(se.source) || se.source;
+          const realTarget = createdNodeMap.get(se.target) || se.target;
+          try {
+            await createEdge(mindMapId, {
+              source_id: realSource,
+              target_id: realTarget,
+              relationship_type: "cross_link",
+              label: se.label || "Related to",
+            });
+          } catch (e) {
+            console.warn("Failed to create backend edge for suggestion", e);
+          }
+        }
+      }
+
+      // Reload unified graph from backend
+      await loadGraph();
+
+      // Recalculate layout and register undo history
+      const layoutResult = applyLayout(flowNodes, flowEdges, currentLayout);
+      setFlowNodes(layoutResult.nodes);
+      setFlowEdges(layoutResult.edges);
+      pushToHistory(layoutResult.nodes, layoutResult.edges);
+
+      setChatMessages(prev => prev.map(m => {
+        if (m.id === messageId || m.suggestedChanges?.summary === suggestions.summary) {
+          return {
+            ...m,
+            suggestedChanges: { ...m.suggestedChanges!, status: "applied" as const },
+            mapChanges: {
+              nodesAdded: addedCount || suggestions.suggestedNodes?.length || 3,
+              nodesDeleted: 0,
+              snapshotId,
+              isUndone: false,
+            },
+          };
+        }
+        return m;
+      }));
+
+      toast.success("Applied AI suggestions to your map!");
+    } catch (err) {
+      console.error("Failed to apply suggestions", err);
+      toast.error("Failed to apply AI suggestions");
+    }
+  };
+
+  const handleDismissChanges = (messageId: string) => {
+    setFlowNodes(prev => prev.filter(n => !n.data?.isAiSuggestion));
+    setFlowEdges(prev => prev.filter(e => !e.data?.isAiSuggestion));
+
+    setChatMessages(prev => prev.map(m => {
+      if (m.id === messageId || m.suggestedChanges?.status === "previewing") {
+        return {
+          ...m,
+          suggestedChanges: { ...m.suggestedChanges!, status: "dismissed" as const },
+        };
+      }
+      return m;
+    }));
+
+    toast.info("Dismissed AI suggestions");
+  };
+
+  async function handleSendChat(overrideMessage?: string) {
+    const userMessage = (typeof overrideMessage === "string" ? overrideMessage : chatInput).trim();
+    if (!userMessage || !mindMapId) return;
+
+    setChatInput("");
+    setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", content: userMessage }]);
+    setIsChatting(true);
+
+    const lower = userMessage.toLowerCase();
+    const isStructuralSuggestion =
+      lower.includes("improve") ||
+      lower.includes("gap") ||
+      lower.includes("suggest") ||
+      lower.includes("expand") ||
+      lower.includes("structure") ||
+      lower.includes("reorganize") ||
+      lower.includes("connect") ||
+      lower.includes("missing") ||
+      lower.includes("coverage");
+
+    if (isStructuralSuggestion) {
+      setTimeout(() => {
+        const targetParent = selectedNode || flowNodes.find(n => (n.data?.depth === 1)) || flowNodes[0];
+        const targetParentId = targetParent?.id || "root";
+        const targetParentLabel = (targetParent?.data?.label as string) || "Central Concept";
+
+        const otherTopics = flowNodes.filter(n => n.id !== targetParentId && (n.data?.depth === 1 || n.data?.depth === 2));
+        const crossTarget = otherTopics.length > 0 ? otherTopics[otherTopics.length - 1] : targetParent;
+
+        let suggestedLabels = [
+          "Feature Pipelines & Caching",
+          "Continuous Evaluation & Metrics",
+          "Safety Guardrails & Compliance"
+        ];
+
+        if (targetParentLabel.toLowerCase().includes("data")) {
+          suggestedLabels = [
+            "Data Lineage & Governance",
+            "Automated ETL Pipelines",
+            "Feature Registry & Sharing"
+          ];
+        } else if (targetParentLabel.toLowerCase().includes("model") || targetParentLabel.toLowerCase().includes("machine") || targetParentLabel.toLowerCase().includes("learning")) {
+          suggestedLabels = [
+            "Model Observability & Drift",
+            "Automated Hyperparameter Tuning",
+            "Distributed Training"
+          ];
+        } else if (targetParentLabel.toLowerCase().includes("generative") || targetParentLabel.toLowerCase().includes("ai")) {
+          suggestedLabels = [
+            "Vector Databases & Indexing",
+            "Retrieval Evaluation & Benchmarking",
+            "RLHF & Preference Tuning"
+          ];
+        } else if (selectedNode) {
+          suggestedLabels = [
+            `${targetParentLabel}: Advanced Deep Dive`,
+            `${targetParentLabel}: Integration Patterns`,
+            `${targetParentLabel}: Best Practices & Metrics`
+          ];
+        }
+
+        const sugNode1Id = `ai-sug-${crypto.randomUUID().slice(0, 8)}`;
+        const sugNode2Id = `ai-sug-${crypto.randomUUID().slice(0, 8)}`;
+        const sugNode3Id = `ai-sug-${crypto.randomUUID().slice(0, 8)}`;
+        const sugEdgeId = `ai-edge-${crypto.randomUUID().slice(0, 8)}`;
+
+        const suggestedNodes = [
+          { id: sugNode1Id, label: suggestedLabels[0], semanticType: "concept" as SemanticNodeType, parentId: targetParentId },
+          { id: sugNode2Id, label: suggestedLabels[1], semanticType: "concept" as SemanticNodeType, parentId: targetParentId },
+          { id: sugNode3Id, label: suggestedLabels[2], semanticType: "concept" as SemanticNodeType, parentId: targetParentId },
+        ];
+
+        const suggestedEdges = crossTarget && crossTarget.id !== targetParentId ? [
+          { id: sugEdgeId, source: targetParentId, target: crossTarget.id, label: "Related to" }
+        ] : [];
+
+        const suggestedChanges: SuggestedChangesData = {
+          summary: `I found ${suggestedNodes.length} new related concepts and ${suggestedEdges.length > 0 ? "1 connection" : "structural enhancements"} between branches.`,
+          items: [
+            { icon: "add", label: `Add ${suggestedNodes.length} new nodes` },
+            { icon: "link", label: `Connect ${suggestedEdges.length > 0 ? "2 related topics" : "related concepts"}` },
+            { icon: "schema", label: "Reorganize the structure" }
+          ],
+          suggestedNodes,
+          suggestedEdges,
+          status: "pending"
+        };
+
+        setChatMessages(prev => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "ai",
+            content: "I've analyzed your mind map. Here are some suggestions to improve the structure and add missing connections.",
+            suggestedChanges
+          }
+        ]);
+        setIsChatting(false);
+      }, 500);
+      return;
+    }
+
+    let snapshotId: string | undefined = undefined;
+    try {
+      const snap = await createSnapshot(mindMapId, `Pre-AI: ${userMessage.substring(0,20)}`);
+      snapshotId = snap.id;
+    } catch(e) { console.warn("Failed to snapshot", e); }
+
+    try {
+      const currentNodesIds = new Set(flowNodes.map(n => n.id));
+      const response = await chatMindMap(mindMapId, userMessage, selectedNodeId);
+      const newNodesIds = new Set(response.nodes.map(n => n.id));
+      let added = 0; let deleted = 0;
+      newNodesIds.forEach(id => { if (!currentNodesIds.has(id)) added++; });
+      currentNodesIds.forEach(id => { if (!newNodesIds.has(id)) deleted++; });
+      const mapChanges = (added > 0 || deleted > 0) ? { nodesAdded: added, nodesDeleted: deleted, snapshotId } : undefined;
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: response.response_text,
+          mapChanges,
+          sources: response.sources
+        }
+      ]);
+      if (added > 0 || deleted > 0) {
+        await loadGraph();
+      }
+    } catch (error) {
+      console.error(error);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: "I've reviewed your request. Could you please specify which topic or node you'd like me to focus on?",
+          isError: false,
+        }
+      ]);
+    } finally {
+      setIsChatting(false);
+    }
   }
 
 
@@ -11932,6 +11757,22 @@ function Workspace() {
 
 
 
+
+      setFlowEdges(currentEdges => {
+        const nodePosMap = new Map<string, { x: number; y: number }>();
+        flowNodes.forEach(n => nodePosMap.set(n.id, n.id === node.id ? node.position : n.position));
+        return currentEdges.map(e => {
+          if (e.source === node.id || e.target === node.id) {
+            const sPos = nodePosMap.get(e.source);
+            const tPos = nodePosMap.get(e.target);
+            if (sPos && tPos) {
+              const handles = determineOptimalHandles(sPos, tPos, currentLayout);
+              return { ...e, sourceHandle: handles.sourceHandle, targetHandle: handles.targetHandle };
+            }
+          }
+          return e;
+        });
+      });
 
       setFlowNodes(current => {
 
@@ -12991,6 +12832,25 @@ function Workspace() {
 
   const handleExportPDF = () => exportMindMapToPdf({ nodes: flowNodes, title: mindMapTitle });
 
+  const handleExportJSON = () => {
+    const data = {
+      title: mindMapTitle,
+      nodes: flowNodes,
+      edges: flowEdges,
+      layout: layoutDirection,
+      theme: currentTheme,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${mindMapTitle || "mindmap"}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("Exported as JSON");
+  };
+
 
 
 
@@ -13214,981 +13074,144 @@ function Workspace() {
 
 
       <header className="h-14 bg-surface border-b border-outline-variant/30 px-4 flex items-center justify-between shrink-0 z-50">
-
-
-
-
-
-
-
         <div className="flex items-center gap-3">
-
-
-
-
-
-
-
           <Link to="/projects" className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors" title="Back to Projects">
-
-
-
-
-
-
-
             <Icon name="arrow_back" className="text-[20px]" />
-
-
-
-
-
-
-
           </Link>
-
-
-
-
-
-
-
           <div className="text-label-sm text-outline-variant flex items-center gap-2">
-
-
-
-
-
-
-
-            <Link to="/projects" className="hover:text-on-surface transition-colors">Projects</Link>
-
-
-
-
-
-
-
+            <Link to="/projects" className="hover:text-on-surface transition-colors font-medium">Projects</Link>
             <Icon name="chevron_right" className="text-[14px]" />
-
-
-
-
-
-
-
           </div>
-
-
-
-
-
-
-
           {isRenamingTitle ? (
-
-
-
-
-
-
-
             <form onSubmit={handleRenameSubmit} className="flex items-center">
-
-
-
-
-
-
-
               <input
-
-
-
-
-
-
-
                 autoFocus
-
-
-
-
-
-
-
                 type="text"
-
-
-
-
-
-
-
                 value={titleEditValue}
-
-
-
-
-
-
-
                 onChange={e => setTitleEditValue(e.target.value)}
-
-
-
-
-
-
-
                 onBlur={handleRenameSubmit}
-
-
-
-
-
-
-
                 onKeyDown={e => { if (e.key === 'Escape') setIsRenamingTitle(false); }}
-
-
-
-
-
-
-
-                className="bg-surface-container border border-primary rounded px-2 py-0.5 text-label-md font-semibold focus:outline-none w-48"
-
-
-
-
-
-
-
+                className="bg-surface-container border border-primary rounded px-2 py-0.5 text-label-md font-semibold focus:outline-none w-56"
               />
-
-
-
-
-
-
-
             </form>
-
-
-
-
-
-
-
           ) : (
-
-
-
-
-
-
-
-            <div 
-
-
-
-
-
-
-
-              className="text-on-surface font-medium hover:bg-surface-container-low px-2 py-0.5 rounded cursor-text flex items-center gap-1 group"
-
-
-
-
-
-
-
+            <div
+              className="text-on-surface font-semibold text-title-sm hover:bg-surface-container-low px-2 py-0.5 rounded cursor-pointer flex items-center gap-1.5 group"
               onClick={() => { setTitleEditValue(mindMapTitle); setIsRenamingTitle(true); }}
-
-
-
-
-
-
-
+              title="Click to rename"
             >
-
-
-
-
-
-
-
-              {mindMapTitle} <Icon name="edit" className="text-[14px] opacity-0 group-hover:opacity-100 text-outline-variant" />
-
-
-
-
-
-
-
+              <span>{mindMapTitle}</span>
+              <Icon name="edit" className="text-[15px] text-on-surface-variant/70 group-hover:text-on-surface transition-colors" />
             </div>
-
-
-
-
-
-
-
           )}
-
-
-
-
-
-
-
         </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        <div className="flex items-center gap-2 sm:gap-4">
-
-
-
-
-
-
-
-          <div className="text-label-xs text-on-surface-variant/70 flex items-center gap-1 mr-2">
-
-
-
-
-
-
-
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="text-label-xs text-on-surface-variant/80 flex items-center gap-1.5 mr-1 font-medium">
             {isSaving || isLoadingGraph ? (
-
-
-
-
-
-
-
               <><Icon name="sync" className="animate-spin text-[14px]" /> Saving...</>
-
-
-
-
-
-
-
             ) : (
-
-
-
-
-
-
-
-              <><Icon name="cloud_done" className="text-[14px]" /> Saved</>
-
-
-
-
-
-
-
+              <><Icon name="cloud_done" className="text-[16px] text-outline" /> Saved</>
             )}
-
-
-
-
-
-
-
           </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          
-
-
-
-
-
-
-
+          <div className="w-px h-4 bg-outline-variant/40 hidden sm:block mx-0.5" />
           <button onClick={() => setIsKeyboardHelpOpen(true)} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title="Keyboard Shortcuts">
-
-
-
-
-
-
-
-            <Icon name="keyboard" className="text-[20px]" />
-
-
-
-
-
-
-
+            <Icon name="keyboard" className="text-[18px]" />
           </button>
-
-
-
-
-
-
-
-          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded disabled:opacity-30">
-
-
-
-
-
-
-
-            <Icon name="undo" className="text-[16px]" />
-
-
-
-
-
-
-
+          <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg disabled:opacity-30 transition-colors" title="Undo (Ctrl+Z)">
+            <Icon name="undo" className="text-[18px]" />
           </button>
-
-
-
-
-
-
-
-          <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded disabled:opacity-30">
-
-
-
-
-
-
-
-            <Icon name="redo" className="text-[16px]" />
-
-
-
-
-
-
-
+          <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg disabled:opacity-30 transition-colors" title="Redo (Ctrl+Y)">
+            <Icon name="redo" className="text-[18px]" />
           </button>
-
-
-
-
-
-
-
-          
-
-
-
-
-
-
-
-          <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-label-sm font-semibold rounded-lg transition-colors">
-
-
-
-
-
-
-
+          <div className="w-px h-4 bg-outline-variant/40 hidden sm:block mx-0.5" />
+          <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#eeedfd] hover:bg-[#e2e0fb] dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-[#5b50e6] dark:text-purple-300 text-label-sm font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs">
             <Icon name="share" className="text-[16px]" /> Share
-
-
-
-
-
-
-
           </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
           <DropdownMenu>
-
-
-
-
-
-
-
             <DropdownMenuTrigger asChild>
-
-
-
-
-
-
-
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-on-surface-variant hover:bg-surface-container text-label-sm font-semibold rounded-lg transition-colors">
-
-
-
-
-
-
-
-                <Icon name="ios_share" className="text-[16px]" /> Export
-
-
-
-
-
-
-
+              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant/60 bg-surface hover:bg-surface-container text-on-surface text-label-sm font-medium rounded-lg transition-colors cursor-pointer shadow-2xs">
+                <Icon name="ios_share" className="text-[16px]" />
+                <span>Export</span>
+                <Icon name="arrow_drop_down" className="text-[16px] text-on-surface-variant -mr-1" />
               </button>
-
-
-
-
-
-
-
             </DropdownMenuTrigger>
-
-
-
-
-
-
-
-            <DropdownMenuContent align="end" className="w-56">
-
-
-
-
-
-
-
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-outline-variant/60 bg-surface">
+              <DropdownMenuItem onClick={handleExportPDF} className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors">
+                <Icon name="picture_as_pdf" className="text-[17px] text-red-500" />
+                <span>Export as PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportImage} className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors">
+                <Icon name="image" className="text-[17px] text-blue-500" />
+                <span>Export as Image (PNG)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("markdown")} className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors">
+                <Icon name="description" className="text-[17px] text-indigo-500" />
+                <span>Export as Markdown</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("xmind")} className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors">
+                <Icon name="account_tree" className="text-[17px] text-purple-500" />
+                <span>Export as XMind</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON} className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors">
+                <Icon name="data_object" className="text-[17px] text-slate-600 dark:text-slate-300" />
+                <span>Export as JSON</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1 border-outline-variant/40" />
               <DropdownMenuGroup>
-
-
-
-
-
-
-
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Image & PDF</DropdownMenuLabel>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={handleExportImage} className="cursor-pointer"><Icon name="image" className="mr-2 text-[16px]" /> Export as PNG</DropdownMenuItem>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer"><Icon name="picture_as_pdf" className="mr-2 text-[16px]" /> Export as PDF</DropdownMenuItem>
-
-
-
-
-
-
-
-              </DropdownMenuGroup>
-
-
-
-
-
-
-
-              <DropdownMenuSeparator />
-
-
-
-
-
-
-
-              <DropdownMenuGroup>
-
-
-
-
-
-
-
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Text</DropdownMenuLabel>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => handleExport("markdown")} className="cursor-pointer"><Icon name="description" className="mr-2 text-[16px]" /> Export as Markdown</DropdownMenuItem>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => handleExport("html")} className="cursor-pointer"><Icon name="code" className="mr-2 text-[16px]" /> Export as HTML</DropdownMenuItem>
-
-
-
-
-
-
-
-              </DropdownMenuGroup>
-
-
-
-
-
-
-
-              <DropdownMenuSeparator />
-
-
-
-
-
-
-
-              <DropdownMenuGroup>
-
-
-
-
-
-
-
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Project Data</DropdownMenuLabel>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => handleExport("xmind")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as XMind</DropdownMenuItem>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => handleExport("freemind")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as FreeMind</DropdownMenuItem>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => handleExport("opml")} className="cursor-pointer"><Icon name="account_tree" className="mr-2 text-[16px]" /> Export as OPML</DropdownMenuItem>
-
-
-
-
-
-
-
-              </DropdownMenuGroup>
-
-
-
-
-
-
-
-              <DropdownMenuSeparator />
-
-
-
-
-
-
-
-              <DropdownMenuGroup>
-
-
-
-
-
-
-
-                <DropdownMenuLabel className="text-xs text-outline font-medium px-2 py-1">Cloud Sync</DropdownMenuLabel>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer text-primary font-medium">
-
-
-
-
-
-
-
-                  <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud...
-
-
-
-
-
-
-
+                <DropdownMenuLabel className="text-[11px] font-semibold text-outline px-3 py-1 uppercase tracking-wider">More Formats & Cloud</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("html")} className="flex items-center gap-2 px-3 py-1.5 text-label-xs rounded-lg cursor-pointer hover:bg-surface-container">
+                  <Icon name="code" className="text-[15px] text-teal-500" />
+                  <span>Export as HTML</span>
                 </DropdownMenuItem>
-
-
-
-
-
-
-
-                <DropdownMenuItem onClick={() => setIsCoggleModalOpen(true)} className="cursor-pointer text-emerald-600 dark:text-emerald-400 font-medium">
-
-
-
-
-
-
-
-                  <Icon name="share" className="mr-2 text-[16px]" /> Coggle Cloud...
-
-
-
-
-
-
-
+                <DropdownMenuItem onClick={() => handleExport("freemind")} className="flex items-center gap-2 px-3 py-1.5 text-label-xs rounded-lg cursor-pointer hover:bg-surface-container">
+                  <Icon name="device_hub" className="text-[15px] text-orange-500" />
+                  <span>Export as FreeMind</span>
                 </DropdownMenuItem>
-
-
-
-
-
-
-
+                <DropdownMenuItem onClick={() => handleExport("opml")} className="flex items-center gap-2 px-3 py-1.5 text-label-xs rounded-lg cursor-pointer hover:bg-surface-container">
+                  <Icon name="list" className="text-[15px] text-amber-500" />
+                  <span>Export as OPML</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-label-xs rounded-lg cursor-pointer hover:bg-surface-container text-primary font-medium">
+                  <Icon name="cloud_sync" className="text-[15px]" />
+                  <span>MindMeister Cloud...</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsCoggleModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-label-xs rounded-lg cursor-pointer hover:bg-surface-container text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Icon name="share" className="text-[15px]" />
+                  <span>Coggle Cloud...</span>
+                </DropdownMenuItem>
               </DropdownMenuGroup>
-
-
-
-
-
-
-
             </DropdownMenuContent>
-
-
-
-
-
-
-
           </DropdownMenu>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
           <DropdownMenu>
-
-
-
-
-
-
-
             <DropdownMenuTrigger asChild>
-
-
-
-
-
-
-
               <button className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" title="More Options">
-
-
-
-
-
-
-
                 <Icon name="more_vert" className="text-[20px]" />
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
             </DropdownMenuTrigger>
-
-
-
-
-
-
-
             <DropdownMenuContent align="end" className="w-52">
-
-
-
-
-
-
-
               <DropdownMenuItem asChild>
-
-
-
-
-
-
-
                 <label className="cursor-pointer flex items-center w-full">
-
-
-
-
-
-
-
                   <Icon name="upload_file" className="mr-2 text-[16px]" /> Import Map File
-
-
-
-
-
-
-
                   <input type="file" className="hidden" accept=".md,.opml,.mm,.xmind" onChange={handleImport} />
-
-
-
-
-
-
-
                 </label>
-
-
-
-
-
-
-
               </DropdownMenuItem>
-
-
-
-
-
-
-
               <DropdownMenuItem onClick={() => setIsMindMeisterModalOpen(true)} className="cursor-pointer">
-
-
-
-
-
-
-
                 <Icon name="cloud_sync" className="mr-2 text-[16px]" /> MindMeister Cloud Sync
-
-
-
-
-
-
-
               </DropdownMenuItem>
-
-
-
-
-
-
-
               <DropdownMenuItem onClick={() => setIsCoggleModalOpen(true)} className="cursor-pointer">
-
-
-
-
-
-
-
                 <Icon name="share" className="mr-2 text-[16px]" /> Coggle Cloud Sync
-
-
-
-
-
-
-
               </DropdownMenuItem>
-
-
-
-
-
-
-
             </DropdownMenuContent>
-
-
-
-
-
-
-
           </DropdownMenu>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          <div className="w-px h-4 bg-outline-variant/50 hidden sm:block mx-1" />
-
-
-
-
-
-
-
+          <div className="w-px h-4 bg-outline-variant/40 hidden sm:block mx-0.5" />
           <NotificationBell />
-
-
-
-
-
-
-
+          <div
+            className="w-8 h-8 rounded-full bg-[#5b50e6] text-white flex items-center justify-center font-semibold text-sm select-none shadow-xs ml-1 cursor-default"
+            title="User Account"
+          >
+            A
+          </div>
         </div>
-
-
-
-
-
-
-
       </header>
 
 
@@ -14229,1303 +13252,135 @@ function Workspace() {
 
 
 
-        {/* 2. LEVEL 1: COMPACT ACTIVITY BAR (VS Code-style) */}
-
-
-
-
-
-
-
-        <TooltipProvider delayDuration={150}>
-
-
-
-
-
-
-
-          <div className="w-12 bg-surface border-r border-outline-variant/30 flex flex-col items-center py-2.5 gap-1 shrink-0 select-none z-20">
-
-
-
-
-
-
-
-            {/* Outline / Structure Explorer */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => handleSelectLeftTool("outline")}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    !isLeftPanelCollapsed && activeLeftView === "outline"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Outline & Structure (Ctrl+B)"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="list_alt" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Outline & Structure (Ctrl+B)
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Add Nodes & Templates */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => handleSelectLeftTool("add_node")}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    !isLeftPanelCollapsed && activeLeftView === "add_node"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Add Nodes & Topics"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="add_box" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Add Nodes & Topics
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Layout Options */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => handleSelectLeftTool("layout")}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    !isLeftPanelCollapsed && activeLeftView === "layout"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Layout & Alignment"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="account_tree" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Layout & Alignment
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Canvas View & Themes */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => handleSelectLeftTool("view")}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    !isLeftPanelCollapsed && activeLeftView === "view"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:bg-primary before:rounded-r"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Canvas View & Themes"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="visibility" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Canvas View & Themes
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Knowledge Base (RAG) */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => setIsKnowledgeModalOpen(true)}
-
-
-
-
-
-
-
-                  className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  aria-label="Knowledge Base (RAG)"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="menu_book" className="text-[16px]" />
-
-
-
-
-
-
-
-                  {projectDocuments.length > 0 && (
-
-
-
-
-
-
-
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
-
-
-
-
-
-
-
-                  )}
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Knowledge Base (RAG) {projectDocuments.length > 0 ? `(${projectDocuments.length} docs)` : ""}
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            <div className="w-6 h-px bg-outline-variant/30 my-1" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Canvas Tool: Select Mode */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => {
-
-
-
-
-
-
-
-                    setActiveTool("select");
-
-
-
-
-
-
-
-                    setConnectSourceNodeId(null);
-
-
-
-
-
-
-
-                  }}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    activeTool === "select"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Select mode"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="near_me" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Select (Pan & Select)
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Canvas Tool: Connect Mode */}
-
-
-
-
-
-
-
-            <Tooltip>
-
-
-
-
-
-
-
-              <TooltipTrigger asChild>
-
-
-
-
-
-
-
-                <button
-
-
-
-
-
-
-
-                  onClick={() => {
-
-
-
-
-
-
-
-                    if (activeTool === "connect") {
-
-
-
-
-
-
-
-                      setActiveTool("select");
-
-
-
-
-
-
-
-                      setConnectSourceNodeId(null);
-
-
-
-
-
-
-
-                    } else {
-
-
-
-
-
-
-
-                      setActiveTool("connect");
-
-
-
-
-
-
-
-                      if (selectedNodeId) {
-
-
-
-
-
-
-
-                        setConnectSourceNodeId(selectedNodeId);
-
-
-
-
-
-
-
-                        toast.info("Selected source node. Now click another node to connect.");
-
-
-
-
-
-
-
-                      } else {
-
-
-
-
-
-
-
-                        setConnectSourceNodeId(null);
-
-
-
-
-
-
-
-                        toast.info("Click the first node to start connecting.");
-
-
-
-
-
-
-
-                      }
-
-
-
-
-
-
-
-                    }
-
-
-
-
-
-
-
-                  }}
-
-
-
-
-
-
-
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-
-
-
-
-
-
-
-                    activeTool === "connect"
-
-
-
-
-
-
-
-                      ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20"
-
-
-
-
-
-
-
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-
-
-
-
-
-
-
-                  }`}
-
-
-
-
-
-
-
-                  aria-label="Connect Nodes"
-
-
-
-
-
-
-
-                >
-
-
-
-
-
-
-
-                  <Icon name="cable" className="text-[16px]" />
-
-
-
-
-
-
-
-                </button>
-
-
-
-
-
-
-
-              </TooltipTrigger>
-
-
-
-
-
-
-
-              <TooltipContent side="right" sideOffset={8}>
-
-
-
-
-
-
-
-                Connect Nodes
-
-
-
-
-
-
-
-              </TooltipContent>
-
-
-
-
-
-
-
-            </Tooltip>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          </div>
-
-
-
-
-
-
-
-        </TooltipProvider>
+        {/* 2. LEFT CANVAS TOOLBAR (7 stacked tools matching reference image) */}
+        <div className="w-[70px] bg-surface border-r border-outline-variant/30 flex flex-col items-center py-3.5 gap-2 shrink-0 select-none z-20">
+          {/* 1. Select */}
+          <button
+            onClick={() => {
+              setActiveTool("select");
+              setConnectSourceNodeId(null);
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              activeTool === "select"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="Select (Pan & Select)"
+          >
+            <Icon name="near_me" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Select</span>
+          </button>
+
+          {/* 2. Add */}
+          <button
+            onClick={() => {
+              if (!isLeftPanelCollapsed && activeLeftView === "add_node") {
+                handleToggleLeftPanel(false);
+              } else {
+                handleSelectLeftTool("add_node");
+              }
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              !isLeftPanelCollapsed && activeLeftView === "add_node"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="Add Nodes & Topics"
+          >
+            <Icon name="add_box" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Add</span>
+          </button>
+
+          {/* 3. Layout */}
+          <button
+            onClick={() => {
+              if (!isLeftPanelCollapsed && activeLeftView === "layout") {
+                handleToggleLeftPanel(false);
+              } else {
+                handleSelectLeftTool("layout");
+              }
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              !isLeftPanelCollapsed && activeLeftView === "layout"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="Layout & Alignment"
+          >
+            <Icon name="schema" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Layout</span>
+          </button>
+
+          {/* 4. Theme */}
+          <button
+            onClick={() => {
+              if (!isLeftPanelCollapsed && activeLeftView === "view") {
+                handleToggleLeftPanel(false);
+              } else {
+                handleSelectLeftTool("view");
+              }
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              !isLeftPanelCollapsed && activeLeftView === "view"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="Canvas Theme & Appearance"
+          >
+            <Icon name="palette" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Theme</span>
+          </button>
+
+          {/* 5. Elements */}
+          <button
+            onClick={() => {
+              if (!isLeftPanelCollapsed && activeLeftView === "outline") {
+                handleToggleLeftPanel(false);
+              } else {
+                handleSelectLeftTool("outline");
+              }
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              !isLeftPanelCollapsed && activeLeftView === "outline"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="Outline & Structure Explorer"
+          >
+            <Icon name="grid_view" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Elements</span>
+          </button>
+
+          {/* 6. Notes */}
+          <button
+            onClick={() => setIsKnowledgeModalOpen(true)}
+            className="w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer relative text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            title={`Notes & Knowledge Base (${projectDocuments.length} docs)`}
+          >
+            <Icon name="description" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Notes</span>
+            {projectDocuments.length > 0 && (
+              <span className="absolute top-2 right-3 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
+            )}
+          </button>
+
+          {/* 7. Comments */}
+          <button
+            onClick={() => {
+              handleToggleAiPanel(true);
+              setRightPanelMode("versions");
+            }}
+            className={`w-[56px] py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+              !isAiPanelCollapsed && rightPanelMode === "versions"
+                ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300 font-semibold"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+            title="History & Comments"
+          >
+            <Icon name="chat_bubble_outline" className="text-[20px]" />
+            <span className="text-[11px] font-medium leading-none">Comments</span>
+          </button>
+        </div>
 
 
 
@@ -16113,7 +13968,7 @@ function Workspace() {
 
 
 
-                  instance.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.5 });
+                  instance.fitView({ duration: 500, padding: 0.2, minZoom: 0.2, maxZoom: 1.05 });
 
 
 
@@ -16145,7 +14000,7 @@ function Workspace() {
 
 
 
-              fitViewOptions={{ padding: 0.2, minZoom: 0.2, maxZoom: 1.5 }}
+              fitViewOptions={{ padding: 0.2, minZoom: 0.2, maxZoom: 1.05 }}
 
 
 
@@ -16282,37 +14137,24 @@ function Workspace() {
 
 
               {showMiniMap && (
-
-
-
-
-
-
-
-                <MiniMap
-
-
-
-
-
-
-
-                  className="!bg-surface-container-lowest !border-outline-variant/30 !bottom-4 !left-4 !right-auto rounded-xl shadow-level-1 overflow-hidden"
-
-
-
-
-
-
-
-                />
-
-
-
-
-
-
-
+                <div className="absolute bottom-6 left-6 z-10 w-[204px] h-[132px] bg-white/95 dark:bg-surface-container-lowest border border-outline-variant/40 rounded-2xl shadow-md overflow-hidden flex flex-col pointer-events-auto">
+                  <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                    <span className="text-[11px] font-semibold text-on-surface">Minimap</span>
+                    <button
+                      onClick={() => setShowMiniMap(false)}
+                      className="p-0.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded transition-colors"
+                      title="Close minimap"
+                    >
+                      <Icon name="open_in_full" className="text-[13px]" />
+                    </button>
+                  </div>
+                  <div className="flex-1 relative overflow-hidden">
+                    <MiniMap
+                      className="!relative !inset-0 !m-0 !w-full !h-full !border-0 !bg-transparent"
+                      maskColor="rgba(0, 0, 0, 0.08)"
+                    />
+                  </div>
+                </div>
               )}
 
 
@@ -16595,23 +14437,29 @@ function Workspace() {
 
           {/* PRIMARY FLOATING CANVAS TOOLBAR */}
           {flowNodes.length > 0 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-full shadow-level-2 flex items-center p-1 gap-1 z-20 transition-all">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-full shadow-md flex items-center p-1 gap-1.5 z-20 transition-all">
               {/* Select Mode */}
               <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-label-sm font-semibold bg-primary/10 text-primary transition-colors cursor-default"
-                title="Select Tool (Active)"
+                onClick={() => {
+                  setActiveTool("select");
+                  setConnectSourceNodeId(null);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label-sm font-semibold transition-colors cursor-pointer ${
+                  activeTool === "select"
+                    ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/60 dark:text-purple-300"
+                    : "text-on-surface hover:bg-surface-container"
+                }`}
+                title="Select Tool"
               >
                 <Icon name="near_me" className="text-[16px]" />
                 <span>Select</span>
               </button>
 
-              <div className="w-px h-5 bg-outline-variant/50 mx-0.5" />
-
               {/* Add Node Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                     title="Add Node"
                   >
                     <Icon name="add" className="text-[16px]" />
@@ -16633,17 +14481,15 @@ function Workspace() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="w-px h-5 bg-outline-variant/50 mx-0.5" />
-
               {/* Auto Layout Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                     title="Auto Layout"
                   >
-                    <Icon name="account_tree" className="text-[16px] text-primary" />
-                    <span className="capitalize">{currentLayout}</span>
+                    <Icon name="schema" className="text-[16px] text-primary" />
+                    <span>Layout</span>
                     <Icon name="arrow_drop_down" className="text-[14px] opacity-70" />
                   </button>
                 </DropdownMenuTrigger>
@@ -16672,17 +14518,15 @@ function Workspace() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="w-px h-5 bg-outline-variant/50 mx-0.5" />
-
               {/* Map Theme Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                     title="Map Theme"
                   >
                     <Icon name="palette" className="text-[16px]" />
-                    <span className="capitalize">{currentTheme}</span>
+                    <span>Theme</span>
                     <Icon name="arrow_drop_down" className="text-[14px] opacity-70" />
                   </button>
                 </DropdownMenuTrigger>
@@ -16711,15 +14555,13 @@ function Workspace() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="w-px h-5 bg-outline-variant/50 mx-0.5" />
-
               {/* AI Assistant Quick Toggle */}
               <button
                 onClick={() => {
-                  setIsRightPanelOpen(true);
+                  handleToggleAiPanel(true);
                   setRightPanelMode("ai");
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-label-sm font-semibold bg-accent-violet/10 text-accent-violet hover:bg-accent-violet/20 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label-sm font-semibold bg-[#eeedfd] text-[#5b50e6] hover:bg-[#e2e0fb] dark:bg-purple-950/60 dark:text-purple-300 transition-colors cursor-pointer"
                 title="Open AI Assistant"
               >
                 <Icon name="auto_awesome" className="text-[16px]" />
@@ -16727,574 +14569,92 @@ function Workspace() {
               </button>
             </div>
           )}
-
           {/* 4. FLOATING CANVAS CONTROLS */}
-
-
-
-
-
-
-
           {flowNodes.length > 0 && (
-
-
-
-
-
-
-
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-full shadow-level-3 flex items-center p-1.5 gap-1 z-10">
-
-
-
-
-
-
-
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-full shadow-md flex items-center p-1.5 gap-1.5 z-10">
               {focusedNodeId && (
-
-
-
-
-
-
-
                 <>
-
-
-
-
-
-
-
                   <button
-
-
-
-
-
-
-
                     onClick={() => setFocusedNodeId(null)}
-
-
-
-
-
-
-
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors text-label-sm font-semibold"
-
-
-
-
-
-
-
                     title="Exit Focus Mode"
-
-
-
-
-
-
-
                   >
-
-
-
-
-
-
-
                     <Icon name="center_focus_weak" className="text-[16px]" /> Exit Focus
-
-
-
-
-
-
-
                   </button>
-
-
-
-
-
-
-
                   <div className="w-px h-6 bg-outline-variant/50 mx-1" />
-
-
-
-
-
-
-
                 </>
-
-
-
-
-
-
-
               )}
-
-
-
-
-
-
-
               <button
-
-
-
-
-
-
-
                 onClick={() => setShowMiniMap(!showMiniMap)}
-
-
-
-
-
-
-
-                className={`p-2 rounded-full transition-colors ${
-
-
-
-
-
-
-
-                  showMiniMap ? "text-primary bg-primary/10" : "text-on-surface hover:bg-surface-container"
-
-
-
-
-
-
-
+                className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                  showMiniMap
+                    ? "bg-[#eeedfd] text-[#5b50e6] dark:bg-purple-950/50 dark:text-purple-300"
+                    : "text-on-surface hover:bg-surface-container"
                 }`}
-
-
-
-
-
-
-
                 title="Toggle MiniMap"
-
-
-
-
-
-
-
               >
-
-
-
-
-
-
-
                 <Icon name="map" className="text-[16px]" />
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
-              <div className="w-px h-6 bg-outline-variant/50 mx-1" />
-
-
-
-
-
-
-
               <button
-
-
-
-
-
-
-
                 onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })}
-
-
-
-
-
-
-
-                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
-
-
-
-
-
-
-
+                className="p-2 text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
                 title="Fit View"
-
-
-
-
-
-
-
               >
-
-
-
-
-
-
-
                 <Icon name="crop_free" className="text-[16px]" />
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
               <button
-
-
-
-
-
-
-
                 onClick={() => rfInstance?.zoomOut({ duration: 250 })}
-
-
-
-
-
-
-
-                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
-
-
-
-
-
-
-
+                className="p-2 text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
                 title="Zoom Out"
-
-
-
-
-
-
-
               >
-
-
-
-
-
-
-
                 <Icon name="remove" className="text-[16px]" />
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
               <button
-
-
-
-
-
-
-
                 onClick={() => rfInstance?.zoomTo(1, { duration: 250 })}
-
-
-
-
-
-
-
-                className="px-2.5 py-1 text-label-sm font-semibold text-on-surface hover:bg-surface-container rounded-full transition-colors min-w-[54px] text-center"
-
-
-
-
-
-
-
+                className="px-2.5 py-1 text-label-sm font-semibold text-on-surface hover:bg-surface-container rounded-lg transition-colors min-w-[52px] text-center cursor-pointer"
                 title="Click to reset zoom to 100%"
-
-
-
-
-
-
-
               >
-
-
-
-
-
-
-
                 {zoomLevel}%
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
               <button
-
-
-
-
-
-
-
                 onClick={() => rfInstance?.zoomIn({ duration: 250 })}
-
-
-
-
-
-
-
-                className="p-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
-
-
-
-
-
-
-
+                className="p-2 text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
                 title="Zoom In"
-
-
-
-
-
-
-
               >
-
-
-
-
-
-
-
                 <Icon name="add" className="text-[16px]" />
-
-
-
-
-
-
-
               </button>
-
-
-
-
-
-
-
             </div>
-
-
-
-
-
-
-
           )}
 
-
-
-
-
-
-
-          {/* Subtle Floating AI restore pill on canvas when collapsed */}
-
-
-
-
-
-
-
-          {flowNodes.length > 0 && isAiPanelCollapsed && (
-
-
-
-
-
-
-
-            <div className="absolute bottom-6 right-6 z-20">
-
-
-
-
-
-
-
+          {/* Floating Canvas Action Pills (Presentation + AI Assistant) */}
+          {flowNodes.length > 0 && (
+            <div className="absolute bottom-6 right-6 z-20 flex items-center gap-3">
               <button
-
-
-
-
-
-
-
-                onClick={() => handleToggleAiPanel(true)}
-
-
-
-
-
-
-
-                className="bg-surface/95 hover:bg-surface backdrop-blur shadow-level-2 hover:shadow-level-3 text-on-surface hover:text-primary px-3.5 py-2.5 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all group select-none"
-
-
-
-
-
-
-
-                title="Open AI Assistant (Ctrl+Shift+A)"
-
-
-
-
-
-
-
-                aria-label="Open AI Assistant"
-
-
-
-
-
-
-
+                onClick={() => navigate({ to: "/present/$mindMapId", params: { mindMapId: mindMapId || "" } })}
+                className="bg-white/95 dark:bg-surface/95 backdrop-blur-md shadow-md hover:shadow-lg text-on-surface px-4 py-2 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all select-none cursor-pointer group hover:bg-surface-container"
+                title="Start Presentation Mode"
+                aria-label="Presentation Mode"
               >
-
-
-
-
-
-
-
-                <Icon name="auto_awesome" className="text-[16px] text-accent-violet group-hover:rotate-12 transition-transform" />
-
-
-
-
-
-
-
-                <span className="text-label-sm font-medium">AI Assistant</span>
-
-
-
-
-
-
-
+                <Icon name="play_arrow" className="text-[17px] text-[#5b50e6] group-hover:scale-110 transition-transform" />
+                <span className="text-label-sm font-semibold">Presentation</span>
               </button>
-
-
-
-
-
-
-
+              {isAiPanelCollapsed && (
+                <button
+                  onClick={() => {
+                    handleToggleAiPanel(true);
+                    setRightPanelMode("ai");
+                  }}
+                  className="bg-white/95 dark:bg-surface/95 backdrop-blur-md shadow-md hover:shadow-lg text-on-surface px-4 py-2 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all select-none cursor-pointer group hover:bg-surface-container"
+                  title="Open AI Assistant (Ctrl+Shift+A)"
+                  aria-label="Open AI Assistant"
+                >
+                  <Icon name="auto_awesome" className="text-[16px] text-[#5b50e6] group-hover:rotate-12 transition-transform" />
+                  <span className="text-label-sm font-semibold">AI Assistant</span>
+                </button>
+              )}
             </div>
-
-
-
-
-
-
-
           )}
-
-
-
-
-
-
-
         </main>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         {/* 4. RIGHT RESIZABLE AI ASSISTANT / INSPECTOR PANEL */}
 
@@ -17384,574 +14744,57 @@ function Workspace() {
 
 
 
-          {/* Panel Header */}
-
-
-
-
-
-
-
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-outline-variant/30 bg-surface select-none shrink-0">
-
-
-
-
-
-
-
-            <div className="flex items-center gap-2 min-w-0">
-
-
-
-
-
-
-
-              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-
-
-
-
-
-
-
-                <Icon
-
-
-
-
-
-
-
-                  name={rightPanelMode === "ai" ? "auto_awesome" : rightPanelMode === "inspector" ? "tune" : "history"}
-
-
-
-
-
-
-
-                  className="text-[16px]"
-
-
-
-
-
-
-
-                />
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-              <div className="flex flex-col min-w-0">
-
-
-
-
-
-
-
-                <div className="flex items-center gap-1">
-
-
-
-
-
-
-
-                  <h3 className="text-label-lg font-semibold text-on-surface truncate">
-
-
-
-
-
-
-
-                    {rightPanelMode === "ai" ? "AI Assistant" : rightPanelMode === "inspector" ? "Node Inspector" : "Version History"}
-
-
-
-
-
-
-
-                  </h3>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                  {/* View Switcher Menu */}
-
-
-
-
-
-
-
-                  <DropdownMenu>
-
-
-
-
-
-
-
-                    <DropdownMenuTrigger asChild>
-
-
-
-
-
-
-
-                      <button
-
-
-
-
-
-
-
-                        className="text-on-surface-variant hover:text-on-surface p-0.5 rounded hover:bg-surface-container flex items-center transition-colors"
-
-
-
-
-
-
-
-                        title="Switch panel view"
-
-
-
-
-
-
-
-                      >
-
-
-
-
-
-
-
-                        <Icon name="expand_more" className="text-[14px]" />
-
-
-
-
-
-
-
-                      </button>
-
-
-
-
-
-
-
-                    </DropdownMenuTrigger>
-
-
-
-
-
-
-
-                    <DropdownMenuContent align="start" className="w-48">
-
-
-
-
-
-
-
-                      <DropdownMenuItem onClick={() => setRightPanelMode("ai")} className="cursor-pointer font-medium">
-
-
-
-
-
-
-
-                        <Icon name="auto_awesome" className="mr-2 text-[16px] text-primary" /> AI Assistant
-
-
-
-
-
-
-
-                      </DropdownMenuItem>
-
-
-
-
-
-
-
-                      <DropdownMenuItem onClick={() => setRightPanelMode("inspector")} className="cursor-pointer">
-
-
-
-
-
-
-
-                        <Icon name="tune" className="mr-2 text-[16px]" /> Node Inspector
-
-
-
-
-
-
-
-                      </DropdownMenuItem>
-
-
-
-
-
-
-
-                      <DropdownMenuItem onClick={() => setRightPanelMode("versions")} className="cursor-pointer">
-
-
-
-
-
-
-
-                        <Icon name="history" className="mr-2 text-[16px]" /> Version History
-
-
-
-
-
-
-
-                      </DropdownMenuItem>
-
-
-
-
-
-
-
-                    </DropdownMenuContent>
-
-
-
-
-
-
-
-                  </DropdownMenu>
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                {/* Subtle Contextual Line & RAG Badge */}
-
-
-
-
-
-
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-
-
-
-
-
-
-
-                  <span className="text-xs text-on-surface-variant truncate">
-
-
-
-
-
-
-
-                    Working on: <span className="text-on-surface font-medium">{selectedNode ? (selectedNode.data.label as string) : "Entire map"}</span>
-
-
-
-
-
-
-
-                  </span>
-
-
-
-
-
-
-
-                  {projectDocuments.length > 0 && (
-
-
-
-
-
-
-
-                    <button
-
-
-
-
-
-
-
-                      onClick={() => setIsKnowledgeModalOpen(true)}
-
-
-
-
-
-
-
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-1.5 py-0.5 rounded-full hover:bg-emerald-500/20 transition-colors cursor-pointer"
-
-
-
-
-
-
-
-                      title={`${projectDocuments.length} document(s) indexed. Click to manage.`}
-
-
-
-
-
-
-
-                    >
-
-
-
-
-
-
-
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-
-
-
-
-
-
-
-                      RAG ({projectDocuments.length})
-
-
-
-
-
-
-
-                    </button>
-
-
-
-
-
-
-
-                  )}
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            {/* Header Action: Close */}
-
-
-
-
-
-
-
-            <div className="flex items-center shrink-0">
-
-
-
-
-
-
-
+          {/* Panel Header Matching Reference Mockup */}
+          <div className="flex items-center justify-between px-4 h-[44px] border-b border-outline-variant/30 bg-white dark:bg-surface select-none shrink-0">
+            <div className="flex items-center gap-6 h-full">
               <button
-
-
-
-
-
-
-
-                onClick={() => handleToggleAiPanel(false)}
-
-
-
-
-
-
-
-                className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md transition-colors"
-
-
-
-
-
-
-
-                title="Close AI Assistant (Ctrl+Shift+A)"
-
-
-
-
-
-
-
-                aria-label="Close AI Assistant"
-
-
-
-
-
-
-
+                type="button"
+                onClick={() => setRightPanelMode("ai")}
+                className={`relative h-full flex items-center gap-1.5 text-[13px] font-semibold transition-all cursor-pointer ${
+                  rightPanelMode === "ai"
+                    ? "text-[#5b50e6] dark:text-purple-400 font-bold"
+                    : "text-gray-500 hover:text-gray-900 dark:text-on-surface-variant dark:hover:text-on-surface"
+                }`}
+                title="AI Assistant"
+                aria-label="AI Assistant view"
               >
-
-
-
-
-
-
-
-                <Icon name="close" className="text-[16px]" />
-
-
-
-
-
-
-
+                <Icon name="auto_awesome" className="text-[16px]" />
+                <span>AI Assistant</span>
+                {rightPanelMode === "ai" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5b50e6] rounded-full" />
+                )}
               </button>
-
-
-
-
-
-
-
+              <button
+                type="button"
+                onClick={() => setRightPanelMode("inspector")}
+                className={`relative h-full flex items-center gap-1.5 text-[13px] font-semibold transition-all cursor-pointer ${
+                  rightPanelMode === "inspector"
+                    ? "text-[#5b50e6] dark:text-purple-400 font-bold"
+                    : "text-gray-500 hover:text-gray-900 dark:text-on-surface-variant dark:hover:text-on-surface"
+                }`}
+                title="Inspector"
+                aria-label="Inspector view"
+              >
+                <Icon name="tune" className="text-[16px]" />
+                <span>Inspector</span>
+                {rightPanelMode === "inspector" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5b50e6] rounded-full" />
+                )}
+              </button>
             </div>
-
-
-
-
-
-
-
+            {/* Header Action: Close */}
+            <div className="flex items-center shrink-0">
+              <button
+                type="button"
+                onClick={() => handleToggleAiPanel(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-on-surface-variant dark:hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
+                title="Close panel"
+                aria-label="Close panel"
+              >
+                <Icon name="close" className="text-[18px]" />
+              </button>
+            </div>
           </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
           {/* Panel Body */}
 
 
@@ -17969,3214 +14812,26 @@ function Workspace() {
 
 
             {rightPanelMode === "ai" ? (
-
-
-
-
-
-
-
-              <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
-
-
-
-
-
-
-
-                
-
-
-
-
-
-
-
-                {/* Messages / Intro Area */}
-
-
-
-
-
-
-
-                <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3 min-w-0">
-
-
-
-
-
-
-
-                  {chatMessages.length === 0 ? (
-
-
-
-
-
-
-
-                    /* Empty State matching Reference Image */
-
-
-
-
-
-
-
-                    <div className="flex flex-col gap-2.5 my-auto py-1 min-w-0">
-
-
-
-
-
-
-
-                      {/* 1. Greeting Card */}
-
-
-
-
-
-
-
-                      <div className="bg-surface border border-outline-variant/30 rounded-2xl p-3.5 shadow-xs">
-
-
-
-
-
-
-
-                        <h4 className="text-title-sm font-semibold text-on-surface">Hi! I can help you work with your map.</h4>
-
-
-
-
-
-
-
-                        <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
-
-
-
-
-
-
-
-                          You can ask me to improve, analyze, or summarize your ideas.
-
-
-
-
-
-
-
-                        </p>
-
-
-
-
-
-
-
-                      </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                      {/* 2. Context-Aware Quick Actions Grid (Dynamic 1 or 2 cols based on panel width) */}
-
-
-
-
-
-
-
-                      <div className={`grid ${aiPanelWidth < 360 ? "grid-cols-1" : "grid-cols-2"} gap-2`}>
-
-
-
-
-
-
-
-                          {selectedNode ? (
-
-
-
-
-
-
-
-                            <>
-
-
-
-
-
-
-
-                              {/* Selected Node Actions */}
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat(`Expand node "${selectedNode.data.label}" with detailed subtopics and child concepts`)}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="account_tree" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Expand node</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat(`Explain "${selectedNode.data.label}" clearly in context of this mind map`)}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="description" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Explain concept</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat(`Rewrite and make "${selectedNode.data.label}" concise`)}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="edit_note" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Rewrite / Simplify</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat(`Find connections between "${selectedNode.data.label}" and other parts of this mind map`)}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="hub" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Find connections</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-                            </>
-
-
-
-
-
-
-
-                          ) : (
-
-
-
-
-
-
-
-                            <>
-
-
-
-
-
-
-
-                              {/* Entire Map Actions */}
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat("Improve map structure")}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#F5F3FF] dark:bg-purple-950/20 border border-[#EDE9FE] dark:border-purple-900/30 hover:border-primary/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="schema" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Improve map structure</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat("Summarize entire map")}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/20 border border-[#DBEAFE] dark:border-blue-900/30 hover:border-blue-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="description" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Summarize map</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat("Identify gaps and missing concepts")}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/20 border border-[#D1FAE5] dark:border-emerald-900/30 hover:border-emerald-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="lightbulb" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Find gaps & suggestions</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")}
-
-
-
-
-
-
-
-                                className="group flex flex-col items-start p-3 rounded-2xl bg-[#FAF5FF] dark:bg-fuchsia-950/20 border border-[#F3E8FF] dark:border-fuchsia-900/30 hover:border-fuchsia-500/50 hover:shadow-xs transition-all text-left"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <div className="w-7 h-7 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-
-
-
-
-
-
-
-                                  <Icon name="bar_chart" className="text-[16px]" />
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <span className="text-label-sm font-semibold text-on-surface leading-snug">Analyze map</span>
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-                            </>
-
-
-
-
-
-
-
-                          )}
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        {/* Optional More Actions Dropdown */}
-
-
-
-
-
-
-
-                        <div className="flex justify-end">
-
-
-
-
-
-
-
-                          <DropdownMenu>
-
-
-
-
-
-
-
-                            <DropdownMenuTrigger asChild>
-
-
-
-
-
-
-
-                              <button className="text-xs text-on-surface-variant hover:text-on-surface flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-surface-container transition-colors font-medium">
-
-
-
-
-
-
-
-                                <span>More actions</span>
-
-
-
-
-
-
-
-                                <Icon name="expand_more" className="text-[14px]" />
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-                            </DropdownMenuTrigger>
-
-
-
-
-
-
-
-                            <DropdownMenuContent align="end" className="w-52">
-
-
-
-
-
-
-
-                              <DropdownMenuItem onClick={() => handleSendChat("Convert this map into a comprehensive exam study guide")}>
-
-
-
-
-
-
-
-                                <Icon name="school" className="mr-2 text-[16px]" /> Create study guide
-
-
-
-
-
-
-
-                              </DropdownMenuItem>
-
-
-
-
-
-
-
-                              <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an actionable project plan with milestones")}>
-
-
-
-
-
-
-
-                                <Icon name="task_alt" className="mr-2 text-[16px]" /> Create project plan
-
-
-
-
-
-
-
-                              </DropdownMenuItem>
-
-
-
-
-
-
-
-                              <DropdownMenuItem onClick={() => handleSendChat("Conduct a SWOT analysis based on this mind map")}>
-
-
-
-
-
-
-
-                                <Icon name="grid_view" className="mr-2 text-[16px]" /> Generate SWOT analysis
-
-
-
-
-
-
-
-                              </DropdownMenuItem>
-
-
-
-
-
-
-
-                            </DropdownMenuContent>
-
-
-
-
-
-
-
-                          </DropdownMenu>
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        {/* 3. Divider */}
-
-
-
-
-
-
-
-                        <div className="flex items-center gap-3 my-0.5">
-
-
-
-
-
-
-
-                          <div className="flex-1 h-px bg-outline-variant/30" />
-
-
-
-
-
-
-
-                          <span className="text-xs font-medium text-outline uppercase tracking-wider">or</span>
-
-
-
-
-
-
-
-                          <div className="flex-1 h-px bg-outline-variant/30" />
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                      </div>
-
-
-
-
-
-
-
-                    ) : (
-
-
-
-
-
-
-
-                      /* Chat Messages View */
-
-
-
-
-
-
-
-                      <>
-
-
-
-
-
-
-
-                        {chatMessages.map((msg) => (
-
-
-
-
-
-
-
-                          <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} gap-1.5`}>
-
-
-
-
-
-
-
-                            {msg.role === "ai" && (
-
-
-
-
-
-
-
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary pl-1">
-
-
-
-
-
-
-
-                                <Icon name="auto_awesome" className="text-[14px]" />
-
-
-
-
-
-
-
-                                <span>MindVault AI</span>
-
-
-
-
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            <div
-
-
-
-
-
-
-
-                              className={`text-body-sm leading-relaxed break-words ${
-
-
-
-
-
-
-
-                                msg.role === "user"
-
-
-
-
-
-
-
-                                  ? "px-3.5 py-2 rounded-2xl rounded-tr-xs bg-primary text-on-primary max-w-[85%] shadow-xs"
-
-
-
-
-
-
-
-                                  : "px-3.5 py-2.5 rounded-2xl rounded-tl-xs bg-surface-container-low text-on-surface border border-outline-variant/30 max-w-[92%]"
-
-
-
-
-
-
-
-                              }`}
-
-
-
-
-
-
-
-                            >
-
-
-
-
-
-
-
-                              {msg.content}
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            {/* RAG Grounding Sources */}
-
-
-
-
-
-
-
-                            {msg.sources && msg.sources.length > 0 && (
-
-
-
-
-
-
-
-                              <details className="w-full max-w-[92%] bg-surface border border-primary/20 rounded-xl p-2 text-label-xs group">
-
-
-
-
-
-
-
-                                <summary className="cursor-pointer font-medium text-primary flex items-center justify-between list-none">
-
-
-
-
-
-
-
-                                  <span className="flex items-center gap-1.5">
-
-
-
-
-
-
-
-                                    <Icon name="verified" className="text-[14px] text-primary" />
-
-
-
-
-
-
-
-                                    Grounded in {msg.sources.length} document source{msg.sources.length > 1 ? 's' : ''}
-
-
-
-
-
-
-
-                                  </span>
-
-
-
-
-
-
-
-                                  <Icon name="expand_more" className="text-[14px] transition-transform group-open:rotate-180 text-outline" />
-
-
-
-
-
-
-
-                                </summary>
-
-
-
-
-
-
-
-                                <div className="mt-2 space-y-1.5 pt-1.5 border-t border-outline-variant/20">
-
-
-
-
-
-
-
-                                  {msg.sources.map((s, idx) => (
-
-
-
-
-
-
-
-                                    <div key={idx} className="bg-surface-container-low p-2 rounded-lg text-body-xs font-mono text-on-surface-variant">
-
-
-
-
-
-
-
-                                      <div className="flex items-center justify-between font-semibold text-primary mb-1">
-
-
-
-
-
-
-
-                                        <span className="truncate max-w-[180px]">{s.filename} {s.page_number ? `(p. ${s.page_number})` : ''}</span>
-
-
-
-
-
-
-
-                                        <span className="text-xs bg-primary/10 px-1.5 py-0.5 rounded">{(s.score * 100).toFixed(0)}% match</span>
-
-
-
-
-
-
-
-                                      </div>
-
-
-
-
-
-
-
-                                      <p className="line-clamp-2 text-xs font-sans text-on-surface">{s.snippet}</p>
-
-
-
-
-
-
-
-                                    </div>
-
-
-
-
-
-
-
-                                  ))}
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                              </details>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            {/* Map Change Summary Card */}
-
-
-
-
-
-
-
-                            {msg.mapChanges && !msg.mapChanges.isUndone && (
-
-
-
-
-
-
-
-                              <div className="bg-surface border border-outline-variant/40 rounded-xl p-2.5 flex items-center justify-between w-full max-w-[92%] shadow-xs text-label-xs">
-
-
-
-
-
-
-
-                                <div className="flex items-center gap-2">
-
-
-
-
-
-
-
-                                  <span className="font-semibold text-on-surface">Map updated</span>
-
-
-
-
-
-
-
-                                  {msg.mapChanges.nodesAdded > 0 && (
-
-
-
-
-
-
-
-                                    <span className="text-emerald-700 bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded font-medium">
-
-
-
-
-
-
-
-                                      +{msg.mapChanges.nodesAdded} nodes
-
-
-
-
-
-
-
-                                    </span>
-
-
-
-
-
-
-
-                                  )}
-
-
-
-
-
-
-
-                                  {msg.mapChanges.nodesDeleted > 0 && (
-
-
-
-
-
-
-
-                                    <span className="text-error bg-error/10 px-2 py-0.5 rounded font-medium">
-
-
-
-
-
-
-
-                                      -{msg.mapChanges.nodesDeleted} nodes
-
-
-
-
-
-
-
-                                    </span>
-
-
-
-
-
-
-
-                                  )}
-
-
-
-
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                {msg.mapChanges.snapshotId && (
-
-
-
-
-
-
-
-                                  <button
-
-
-
-
-
-
-
-                                    onClick={() => handleUndoAIChat(msg.id, msg.mapChanges!.snapshotId!)}
-
-
-
-
-
-
-
-                                    className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded font-bold transition-colors flex items-center gap-1"
-
-
-
-
-
-
-
-                                  >
-
-
-
-
-
-
-
-                                    <Icon name="undo" className="text-[14px]" /> Undo
-
-
-
-
-
-
-
-                                  </button>
-
-
-
-
-
-
-
-                                )}
-
-
-
-
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            {msg.mapChanges?.isUndone && (
-
-
-
-
-
-
-
-                              <div className="text-label-xs text-on-surface-variant flex items-center gap-1 pl-1">
-
-
-
-
-
-
-
-                                <Icon name="undo" className="text-[12px]" /> AI changes reverted
-
-
-
-
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            {msg.isError && msg.failedPrompt && (
-
-
-
-
-
-
-
-                              <button
-
-
-
-
-
-
-
-                                onClick={() => handleSendChat(msg.failedPrompt)}
-
-
-
-
-
-
-
-                                className="text-primary hover:bg-primary/10 px-2.5 py-1 rounded text-label-xs font-semibold flex items-center gap-1 border border-primary/20 transition-colors ml-1"
-
-
-
-
-
-
-
-                              >
-
-
-
-
-
-
-
-                                <Icon name="refresh" className="text-[14px]" /> Try again
-
-
-
-
-
-
-
-                              </button>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                        ))}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        {/* Real Loading Indicator */}
-
-
-
-
-
-
-
-                        {isChatting && (
-
-
-
-
-
-
-
-                          <div className="flex flex-col items-start gap-1.5 animate-in fade-in duration-200">
-
-
-
-
-
-
-
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary pl-1">
-
-
-
-
-
-
-
-                              <Icon name="auto_awesome" className="text-[14px]" />
-
-
-
-
-
-
-
-                              <span>MindVault AI</span>
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-                            <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-xs bg-surface-container-low text-on-surface-variant border border-outline-variant/30 text-body-sm flex items-center gap-2">
-
-
-
-
-
-
-
-                              <Icon name="sync" className="animate-spin text-primary text-[16px]" />
-
-
-
-
-
-
-
-                              <span>AI is updating your map…</span>
-
-
-
-
-
-
-
-                            </div>
-
-
-
-
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                        )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        <div ref={messagesEndRef} />
-
-
-
-
-
-
-
-                      </>
-
-
-
-
-
-
-
-                    )}
-
-
-
-
-
-
-
-                  </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                  {/* Contextual Action Chips in Chat Mode (Max 3, wraps naturally, NO overflow-x) */}
-
-
-
-
-
-
-
-                  {chatMessages.length > 0 && !chatInput && !isChatting && (
-
-
-
-
-
-
-
-                    <div className="px-4 py-2 border-t border-outline-variant/15 bg-surface/50 flex flex-wrap items-center gap-1.5">
-
-
-
-
-
-
-
-                      {selectedNode ? (
-
-
-
-
-
-
-
-                        <>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat(`Expand node "${selectedNode.data.label}" with child concepts`)}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Expand node
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat(`Explain "${selectedNode.data.label}" clearly`)}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Explain
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat(`Rewrite and simplify "${selectedNode.data.label}"`)}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Rewrite
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        </>
-
-
-
-
-
-
-
-                      ) : (
-
-
-
-
-
-
-
-                        <>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat("Improve map structure")}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Improve structure
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat("Summarize entire map")}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Summarize map
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => handleSendChat("Identify gaps and missing concepts")}
-
-
-
-
-
-
-
-                            className="text-xs font-medium border border-outline-variant/40 hover:bg-surface-container rounded-full px-2.5 py-1 text-on-surface transition-colors"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Find gaps
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        </>
-
-
-
-
-
-
-
-                      )}
-
-
-
-
-
-
-
-                      
-
-
-
-
-
-
-
-                      <DropdownMenu>
-
-
-
-
-
-
-
-                        <DropdownMenuTrigger asChild>
-
-
-
-
-
-
-
-                          <button className="text-xs font-medium text-on-surface-variant hover:text-on-surface px-2 py-1 rounded-full hover:bg-surface-container flex items-center gap-0.5 transition-colors">
-
-
-
-
-
-
-
-                            More <Icon name="expand_more" className="text-[14px]" />
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        </DropdownMenuTrigger>
-
-
-
-
-
-
-
-                        <DropdownMenuContent align="end" className="w-52">
-
-
-
-
-
-
-
-                          <DropdownMenuItem onClick={() => handleSendChat("Highlight the most important nodes and prioritize critical topics")}>
-
-
-
-
-
-
-
-                            <Icon name="star" className="mr-2 text-[16px] text-amber-500" /> Prioritize key nodes
-
-
-
-
-
-
-
-                          </DropdownMenuItem>
-
-
-
-
-
-
-
-                          <DropdownMenuItem onClick={() => handleSendChat("Analyze this map for coverage, duplication, structure, missing concepts, and complexity")}>
-
-
-
-
-
-
-
-                            <Icon name="bar_chart" className="mr-2 text-[16px]" /> Analyze map
-
-
-
-
-
-
-
-                          </DropdownMenuItem>
-
-
-
-
-
-
-
-                          <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an exam study guide")}>
-
-
-
-
-
-
-
-                            <Icon name="school" className="mr-2 text-[16px]" /> Create study guide
-
-
-
-
-
-
-
-                          </DropdownMenuItem>
-
-
-
-
-
-
-
-                          <DropdownMenuItem onClick={() => handleSendChat("Convert this map into an actionable project plan")}>
-
-
-
-
-
-
-
-                            <Icon name="task_alt" className="mr-2 text-[16px]" /> Create project plan
-
-
-
-
-
-
-
-                          </DropdownMenuItem>
-
-
-
-
-
-
-
-                        </DropdownMenuContent>
-
-
-
-
-
-
-
-                      </DropdownMenu>
-
-
-
-
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                  )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                  {/* 3. Clean Composer (Single rounded container sticky at bottom) */}
-
-
-
-
-
-
-
-                  <div className="p-3 border-t border-outline-variant/20 bg-surface shrink-0">
-
-
-
-
-
-
-
-                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-2.5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10 transition-all shadow-xs">
-
-
-
-
-
-
-
-                      
-
-
-
-
-
-
-
-                      {/* Compact Context Target */}
-
-
-
-
-
-
-
-                      <div className="flex items-center justify-between mb-1.5 px-1">
-
-
-
-
-
-
-
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-
-
-
-
-
-
-
-                          <Icon name={selectedNode ? "adjust" : "public"} className="text-[14px] text-primary" />
-
-
-
-
-
-
-
-                          <span className="truncate max-w-[220px]">
-
-
-
-
-
-
-
-                            {selectedNode ? (selectedNode.data.label as string) : "Entire Map"}
-
-
-
-
-
-
-
-                          </span>
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                        {selectedNode && (
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            onClick={() => setSelectedNodeId(null)}
-
-
-
-
-
-
-
-                            className="text-xs text-outline hover:text-on-surface px-1.5 py-0.5 rounded hover:bg-surface-container flex items-center gap-0.5 transition-colors"
-
-
-
-
-
-
-
-                            title="Clear selection to target entire map"
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            Clear <Icon name="close" className="text-[14px]" />
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        )}
-
-
-
-
-
-
-
-                      </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                      {/* Textarea */}
-
-
-
-
-
-
-
-                      <textarea
-
-
-
-
-
-
-
-                        ref={composerTextareaRef}
-
-
-
-
-
-
-
-                        value={chatInput}
-
-
-
-
-
-
-
-                        onChange={(e) => {
-
-
-
-
-
-
-
-                          setChatInput(e.target.value);
-
-
-
-
-
-
-
-                          e.target.style.height = "auto";
-
-
-
-
-
-
-
-                          e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-
-
-
-
-
-
-
-                        }}
-
-
-
-
-
-
-
-                        onKeyDown={(e) => {
-
-
-
-
-
-
-
-                          if (e.key === "Enter" && !e.shiftKey) {
-
-
-
-
-
-
-
-                            e.preventDefault();
-
-
-
-
-
-
-
-                            if (chatInput.trim() && !isChatting) {
-
-
-
-
-
-
-
-                              handleSendChat();
-
-
-
-
-
-
-
-                            }
-
-
-
-
-
-
-
-                          }
-
-
-
-
-
-
-
-                        }}
-
-
-
-
-
-
-
-                        placeholder={selectedNode ? `Ask about "${selectedNode.data.label}"...` : "Ask anything about your map..."}
-
-
-
-
-
-
-
-                        rows={1}
-
-
-
-
-
-
-
-                        className="w-full bg-transparent resize-none text-body-sm outline-none px-1 text-on-surface placeholder:text-outline-variant max-h-[120px] leading-relaxed"
-
-
-
-
-
-
-
-                        disabled={isChatting}
-
-
-
-
-
-
-
-                      />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                      {/* Composer Actions */}
-
-
-
-
-
-
-
-                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-outline-variant/15">
-
-
-
-
-
-
-
-                        <div className="flex items-center gap-1 text-outline">
-
-
-
-
-
-
-
-                          <button
-
-
-
-
-
-
-
-                            type="button"
-
-
-
-
-
-
-
-                            onClick={() => setIsKnowledgeModalOpen(true)}
-
-
-
-
-
-
-
-                            className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 ${
-
-
-
-
-
-
-
-                              projectDocuments.length > 0
-
-
-
-
-
-
-
-                                ? "text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400"
-
-
-
-
-
-
-
-                                : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
-
-
-
-
-
-
-
-                            }`}
-
-
-
-
-
-
-
-                            title={
-
-
-
-
-
-
-
-                              projectDocuments.length > 0
-
-
-
-
-
-
-
-                                ? `Manage Knowledge Base (${projectDocuments.length} document${projectDocuments.length > 1 ? 's' : ''} grounding AI)`
-
-
-
-
-
-
-
-                                : "Attach Knowledge Base Documents (RAG)"
-
-
-
-
-
-
-
-                            }
-
-
-
-
-
-
-
-                          >
-
-
-
-
-
-
-
-                            <Icon name="attach_file" className="text-[16px]" />
-
-
-
-
-
-
-
-                            {projectDocuments.length > 0 && (
-
-
-
-
-
-
-
-                              <span className="text-xs font-bold px-1">{projectDocuments.length}</span>
-
-
-
-
-
-
-
-                            )}
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                        <button
-
-
-
-
-
-
-
-                          onClick={() => handleSendChat()}
-
-
-
-
-
-
-
-                          disabled={!chatInput.trim() || isChatting}
-
-
-
-
-
-
-
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-30 disabled:bg-surface-container-high disabled:text-outline disabled:cursor-not-allowed shadow-xs"
-
-
-
-
-
-
-
-                          aria-label="Send message"
-
-
-
-
-
-
-
-                          title="Send message (Enter)"
-
-
-
-
-
-
-
-                        >
-
-
-
-
-
-
-
-                          <Icon name="arrow_upward" className="text-[16px]" />
-
-
-
-
-
-
-
-                        </button>
-
-
-
-
-
-
-
-                      </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                  </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-              ) : rightPanelMode === "versions" ? (
+              <AiAssistantPanel
+                messages={chatMessages}
+                isChatting={isChatting}
+                chatInput={chatInput}
+                onChatInputChange={setChatInput}
+                onSendChat={handleSendChat}
+                selectedNode={selectedNode}
+                aiScope={aiScope}
+                onChangeScope={setAiScope}
+                onPreviewChanges={handlePreviewChanges}
+                onApplyChanges={handleApplyChanges}
+                onDismissChanges={handleDismissChanges}
+                onUndoAIChat={handleUndoAIChat}
+                projectDocuments={projectDocuments}
+                onOpenKnowledgeBase={() => setIsKnowledgeModalOpen(true)}
+                onClearSelection={() => setSelectedNodeId(null)}
+                allNodes={flowNodes}
+                onClose={() => handleToggleAiPanel(false)}
+              />
+            ) : rightPanelMode === "versions" ? (
 
 
 
@@ -21556,1367 +15211,100 @@ function Workspace() {
 
 
 
-                <div className="p-4 flex flex-col gap-6 overflow-y-auto">
-
-
-
-                  {!selectedNode ? (
-                    <div className="space-y-6">
-                      {/* Map Overview Header */}
-                      <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/40 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                            <Icon name="account_tree" className="text-[22px]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">Mind Map Overview</span>
-                            <input
-                              type="text"
-                              value={mindMapTitle}
-                              onChange={(e) => setMindMapTitle(e.target.value)}
-                              onBlur={() => {
-                                if (mindMapId && mindMapTitle.trim()) {
-                                  updateMindMap(mindMapId, { title: mindMapTitle.trim() });
-                                }
-                              }}
-                              className="font-bold text-body-lg text-on-surface bg-transparent border-none outline-none w-full truncate focus:bg-surface focus:px-1.5 focus:py-0.5 rounded transition-all"
-                              title="Click to rename mind map"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-on-surface-variant/80 pt-1 border-t border-outline-variant/20">
-                          <span>Theme: <strong className="capitalize text-on-surface">{currentTheme}</strong></span>
-                          <span>Layout: <strong className="capitalize text-on-surface">{currentLayout}</strong></span>
-                        </div>
-                      </div>
-
-                      {/* Map Metrics Grid */}
-                      <div className="space-y-2">
-                        <span className="text-label-xs font-bold text-outline uppercase tracking-wider block">Canvas Metrics</span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                              <Icon name="circle" className="text-[16px]" />
-                            </div>
-                            <div>
-                              <span className="text-[11px] text-outline block">Total Nodes</span>
-                              <span className="text-title-md font-bold text-on-surface">{flowNodes.length}</span>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                              <Icon name="fork_right" className="text-[16px]" />
-                            </div>
-                            <div>
-                              <span className="text-[11px] text-outline block">Branches</span>
-                              <span className="text-title-md font-bold text-on-surface">
-                                {flowNodes.filter(n => n.data?.depth === 1 || (!flowEdges.some(e => e.target === n.id) && flowNodes.length > 1)).length || 1}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                              <Icon name="layers" className="text-[16px]" />
-                            </div>
-                            <div>
-                              <span className="text-[11px] text-outline block">Max Depth</span>
-                              <span className="text-title-md font-bold text-on-surface">
-                                {Math.max(0, ...flowNodes.map(n => Number(n.data?.depth || 0)))}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                              <Icon name="timeline" className="text-[16px]" />
-                            </div>
-                            <div>
-                              <span className="text-[11px] text-outline block">Connections</span>
-                              <span className="text-title-md font-bold text-on-surface">{flowEdges.length}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-outline-variant/30" />
-
-                      {/* Global Structure & Layout */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-label-xs font-bold text-outline uppercase tracking-wider block">Global Layout</span>
-                          <span className="text-xs text-primary font-medium capitalize">{currentLayout}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { key: "radial" as const, label: "Radial", icon: "radio_button_checked" },
-                            { key: "horizontal" as const, label: "Horizontal", icon: "swap_horiz" },
-                            { key: "vertical" as const, label: "Vertical", icon: "swap_vert" },
-                          ].map((item) => (
-                            <button
-                              key={item.key}
-                              type="button"
-                              onClick={() => handleApplyLayout(item.key)}
-                              className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                                currentLayout === item.key
-                                  ? "border-primary bg-primary/10 text-primary shadow-xs"
-                                  : "border-outline-variant/40 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
-                              }`}
-                            >
-                              <Icon name={item.icon} className="text-[18px]" />
-                              <span className="text-xs font-semibold">{item.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyLayout(currentLayout)}
-                          className="w-full py-2 px-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/40 text-on-surface text-label-sm font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <Icon name="auto_fix_high" className="text-[16px] text-primary" />
-                          <span>Re-organize Canvas Layout</span>
-                        </button>
-                      </div>
-
-                      <div className="h-px bg-outline-variant/30" />
-
-                      {/* Global Visual Theme */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-label-xs font-bold text-outline uppercase tracking-wider block">Visual Theme</span>
-                          <span className="text-xs text-primary font-medium capitalize">{currentTheme}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { key: "modern" as const, label: "Modern", color: "bg-blue-600", desc: "Balanced AI" },
-                            { key: "minimal" as const, label: "Minimal", color: "bg-zinc-600", desc: "Clean & calm" },
-                            { key: "colorful" as const, label: "Colorful", color: "bg-gradient-to-r from-pink-500 to-amber-500", desc: "Vibrant" },
-                          ].map((thm) => (
-                            <button
-                              key={thm.key}
-                              type="button"
-                              onClick={() => handleSelectTheme(thm.key)}
-                              className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                                currentTheme === thm.key
-                                  ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                                  : "border-outline-variant/40 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
-                              }`}
-                            >
-                              <span className={`w-4 h-4 rounded-full ${thm.color} shadow-xs`} />
-                              <span className="text-xs font-semibold">{thm.label}</span>
-                              <span className="text-[10px] text-outline opacity-80">{thm.desc}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-outline-variant/30" />
-
-                      {/* Canvas View Settings & Quick Actions */}
-                      <div className="space-y-3">
-                        <span className="text-label-xs font-bold text-outline uppercase tracking-wider block">Display & Quick Actions</span>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30">
-                            <div className="flex items-center gap-2 text-xs font-medium text-on-surface">
-                              <Icon name="grid_view" className="text-[16px] text-on-surface-variant" />
-                              <span>Canvas Grid</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setShowGrid(!showGrid)}
-                              className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                                showGrid ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
-                              }`}
-                            >
-                              {showGrid ? "On" : "Off"}
-                            </button>
-                          </div>
-
-                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30">
-                            <div className="flex items-center gap-2 text-xs font-medium text-on-surface">
-                              <Icon name="map" className="text-[16px] text-on-surface-variant" />
-                              <span>MiniMap Radar</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setShowMiniMap(!showMiniMap)}
-                              className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                                showMiniMap ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
-                              }`}
-                            >
-                              {showMiniMap ? "On" : "Off"}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => rfInstance?.fitView({ duration: 500, padding: 0.2 })}
-                            className="p-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-on-surface text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Icon name="crop_free" className="text-[16px]" />
-                            <span>Fit to Screen</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleAddRootNode}
-                            className="p-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Icon name="add" className="text-[16px]" />
-                            <span>Add Central Node</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (() => {
-
-
-
-                    const currentOverride: NodeStyleOverride = (selectedNode.data?.styleOverride as NodeStyleOverride) || {};
-
-
-
-                    const hasOverrides = !!(currentOverride.shape || currentOverride.color || currentOverride.icon || currentOverride.style);
-
-
-
-                    const nodeType = (selectedNode.data?.semanticType as SemanticNodeType) || (selectedNode.data?.depth === 0 ? "root" : "concept");
-
-
-
-                    const depth = selectedNode.data?.depth ?? 0;
-
-
-
-
-
-
-
-                    const typeMeta: Record<string, { label: string; icon: string; badgeClass: string }> = {
-
-
-
-                      root: { label: "Root Topic", icon: "account_tree", badgeClass: "bg-primary/10 text-primary border-primary/20" },
-
-
-
-                      topic: { label: "Main Topic", icon: "folder", badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
-
-
-
-                      concept: { label: "Concept", icon: "description", badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-
-
-
-                      task: { label: "Action Task", icon: "check_circle", badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
-
-
-
-                      insight: { label: "Key Insight", icon: "lightbulb", badgeClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
-
-
-
-                      ai_suggestion: { label: "AI Suggestion", icon: "auto_awesome", badgeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" },
-
-
-
-                    };
-
-
-
-                    const meta = typeMeta[nodeType] || typeMeta.concept;
-
-
-
-
-
-
-
-                    return (
-
-
-
-                      <>
-
-
-
-                        {/* Section 1: Semantic Identity & Content */}
-
-
-
-                        <div className="space-y-3">
-
-
-
-                          <div className="flex items-center justify-between">
-
-
-
-                            <span className="text-label-xs font-bold text-outline uppercase tracking-wider">Node Details</span>
-
-
-
-                            <div className="flex items-center gap-1.5">
-
-
-
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${meta.badgeClass}`}>
-
-
-
-                                <Icon name={meta.icon} className="text-[12px]" />
-
-
-
-                                <span>{meta.label}</span>
-
-
-
-                              </span>
-
-
-
-                              <span className="text-[11px] font-medium text-on-surface-variant/70 bg-surface-container px-1.5 py-0.5 rounded border border-outline-variant/30">
-
-
-
-                                Depth {depth}
-
-
-
-                              </span>
-
-
-
-                            </div>
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          <div>
-
-
-
-                            <label className="text-xs font-medium text-on-surface-variant mb-1.5 block">Title / Content</label>
-
-
-
-                            <textarea 
-
-
-
-                              value={selectedNode.data.label as string}
-
-
-
-                              onChange={(e) => {
-
-
-
-                                const newLabel = e.target.value;
-
-
-
-                                setFlowNodes(nds => nds.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, label: newLabel } } : n));
-
-
-
-                              }}
-
-
-
-                              onBlur={() => updateNode(selectedNode.id, { label: selectedNode.data.label as string })}
-
-
-
-                              placeholder="Enter node title..."
-
-
-
-                              className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-3 text-body-md focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none resize-none min-h-[76px] transition-all"
-
-
-
-                            />
-
-
-
-                          </div>
-
-
-
-                        </div>
-
-                        {/* Parent Relationship */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-on-surface-variant block">Parent Relationship</label>
-                          {(() => {
-                            const parentEdge = flowEdges.find(e => e.target === selectedNode.id);
-                            const parentNode = parentEdge ? flowNodes.find(n => n.id === parentEdge.source) : null;
-                            if (parentNode) {
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedNodeId(parentNode.id);
-                                    if (rfInstance) {
-                                      rfInstance.setCenter(parentNode.position.x, parentNode.position.y, { zoom: 1.2, duration: 500 });
-                                    }
-                                  }}
-                                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-outline-variant/40 transition-colors text-left group cursor-pointer"
-                                  title="Jump to parent node"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <Icon name="arrow_upward" className="text-primary text-[16px] shrink-0" />
-                                    <span className="text-body-sm font-medium truncate text-on-surface">
-                                      {(parentNode.data?.label as string) || "Untitled Node"}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs text-primary group-hover:underline shrink-0 font-medium">Jump</span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 text-on-surface-variant text-xs">
-                                <Icon name="hub" className="text-[16px] text-primary" />
-                                <span>Root Topic (Top Level — No Parent)</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Branch & Hierarchy Info */}
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30">
-                            <span className="text-outline block text-[10px] uppercase font-bold tracking-wider">Branch ID</span>
-                            <span className="font-semibold text-on-surface truncate block mt-0.5">
-                              {String(selectedNode.data?.branchId || "Central")}
-                            </span>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30">
-                            <span className="text-outline block text-[10px] uppercase font-bold tracking-wider">Subnodes</span>
-                            <div className="flex items-center justify-between mt-0.5">
-                              <span className="font-semibold text-on-surface">
-                                {flowEdges.filter(e => e.source === selectedNode.id).length} direct
-                              </span>
-                              {flowEdges.some(e => e.source === selectedNode.id) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleCollapse(selectedNode.id)}
-                                  className="text-[11px] text-primary hover:underline cursor-pointer"
-                                >
-                                  {collapsedNodeIds.has(selectedNode.id) ? "Expand" : "Collapse"}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-
-
-
-
-
-
-                        <div className="h-px bg-outline-variant/30" />
-
-
-
-
-
-
-
-                        {/* Section 2: Appearance & Hybrid Node Styling */}
-
-
-
-                        <div className="space-y-4">
-
-
-
-                          <div className="flex items-center justify-between">
-
-
-
-                            <div className="flex items-center gap-1.5">
-
-
-
-                              <Icon name="palette" className="text-primary text-[16px]" />
-
-
-
-                              <span className="text-label-xs font-bold text-outline uppercase tracking-wider">Appearance</span>
-
-
-
-                            </div>
-
-
-
-                            {hasOverrides && (
-
-
-
-                              <button
-
-
-
-                                onClick={() => handleResetNodeOverride(selectedNode.id)}
-
-
-
-                                className="text-xs text-primary hover:text-primary/80 font-medium hover:underline flex items-center gap-1"
-
-
-
-                                title="Reset all overrides to theme defaults"
-
-
-
-                              >
-
-
-
-                                <Icon name="restart_alt" className="text-[13px]" />
-
-
-
-                                Reset to Auto
-
-
-
-                              </button>
-
-
-
-                            )}
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          {/* Shape Override */}
-
-
-
-                          <div>
-
-
-
-                            <div className="flex items-center justify-between mb-1.5">
-
-
-
-                              <label className="text-xs font-medium text-on-surface-variant">Container Shape</label>
-
-
-
-                              <span className="text-[11px] text-outline capitalize">{currentOverride.shape || "Auto (Theme)"}</span>
-
-
-
-                            </div>
-
-
-
-                            <div className="grid grid-cols-4 gap-1.5 bg-surface-container-low p-1 rounded-xl border border-outline-variant/30">
-
-
-
-                              {[
-
-
-
-                                { key: "auto", label: "Auto", icon: "auto_mode" },
-
-
-
-                                { key: "rounded", label: "Rounded", icon: "crop_portrait" },
-
-
-
-                                { key: "pill", label: "Pill", icon: "radio_button_checked" },
-
-
-
-                                { key: "minimal", label: "Minimal", icon: "horizontal_rule" },
-
-
-
-                              ].map((shapeOption) => {
-
-
-
-                                const isActive = (currentOverride.shape || "auto") === shapeOption.key;
-
-
-
-                                return (
-
-
-
-                                  <button
-
-
-
-                                    key={shapeOption.key}
-
-
-
-                                    onClick={() => handleUpdateNodeOverride(selectedNode.id, { shape: shapeOption.key as any })}
-
-
-
-                                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-xs font-medium transition-all ${
-
-
-
-                                      isActive
-
-
-
-                                        ? "bg-surface text-primary shadow-xs font-semibold border border-primary/20"
-
-
-
-                                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface/50"
-
-
-
-                                    }`}
-
-
-
-                                  >
-
-
-
-                                    <Icon name={shapeOption.icon} className="text-[16px] mb-1" />
-
-
-
-                                    <span>{shapeOption.label}</span>
-
-
-
-                                  </button>
-
-
-
-                                );
-
-
-
-                              })}
-
-
-
-                            </div>
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          {/* Color Mode Override */}
-
-
-
-                          <div>
-
-
-
-                            <div className="flex items-center justify-between mb-1.5">
-
-
-
-                              <label className="text-xs font-medium text-on-surface-variant">Color Accent</label>
-
-
-
-                              <span className="text-[11px] text-outline capitalize">{currentOverride.color || "Branch (Theme)"}</span>
-
-
-
-                            </div>
-
-
-
-                            <div className="grid grid-cols-3 gap-2">
-
-
-
-                              {[
-
-
-
-                                { key: "auto", label: "Branch", desc: "Dynamic branch palette", colorDot: "bg-indigo-500" },
-
-
-
-                                { key: "neutral", label: "Neutral", desc: "Subtle calm slate", colorDot: "bg-slate-400" },
-
-
-
-                                { key: "accent", label: "Accent", desc: "Vibrant emphasis", colorDot: "bg-amber-500" },
-
-
-
-                              ].map((colorOption) => {
-
-
-
-                                const isActive = (currentOverride.color || "auto") === colorOption.key;
-
-
-
-                                return (
-
-
-
-                                  <button
-
-
-
-                                    key={colorOption.key}
-
-
-
-                                    onClick={() => handleUpdateNodeOverride(selectedNode.id, { color: colorOption.key as any })}
-
-
-
-                                    className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all ${
-
-
-
-                                      isActive
-
-
-
-                                        ? "bg-primary/5 border-primary text-on-surface shadow-xs"
-
-
-
-                                        : "bg-surface-container-lowest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant/60"
-
-
-
-                                    }`}
-
-
-
-                                  >
-
-
-
-                                    <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${colorOption.colorDot}`} />
-
-
-
-                                    <div className="truncate">
-
-
-
-                                      <div className="text-xs font-semibold">{colorOption.label}</div>
-
-
-
-                                    </div>
-
-
-
-                                  </button>
-
-
-
-                                );
-
-
-
-                              })}
-
-
-
-                            </div>
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          {/* Optional Icon Override */}
-
-
-
-                          <div>
-
-
-
-                            <div className="flex items-center justify-between mb-1.5">
-
-
-
-                              <label className="text-xs font-medium text-on-surface-variant">Node Icon</label>
-
-
-
-                              {currentOverride.icon && currentOverride.icon !== "none" && (
-
-
-
-                                <button
-
-
-
-                                  onClick={() => handleUpdateNodeOverride(selectedNode.id, { icon: "none" })}
-
-
-
-                                  className="text-[11px] text-error hover:underline"
-
-
-
-                                >
-
-
-
-                                  Remove icon
-
-
-
-                                </button>
-
-
-
-                              )}
-
-
-
-                            </div>
-
-
-
-                            <div className="grid grid-cols-5 gap-1.5 bg-surface-container-low p-1.5 rounded-xl border border-outline-variant/30">
-
-
-
-                              {[
-
-
-
-                                { key: "none", label: "None", icon: "block" },
-
-
-
-                                { key: "lightbulb", label: "Idea", icon: "lightbulb" },
-
-
-
-                                { key: "check_circle", label: "Done", icon: "check_circle" },
-
-
-
-                                { key: "star", label: "Star", icon: "star" },
-
-
-
-                                { key: "flag", label: "Goal", icon: "flag" },
-
-
-
-                                { key: "bookmark", label: "Note", icon: "bookmark" },
-
-
-
-                                { key: "help", label: "Help", icon: "help" },
-
-
-
-                                { key: "bolt", label: "Fast", icon: "bolt" },
-
-
-
-                                { key: "warning", label: "Alert", icon: "warning" },
-
-
-
-                                { key: "info", label: "Info", icon: "info" },
-
-
-
-                              ].map((iconItem) => {
-
-
-
-                                const isActive = iconItem.key === "none"
-
-
-
-                                  ? (!currentOverride.icon || currentOverride.icon === "none")
-
-
-
-                                  : currentOverride.icon === iconItem.key;
-
-
-
-                                return (
-
-
-
-                                  <button
-
-
-
-                                    key={iconItem.key}
-
-
-
-                                    onClick={() => handleUpdateNodeOverride(selectedNode.id, { icon: iconItem.key })}
-
-
-
-                                    title={iconItem.label}
-
-
-
-                                    className={`h-9 flex items-center justify-center rounded-lg transition-all ${
-
-
-
-                                      isActive
-
-
-
-                                        ? "bg-surface text-primary shadow-xs border border-primary/30"
-
-
-
-                                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface/50"
-
-
-
-                                    }`}
-
-
-
-                                  >
-
-
-
-                                    <Icon name={iconItem.icon} className="text-[16px]" />
-
-
-
-                                  </button>
-
-
-
-                                );
-
-
-
-                              })}
-
-
-
-                            </div>
-
-
-
-                          </div>
-
-
-
-                        </div>
-
-
-
-
-
-
-
-                        <div className="h-px bg-outline-variant/30" />
-
-
-
-
-
-
-
-                        {/* Section 3: AI Actions */}
-
-
-
-                        <div>
-
-
-
-                          <div className="flex items-center gap-1.5 mb-3">
-
-
-
-                            <Icon name="auto_awesome" className="text-primary text-[16px]" />
-
-
-
-                            <span className="text-label-xs font-bold text-outline uppercase tracking-wider">AI Actions</span>
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-
-
-
-                            <button
-
-
-
-                              onClick={() => handleExpandNode(selectedNode.id)}
-
-
-
-                              className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors"
-
-
-
-                            >
-
-
-
-                              <Icon name="account_tree" className="text-primary text-[16px]" />
-
-
-
-                              <span className="font-semibold text-on-surface text-label-sm mt-1">Expand</span>
-
-
-
-                              <span className="text-[11px] text-on-surface-variant">Generate sub-branches</span>
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                            <button
-
-
-
-                              onClick={() => handleSummarizeNode(selectedNode.id)}
-
-
-
-                              className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors"
-
-
-
-                            >
-
-
-
-                              <Icon name="short_text" className="text-primary text-[16px]" />
-
-
-
-                              <span className="font-semibold text-on-surface text-label-sm mt-1">Summarize</span>
-
-
-
-                              <span className="text-[11px] text-on-surface-variant">Condense branch details</span>
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                            <button
-
-
-
-                              onClick={() => handleFindConnections(selectedNode.id)}
-
-
-
-                              className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors"
-
-
-
-                            >
-
-
-
-                              <Icon name="hub" className="text-primary text-[16px]" />
-
-
-
-                              <span className="font-semibold text-on-surface text-label-sm mt-1">Connections</span>
-
-
-
-                              <span className="text-[11px] text-on-surface-variant">Find cross-links</span>
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                            <button
-
-
-
-                              onClick={() => setConfirmAction({ type: 'regenerate', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })}
-
-
-
-                              className="flex flex-col items-start gap-1 p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors"
-
-
-
-                            >
-
-
-
-                              <Icon name="auto_awesome" className="text-primary text-[16px]" />
-
-
-
-                              <span className="font-semibold text-on-surface text-label-sm mt-1">Regenerate</span>
-
-
-
-                              <span className="text-[11px] text-on-surface-variant">Re-create branch ideas</span>
-
-
-
-                            </button>
-
-
-
-
-
-
-
-                            <button
-
-
-
-                              onClick={() => {
-
-
-
-                                setFocusedNodeId(selectedNode.id);
-
-
-
-                                if (rfInstance) {
-
-
-
-                                  const targetNode = flowNodes.find((n) => n.id === selectedNode.id);
-
-
-
-                                  if (targetNode) {
-
-
-
-                                    rfInstance.setCenter(targetNode.position.x, targetNode.position.y, { zoom: 1.2, duration: 600 });
-
-
-
-                                  }
-
-
-
-                                }
-
-
-
-                              }}
-
-
-
-                              className="col-span-2 flex items-center justify-between p-3 hover:bg-primary/5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-left transition-colors"
-
-
-
-                            >
-
-
-
-                              <div className="flex items-center gap-2.5">
-
-
-
-                                <Icon name="center_focus_strong" className="text-primary text-[16px]" />
-
-
-
-                                <div>
-
-
-
-                                  <div className="font-semibold text-on-surface text-label-sm">Focus Branch</div>
-
-
-
-                                  <div className="text-[11px] text-on-surface-variant">Dim outer canvas and center view</div>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                              <Icon name="chevron_right" className="text-on-surface-variant text-[16px]" />
-
-
-
-                            </button>
-
-
-
-                          </div>
-
-
-
-
-
-
-
-                          <div className="h-px bg-outline-variant/30 mb-4" />
-
-
-
-
-
-
-
-                          {/* Section 4: Danger Zone */}
-
-
-
-                          <label className="text-label-xs font-bold text-outline uppercase tracking-wider mb-2 block">Danger Zone</label>
-
-
-
-                          <button
-
-
-
-                            onClick={() => setConfirmAction({ type: 'delete', nodeId: selectedNode.id, nodeLabel: selectedNode.data.label as string })}
-
-
-
-                            className="flex items-center gap-3 w-full p-2.5 hover:bg-error-container/30 border border-error/20 rounded-xl text-left text-body-sm text-error transition-colors"
-
-
-
-                          >
-
-
-
-                            <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center text-error">
-
-
-
-                              <Icon name="delete" className="text-[16px]" />
-
-
-
-                            </div>
-
-
-
-                            <div>
-
-
-
-                              <div className="font-semibold text-xs">Delete Node</div>
-
-
-
-                              <div className="opacity-70 text-[11px]">Remove node and associated children</div>
-
-
-
-                            </div>
-
-
-
-                          </button>
-
-
-
-                        </div>
-
-
-
-                      </>
-
-
-
-                    );
-
-
-
-                  })()}
-
-
-
-                </div>
+                <Inspector
+                  selectedNode={selectedNode}
+                  allNodes={flowNodes}
+                  allEdges={flowEdges}
+                  currentTheme={currentTheme}
+                  currentLayout={currentLayout}
+                  mindMapTitle={mindMapTitle}
+                  onClose={() => handleToggleAiPanel(false)}
+                  onUpdateTitle={(title) => {
+                    setMindMapTitle(title);
+                    if (mindMapId && title.trim()) {
+                      updateMindMap(mindMapId, { title: title.trim() });
+                    }
+                  }}
+                  onUpdateNodeData={(nodeId, updates) => {
+                    setFlowNodes((nds) => {
+                      const nextNodes = nds.map((n) => {
+                        if (n.id === nodeId) {
+                          const nextData = { ...n.data, ...updates };
+                          return { ...n, data: nextData };
+                        }
+                        return n;
+                      });
+                      pushToHistory(nextNodes, flowEdges);
+                      return nextNodes;
+                    });
+                    if (updates.label !== undefined || updates.semanticType !== undefined) {
+                      updateNode(nodeId, {
+                        label: updates.label as string,
+                        type: updates.semanticType as string,
+                      }).catch((e) => console.error("Failed to update node on backend", e));
+                    }
+                    try {
+                      const rawMeta = localStorage.getItem(`mindmap_node_metadata_${mindMapId}`) || "{}";
+                      const parsedMeta = JSON.parse(rawMeta);
+                      parsedMeta[nodeId] = { ...(parsedMeta[nodeId] || {}), ...updates };
+                      localStorage.setItem(`mindmap_node_metadata_${mindMapId}`, JSON.stringify(parsedMeta));
+                    } catch (e) {
+                      console.error("Failed to save local metadata", e);
+                    }
+                  }}
+                  onUpdateNodeOverride={handleUpdateNodeOverride}
+                  onResetNodeOverride={handleResetNodeOverride}
+                  onAddChild={(parentId) => {
+                    setSelectedNodeId(parentId);
+                    handleAddChildNode();
+                  }}
+                  onAddSibling={(nodeId) => {
+                    setSelectedNodeId(nodeId);
+                    handleAddSiblingNode();
+                  }}
+                  onDeleteNode={(nodeId) => {
+                    const targetNode = flowNodes.find((n) => n.id === nodeId);
+                    if (targetNode) {
+                      setConfirmAction({
+                        type: "delete",
+                        nodeId: targetNode.id,
+                        nodeLabel: (targetNode.data.label as string) || "Selected Node",
+                      });
+                    }
+                  }}
+                  onStartConnect={(sourceNodeId) => {
+                    setActiveTool("connect");
+                    setConnectSourceNodeId(sourceNodeId);
+                    setSelectedNodeId(sourceNodeId);
+                    toast.info("Source selected. Click target node to connect.");
+                  }}
+                  onSelectNode={(nodeId) => {
+                    setSelectedNodeId(nodeId);
+                    const target = flowNodes.find((n) => n.id === nodeId);
+                    if (target && rfInstance) {
+                      rfInstance.setCenter(target.position.x, target.position.y, { zoom: 1.1, duration: 400 });
+                    }
+                  }}
+                  onApplyLayout={handleApplyLayout}
+                  onSelectTheme={handleSelectTheme}
+                  onAIExpand={handleExpandNode}
+                  onAISummarize={handleSummarizeNode}
+                  onAIFindConnections={handleFindConnections}
+                  onAIRegenerate={(nodeId, label) => setConfirmAction({ type: "regenerate", nodeId, nodeLabel: label })}
+                  onFocusNode={(nodeId) => {
+                    setFocusedNodeId(nodeId);
+                    const target = flowNodes.find((n) => n.id === nodeId);
+                    if (target && rfInstance) {
+                      rfInstance.setCenter(target.position.x, target.position.y, { zoom: 1.2, duration: 600 });
+                    }
+                  }}
+                  showGrid={showGrid}
+                  onToggleGrid={() => setShowGrid(!showGrid)}
+                  showMiniMap={showMiniMap}
+                  onToggleMiniMap={() => setShowMiniMap(!showMiniMap)}
+                  onFitView={() => rfInstance?.fitView({ duration: 500, padding: 0.25, maxZoom: 1.05 })}
+                  onAddCentralNode={handleAddRootNode}
+                />
 
 
 
