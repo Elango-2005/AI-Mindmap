@@ -231,11 +231,12 @@ export function Inspector({
             <span className="text-label-xs font-bold text-outline uppercase tracking-wider block">Global Layout</span>
             <span className="text-xs text-primary font-medium capitalize">{currentLayout}</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-1.5">
             {[
               { key: "radial" as const, label: "Radial", icon: "radio_button_checked" },
               { key: "horizontal" as const, label: "Horizontal", icon: "swap_horiz" },
               { key: "vertical" as const, label: "Vertical", icon: "swap_vert" },
+              { key: "free" as const, label: "Free", icon: "pan_tool" },
             ].map((item) => (
               <button
                 key={item.key}

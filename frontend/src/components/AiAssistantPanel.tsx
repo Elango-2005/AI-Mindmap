@@ -198,17 +198,6 @@ export function AiAssistantPanel({
             </span>
           </div>
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-700 dark:text-on-surface-variant dark:hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors cursor-pointer"
-            title="Close panel"
-            aria-label="Close panel"
-          >
-            <Icon name="close" className="text-[16px]" />
-          </button>
-        )}
       </div>
 
       {/* 2. Messages & Actions Scroll Area */}

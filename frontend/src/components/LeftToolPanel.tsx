@@ -383,6 +383,12 @@ export function LeftToolPanel({
                     desc: "Top-to-bottom layout, ideal for organizational breakdowns.",
                     icon: "align_vertical_top",
                   },
+                  {
+                    id: "free" as LayoutDirection,
+                    title: "Free Positioning",
+                    desc: "Disable auto-layout. Freely drag and place nodes anywhere on the canvas.",
+                    icon: "pan_tool",
+                  },
                 ].map((item) => {
                   const isActive = currentLayout === item.id || (item.id === "radial" && currentLayout === "balanced");
                   return (

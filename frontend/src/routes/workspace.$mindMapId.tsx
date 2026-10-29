@@ -118,6 +118,7 @@ import "@xyflow/react/dist/style.css";
 
 
 
+import { getCurrentUser } from "@/api/auth";
 import { generateAIMindMap, getMindMap, chatMindMap, updateMindMap, createSnapshot, restoreSnapshot, getSnapshots, type Snapshot, type GroundingSource } from "@/api/mindmaps";
 
 
@@ -610,6 +611,29 @@ const edgeTypes = {
 
 function Workspace() {
   const navigate = useNavigate();
+
+  const [currentUser, setCurrentUser] = useState<{ full_name?: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(user => setCurrentUser(user))
+      .catch(() => {
+        // Unauthenticated or offline fallback
+      });
+  }, []);
+
+  const userInitials = useMemo(() => {
+    if (!currentUser?.full_name) return "A";
+    const parts = currentUser.full_name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 1).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }, [currentUser]);
+
+  const handleSignOut = useCallback(() => {
+    localStorage.removeItem("access_token");
+    toast.success("Signed out successfully");
+    navigate({ to: "/login" });
+  }, [navigate]);
 
 
 
@@ -8909,6 +8933,11 @@ function Workspace() {
 
     }
 
+    if (dir === "free") {
+      toast.success("Free positioning enabled — drag nodes freely anywhere");
+      return;
+    }
+
     const result = applyLayout(flowNodes, flowEdges, dir);
 
 
@@ -13205,12 +13234,48 @@ function Workspace() {
           </DropdownMenu>
           <div className="w-px h-4 bg-outline-variant/40 hidden sm:block mx-0.5" />
           <NotificationBell />
-          <div
-            className="w-8 h-8 rounded-full bg-[#5b50e6] text-white flex items-center justify-center font-semibold text-sm select-none shadow-xs ml-1 cursor-default"
-            title="User Account"
-          >
-            A
-          </div>
+          {/* User Account Menu Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-8 h-8 rounded-full bg-[#5b50e6] text-white flex items-center justify-center font-semibold text-sm select-none shadow-xs ml-1 hover:opacity-90 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2"
+                title="User account menu"
+                aria-label="User account menu"
+              >
+                {userInitials}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-outline-variant/60 bg-surface">
+              {currentUser && (
+                <div className="px-3 py-2 border-b border-outline-variant/30 mb-1">
+                  <p className="text-label-sm font-semibold text-on-surface truncate">{currentUser.full_name || "User Account"}</p>
+                  <p className="text-label-xs text-on-surface-variant truncate">{currentUser.email || ""}</p>
+                </div>
+              )}
+              <DropdownMenuItem
+                onClick={() => navigate({ to: "/settings" })}
+                className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors"
+              >
+                <Icon name="person" className="text-[18px] text-on-surface-variant" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate({ to: "/settings" })}
+                className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer hover:bg-surface-container transition-colors"
+              >
+                <Icon name="settings" className="text-[18px] text-on-surface-variant" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1 border-outline-variant/40" />
+              <DropdownMenuItem
+                onClick={handleSignOut}
+                className="flex items-center gap-2.5 px-3 py-2 text-label-sm rounded-lg cursor-pointer text-error hover:bg-error/10 transition-colors"
+              >
+                <Icon name="logout" className="text-[18px]" />
+                <span>Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -14515,6 +14580,13 @@ function Workspace() {
                     </div>
                     {currentLayout === "vertical" && <Icon name="check" className="text-primary text-[14px]" />}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleApplyLayout("free")} className="cursor-pointer flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon name="pan_tool" className="text-[16px]" />
+                      <span>Free Positioning</span>
+                    </div>
+                    {currentLayout === "free" && <Icon name="check" className="text-primary text-[14px]" />}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -14555,17 +14627,15 @@ function Workspace() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* AI Assistant Quick Toggle */}
+              {/* Presentation Mode Trigger */}
               <button
-                onClick={() => {
-                  handleToggleAiPanel(true);
-                  setRightPanelMode("ai");
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label-sm font-semibold bg-[#eeedfd] text-[#5b50e6] hover:bg-[#e2e0fb] dark:bg-purple-950/60 dark:text-purple-300 transition-colors cursor-pointer"
-                title="Open AI Assistant"
+                onClick={() => navigate({ to: "/present/$mindMapId", params: { mindMapId: mindMapId || "" } })}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-label-sm font-medium text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                title="Open presentation mode"
+                aria-label="Open presentation mode"
               >
-                <Icon name="auto_awesome" className="text-[16px]" />
-                <span>AI</span>
+                <Icon name="play_arrow" className="text-[18px] text-[#5b50e6]" />
+                <span>Presentation</span>
               </button>
             </div>
           )}
@@ -14626,32 +14696,21 @@ function Workspace() {
             </div>
           )}
 
-          {/* Floating Canvas Action Pills (Presentation + AI Assistant) */}
-          {flowNodes.length > 0 && (
-            <div className="absolute bottom-6 right-6 z-20 flex items-center gap-3">
+          {/* Floating Canvas Action Pill (AI Assistant) */}
+          {flowNodes.length > 0 && isAiPanelCollapsed && (
+            <div className="absolute bottom-6 right-6 z-20">
               <button
-                onClick={() => navigate({ to: "/present/$mindMapId", params: { mindMapId: mindMapId || "" } })}
-                className="bg-white/95 dark:bg-surface/95 backdrop-blur-md shadow-md hover:shadow-lg text-on-surface px-4 py-2 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all select-none cursor-pointer group hover:bg-surface-container"
-                title="Start Presentation Mode"
-                aria-label="Presentation Mode"
+                onClick={() => {
+                  handleToggleAiPanel(true);
+                  setRightPanelMode("ai");
+                }}
+                className="bg-white/95 dark:bg-surface/95 backdrop-blur-md shadow-md hover:shadow-lg text-on-surface px-4 py-2.5 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all select-none cursor-pointer group hover:bg-surface-container"
+                title="Open AI Assistant (Ctrl+Shift+A)"
+                aria-label="Open AI Assistant"
               >
-                <Icon name="play_arrow" className="text-[17px] text-[#5b50e6] group-hover:scale-110 transition-transform" />
-                <span className="text-label-sm font-semibold">Presentation</span>
+                <Icon name="auto_awesome" className="text-[18px] text-[#5b50e6] group-hover:rotate-12 transition-transform" />
+                <span className="text-label-sm font-semibold">AI Assistant</span>
               </button>
-              {isAiPanelCollapsed && (
-                <button
-                  onClick={() => {
-                    handleToggleAiPanel(true);
-                    setRightPanelMode("ai");
-                  }}
-                  className="bg-white/95 dark:bg-surface/95 backdrop-blur-md shadow-md hover:shadow-lg text-on-surface px-4 py-2 rounded-full flex items-center gap-2 border border-outline-variant/40 transition-all select-none cursor-pointer group hover:bg-surface-container"
-                  title="Open AI Assistant (Ctrl+Shift+A)"
-                  aria-label="Open AI Assistant"
-                >
-                  <Icon name="auto_awesome" className="text-[16px] text-[#5b50e6] group-hover:rotate-12 transition-transform" />
-                  <span className="text-label-sm font-semibold">AI Assistant</span>
-                </button>
-              )}
             </div>
           )}
         </main>
